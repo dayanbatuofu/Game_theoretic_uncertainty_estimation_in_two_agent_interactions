@@ -1,4 +1,3 @@
-
 file_name = 'human_change_lane_immediately.txt'
 file = open(file_name, 'w')
 

@@ -18,5 +18,5 @@ class HumanVehicle:
                 line = [float(i) for i in line]
                 self.states.append(line)
 
-    def get_position(self, time_step):
-        return self.states[time_step][0:2]
+    def get_state(self, time_step):
+        return self.states[time_step]
