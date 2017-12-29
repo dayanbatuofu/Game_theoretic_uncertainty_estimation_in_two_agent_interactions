@@ -75,7 +75,7 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     screen.blit(label, (10, 10))
     label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
     screen.blit(label, (10, 30))
-    label = font.render("Frame: %i" % frame+1, 1, (0, 0, 0))
+    label = font.render("Frame: %i" % (frame+1), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
 
     pg.display.flip()
