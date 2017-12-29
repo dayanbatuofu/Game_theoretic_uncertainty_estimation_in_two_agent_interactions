@@ -12,7 +12,7 @@ def main():
 def trial(duration):
 
     human_vehicle = HumanVehicle()
-    machine_vehicle = MachineVehicle(machine_initial_state=(0, 0, 0, 0),
+    machine_vehicle = MachineVehicle(machine_initial_state=(0, 0),
                                      human_initial_state=human_vehicle.get_state(0))
 
     pg.init()
@@ -20,25 +20,36 @@ def trial(duration):
     human_vehicle.image = pg.image.load("assets/red_car_sized.png")
     machine_vehicle.image = pg.image.load("assets/blue_car_sized.png")
 
-    fps = 60
+    fps = 120
 
     clock = pg.time.Clock()
     running = True
-    for frame in range(duration):
+    paused = False
+    end = False
+    frame = 0
+
+    while running:
 
         # Update model here
-        machine_vehicle.update(human_vehicle.get_state(frame))
+        if not paused and not end:
+            machine_vehicle.update(human_vehicle.get_state(frame))
+            frame += 1
+
+        if frame >= duration:
+            end = True
 
         # Draw frame
-        draw_frame(screen, frame, human_vehicle, machine_vehicle)
+        if not end:
+            draw_frame(screen, frame, human_vehicle, machine_vehicle)
 
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
                 running = False
-        if not running:
-            break
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_p:
+                    paused = not paused
 
         # Keep fps
         clock.tick(fps)
@@ -51,13 +62,21 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
 
     human_pos = human_vehicle.get_state(frame)[0:2]
     human_pos_adjusted_x = LANE_WIDTH * (human_pos[1] + 0.5)  # flip axis and add offset
-    human_pos_adjusted_y = (C.SCREEN_HEIGHT / 2) * (human_pos[0] + 1)
+    human_pos_adjusted_y = LANE_WIDTH * -human_pos[0] + C.SCREEN_HEIGHT/2
     screen.blit(human_vehicle.image, (human_pos_adjusted_x - C.CAR_WIDTH / 2, human_pos_adjusted_y - C.CAR_LENGTH / 2))
 
     machine_pos = machine_vehicle.get_state()[0:2]
     machine_pos_adjusted_x = LANE_WIDTH * (machine_pos[1] + 0.5)  # flip axis and add offset
-    machine_pos_adjusted_y = (C.SCREEN_HEIGHT / 2) * (machine_pos[0] + 1)
+    machine_pos_adjusted_y = LANE_WIDTH * -machine_pos[0] + C.SCREEN_HEIGHT/2
     screen.blit(machine_vehicle.image, (machine_pos_adjusted_x - C.CAR_WIDTH / 2, machine_pos_adjusted_y - C.CAR_LENGTH / 2))
+
+    font = pg.font.SysFont("Arial", 15)
+    label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
+    screen.blit(label, (10, 10))
+    label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
+    screen.blit(label, (10, 30))
+    label = font.render("Frame: %i" % frame+1, 1, (0, 0, 0))
+    screen.blit(label, (10, 50))
 
     pg.display.flip()
 

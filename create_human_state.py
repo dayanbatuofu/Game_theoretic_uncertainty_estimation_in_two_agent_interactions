@@ -19,9 +19,9 @@ x_vel = 0
 y_vel = 0
 
 for step in range(duration):
-    laneChange = (laneChange_start - step <= 0) and (laneChange_start - step - laneChange_distance/C.VEHICLE_MOVEMENT_SPEED >= 0)
+    laneChange = (laneChange_start - step <= 0) and (laneChange_start - step - laneChange_distance/C.VEHICLE_LATERAL_MOVEMENT_SPEED >= 0)
 
     if laneChange:
-        y += C.VEHICLE_MOVEMENT_SPEED * laneChange_direction
+        y += C.VEHICLE_LATERAL_MOVEMENT_SPEED * laneChange_direction
 
     file.write("%f %f\n" % (x, y))

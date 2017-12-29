@@ -12,6 +12,9 @@ class MachineVehicle:
 
     def __init__(self, machine_initial_state, human_initial_state):
 
+        self.machine_criteria = C.MACHINE_CRITERIA
+        self.machine_intent = C.MACHINE_INTENT
+
         self.machine_states = [machine_initial_state]
         self.machine_actions = [(0, 0)]
 
@@ -26,16 +29,23 @@ class MachineVehicle:
 
 
         human_predicted_intent = (0, -1) # Implement correction function here
-        human_criteria = 1 # Implement correction function here
+        human_criteria = 0.9 # Implement correction function here
 
         self.human_states.append(human_state)
 
-        human_predicted_action = human_predicted_intent
-        machine_new_action = self.get_action(human_predicted_intent, human_criteria)
+        # Use X Components (machine is restricted to x axis actions)
+        machine_new_action = self.get_machine_action(self.human_states[-1][0], self.machine_states[-1][0],
+                                             human_predicted_intent[0], self.machine_intent[0],
+                                             self.machine_criteria)
+        machine_new_action = (machine_new_action, 0)
 
+        # Use Y Components (human is restricted to y axis actions)
+        human_predicted_action = self.get_human_action(self.human_states[-1][1], self.machine_states[-1][1],
+                                             human_predicted_intent[1], machine_new_action[1],
+                                             human_criteria)
+        human_predicted_action = (0, human_predicted_action)
 
-        self.human_predicted_states.append(self.human_predicted_states[-1] + human_predicted_action)
-        self.machine_states.append(self.machine_states[-1] + machine_new_action)
+        self.human_predicted_states.append(np.add(self.human_predicted_states[-1],human_predicted_action))
 
         self.update_state_action(machine_new_action)
 
@@ -44,13 +54,35 @@ class MachineVehicle:
         self.machine_states.append(np.add(self.machine_states[-1], action))
         self.machine_actions.append(action)
 
-    def get_action(self, human_predicted_intent, human_criteria):
+    @staticmethod
+    def get_machine_action(human_state, machine_state, human_intent, machine_intent, criteria):
 
-        state_norms = []
-        for human_state, machine_state in zip(self.human_predicted_states, self.machine_states):
-            state_norms.append(np.linalg.norm(np.subtract(human_state, machine_state)))
+        action_space = [-C.VEHICLE_MOVEMENT_SPEED, 0, C.VEHICLE_MOVEMENT_SPEED]
+        state_space = []
 
-        pass
+        for action in action_space:
+            state_norm = -(human_state + human_intent - machine_state - action)**2
+            intent_norm = criteria*(machine_intent - action)**2
+
+            if np.abs(human_state-machine_state) >= C.VEHICLE_CLEARANCE:
+                state_norm = 0
+
+            state_space.append(state_norm + intent_norm)
+
+        return action_space[np.argmin(state_space)]
+
+    @staticmethod
+    def get_human_action(human_state, machine_state, human_intent, machine_intent, criteria):
+
+        action_space = [-C.VEHICLE_MOVEMENT_SPEED, 0, C.VEHICLE_MOVEMENT_SPEED]
+        state_space = []
+
+        for action in action_space:
+            state_norm = -(human_state + human_intent - machine_state - action)**2
+            intent_norm = criteria*(machine_intent - action)**2
+            state_space.append(state_norm + intent_norm)
+
+        return action_space[np.argmin(state_space)]
 
     def choose_action(self, human_predicted_action):
         # Implement loss function minimization here
