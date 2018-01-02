@@ -21,6 +21,7 @@ class MachineVehicle:
         self.human_states = [human_initial_state]
         self.human_actions = [(0, 0)]
         self.human_predicted_states = [human_initial_state]
+        self.human_predicted_initial_intent = (0, -1)
 
     def get_state(self):
         return self.machine_states[-1]
@@ -30,6 +31,7 @@ class MachineVehicle:
         #human_predicted_intent = (0, -1) # Implement correction function here
         #human_criteria = 0.9 # Implement correction function here
         human_predicted_intent, human_criteria = self.get_human_predicted_intent()
+        human_predicted_intent = (0, human_predicted_intent)
 
         self.human_states.append(human_state)
 
@@ -64,7 +66,7 @@ class MachineVehicle:
             human_future_state = human_state + human_intent * C.STEPS_FOR_CONSIDERATION
             machine_future_state = machine_state + action * C.STEPS_FOR_CONSIDERATION
 
-            state_norm = 1/np.abs(human_future_state - machine_future_state)
+            state_norm = 1/np.abs(human_future_state - machine_future_state + C.EPS)
             intent_norm = criteria*(machine_intent - action)**2
 
             if np.abs(human_state-machine_state) >= C.VEHICLE_CLEARANCE:
@@ -85,14 +87,15 @@ class MachineVehicle:
             human_future_state = human_state + human_intent * C.STEPS_FOR_CONSIDERATION
             machine_future_state = machine_state + action * C.STEPS_FOR_CONSIDERATION
 
-            state_norm = 1/np.abs(human_future_state - machine_future_state)
+            state_norm = 1/np.abs(human_future_state - machine_future_state + C.EPS)
             intent_norm = criteria*(machine_intent - action)**2
             state_space.append(state_norm + intent_norm)
 
         return action_space[np.argmin(state_space)]
 
     @staticmethod
-    def get_human_predicted_intent(self):
+    def get_human_predicted_intent():
+
         pass
 
 
