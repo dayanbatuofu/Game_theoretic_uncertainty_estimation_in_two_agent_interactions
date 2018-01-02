@@ -27,9 +27,9 @@ class MachineVehicle:
 
     def update(self, human_state):
 
-
-        human_predicted_intent = (0, -1) # Implement correction function here
-        human_criteria = 0.9 # Implement correction function here
+        #human_predicted_intent = (0, -1) # Implement correction function here
+        #human_criteria = 0.9 # Implement correction function here
+        human_predicted_intent, human_criteria = self.get_human_predicted_intent()
 
         self.human_states.append(human_state)
 
@@ -45,7 +45,7 @@ class MachineVehicle:
                                              human_criteria)
         human_predicted_action = (0, human_predicted_action)
 
-        self.human_predicted_states.append(np.add(self.human_predicted_states[-1],human_predicted_action))
+        self.human_predicted_states.append(np.add(self.human_predicted_states[-1], human_predicted_action))
 
         self.update_state_action(machine_new_action)
 
@@ -61,7 +61,10 @@ class MachineVehicle:
         state_space = []
 
         for action in action_space:
-            state_norm = -(human_state + human_intent - machine_state - action)**2
+            human_future_state = human_state + human_intent * C.STEPS_FOR_CONSIDERATION
+            machine_future_state = machine_state + action * C.STEPS_FOR_CONSIDERATION
+
+            state_norm = 1/np.abs(human_future_state - machine_future_state)
             intent_norm = criteria*(machine_intent - action)**2
 
             if np.abs(human_state-machine_state) >= C.VEHICLE_CLEARANCE:
@@ -78,12 +81,18 @@ class MachineVehicle:
         state_space = []
 
         for action in action_space:
-            state_norm = -(human_state + human_intent - machine_state - action)**2
+
+            human_future_state = human_state + human_intent * C.STEPS_FOR_CONSIDERATION
+            machine_future_state = machine_state + action * C.STEPS_FOR_CONSIDERATION
+
+            state_norm = 1/np.abs(human_future_state - machine_future_state)
             intent_norm = criteria*(machine_intent - action)**2
             state_space.append(state_norm + intent_norm)
 
         return action_space[np.argmin(state_space)]
 
-    def choose_action(self, human_predicted_action):
-        # Implement loss function minimization here
+    @staticmethod
+    def get_human_predicted_intent(self):
         pass
+
+
