@@ -12,7 +12,7 @@ def main():
 def trial(duration):
 
     human_vehicle = HumanVehicle()
-    machine_vehicle = MachineVehicle(machine_initial_state=(0, 0),
+    machine_vehicle = MachineVehicle(machine_initial_state=C.MACHINE_INITIAL_POSITION,
                                      human_initial_state=human_vehicle.get_state(0))
 
     pg.init()
