@@ -41,7 +41,7 @@ class MachineVehicle:
         self.human_states.append(human_state)
 
         # Use X Components (machine is restricted to x axis actions)
-        machine_new_action = self.get_action(10, self.human_states[-1][0], self.machine_states[-1][0],
+        machine_new_action = self.get_action(self.human_states[-1][0], self.machine_states[-1][0],
                                              human_predicted_intent[0], self.machine_intent[0],
                                              self.machine_criteria)
         machine_new_action = (machine_new_action, 0)
@@ -61,19 +61,24 @@ class MachineVehicle:
         self.machine_states.append(np.add(self.machine_states[-1], action))
         self.machine_actions.append(action)
 
-    def get_action(self, num_future_steps, human_state, machine_state, human_intent, machine_intent, criteria):
+    def get_action(self, human_state, machine_state, human_intent, machine_intent, criteria):
 
-        T = num_future_steps
+        # Initial conditions
+        a0 = [0 for _ in range(C.STEPS_FOR_CONSIDERATION)]
 
-        a0 = [0 for _ in range(T)]
-
-        bounds = tuple([(-C.VEHICLE_MOVEMENT_LIMITER, C.VEHICLE_MOVEMENT_LIMITER) for i in range(T)])
+        # Bounded action space
+        bounds = tuple([(-C.VEHICLE_MOVEMENT_LIMITER, C.VEHICLE_MOVEMENT_LIMITER) for _ in range(C.STEPS_FOR_CONSIDERATION)])
 
         optimization_results = scipy.optimize.minimize(self.loss_func, a0, bounds=bounds,
-                                                       args=(human_state, machine_state, human_intent, machine_intent, criteria))
+                                                       args=(human_state,
+                                                             machine_state,
+                                                             human_intent,
+                                                             machine_intent,
+                                                             criteria))
+
         actions = optimization_results.x
-        print(actions)
-        return actions[0]
+
+        return actions[0]  # Return first action
 
     def loss_func(self, actions, s_h, s_m, theta_h, theta_m, c_h):
         loss_sum = 0
