@@ -20,7 +20,7 @@ def trial(duration):
     human_vehicle.image = pg.image.load("assets/red_car_sized.png")
     machine_vehicle.image = pg.image.load("assets/blue_car_sized.png")
 
-    fps = 120
+    fps = C.FPS
 
     clock = pg.time.Clock()
     running = True
@@ -77,6 +77,10 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     screen.blit(label, (10, 30))
     label = font.render("Frame: %i" % (frame+1), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
+    label = font.render("Machine State Loss: %f" % machine_vehicle.state_loss, 1, (0, 0, 0))
+    screen.blit(label, (10, 70))
+    label = font.render("Machine Action Loss: %f" % machine_vehicle.action_loss, 1, (0, 0, 0))
+    screen.blit(label, (10, 90))
 
     pg.display.flip()
 
