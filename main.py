@@ -56,7 +56,7 @@ def trial(duration):
 
 
 def draw_frame(screen, frame, human_vehicle, machine_vehicle):
-    screen.fill((255,255,255))
+    screen.fill((255, 255, 255))
 
     LANE_WIDTH = C.SCREEN_WIDTH/2
 
@@ -77,10 +77,12 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     screen.blit(label, (10, 30))
     label = font.render("Frame: %i" % (frame+1), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
-    label = font.render("Machine State Loss: %f" % machine_vehicle.state_loss, 1, (0, 0, 0))
-    screen.blit(label, (10, 70))
-    label = font.render("Machine Action Loss: %f" % machine_vehicle.action_loss, 1, (0, 0, 0))
+    label = font.render("Debug 1: %f" % machine_vehicle.debug_1, 1, (0, 0, 0))
     screen.blit(label, (10, 90))
+    label = font.render("Debug 2: %f" % machine_vehicle.debug_2, 1, (0, 0, 0))
+    screen.blit(label, (10, 110))
+    label = font.render("Debug 3: %f" % machine_vehicle.debug_3, 1, (0, 0, 0))
+    screen.blit(label, (10, 130))
 
     pg.display.flip()
 
