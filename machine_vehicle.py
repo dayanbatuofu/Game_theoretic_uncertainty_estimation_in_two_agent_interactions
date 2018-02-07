@@ -6,11 +6,11 @@ from scipy import optimize
 
 class MachineVehicle:
 
-    '''
+    """
     States:
             X-Position
             Y-Position
-    '''
+    """
 
     def __init__(self, machine_initial_state, human_initial_state):
 
@@ -23,7 +23,11 @@ class MachineVehicle:
         self.human_states = [human_initial_state]
         self.human_actions = [(0, 0)]
         self.human_predicted_states = [human_initial_state]
-        self.human_predicted_initial_intent = (0, -1)
+
+        self.human_predicted_intent = (0, -1)
+        self.human_predicted_criteria = 80
+
+        self.human_predicted_state = human_initial_state
 
         self.debug_1 = 0
         self.debug_2 = 0
@@ -34,33 +38,47 @@ class MachineVehicle:
 
     def update(self, human_state):
 
-        human_predicted_intent = (0, 0) # Implement correction function here
-        human_criteria = 0.9 # Implement correction function here
-        #human_predicted_intent, human_criteria = self.get_human_predicted_intent()
-        #human_predicted_intent = (0, human_predicted_intent)
+        """ Function ran on every frame of simultion"""
 
         self.human_states.append(human_state)
 
-        machine_new_action = self.get_action(self.human_states[-1], self.machine_states[-1],
-                                             human_predicted_intent, self.machine_intent,
-                                             self.machine_criteria)
+        ########## Update human characteristics here ########
 
-        # Use Y Components (human is restricted to y axis actions)
-        # human_predicted_action = self.get_human_action(self.human_states[-1][1], self.machine_states[-1][1],
-        #                                      human_predicted_intent[1], machine_new_action[1],
-        #                                      human_criteria)
-        # human_predicted_action = (0, human_predicted_action)
-        #
-        # self.human_predicted_states.append(np.add(self.human_predicted_states[-1], human_predicted_action))
+        machine_intent = C.MACHINE_INTENT #?????
+        machine_criteria = C.MACHINE_CRITERIA  # ?????
 
+        if len(self.human_states) > C.T_PAST:
+            human_predicted_intent, human_predicted_criteria = self.get_human_predicted_intent(self.human_predicted_intent,
+                                                                                     self.human_predicted_criteria,
+                                                                                     self.machine_states,
+                                                                                     self.human_states,
+                                                                                     machine_intent,
+                                                                                     machine_criteria,
+                                                                                     C.T_PAST)
+            self.human_predicted_intent = human_predicted_intent
+            self.human_predicted_criteria = human_predicted_criteria
+
+
+        ########## Calculate machine actions here ###########
+
+        [machine_actions, human_predicted_actions] = self.get_actions(self.human_states[-1], self.machine_states[-1],
+                                                                      self.human_predicted_intent, self.machine_intent,
+                                                                      self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
+
+        machine_new_action = machine_actions[0]
         self.update_state_action(machine_new_action)
+
+        self.human_predicted_state = human_state + sum(human_predicted_actions)
 
     def update_state_action(self, action):
 
         self.machine_states.append(np.add(self.machine_states[-1], action))
         self.machine_actions.append(action)
 
-    def get_action(self, s_other, s_self, s_desired_other, s_desired_self, c_self):
+    def get_actions(self, s_other, s_self, s_desired_other, s_desired_self, c_other, c_self, t_steps):
+
+        """ Function that accepts 2 vehicles states, intents, criteria, and an amount of future steps
+        and return the ideal actions based on the loss function"""
 
         # Error between desired position and current position
         error_other = np.array(s_desired_other) - np.array(s_other)
@@ -70,58 +88,98 @@ class MachineVehicle:
         theta_other = np.clip(error_other, -C.THETA_LIMITER_X, C.THETA_LIMITER_X)
         theta_self = np.clip(error_self, -C.THETA_LIMITER_Y, C.THETA_LIMITER_Y)
 
+        actions_other = np.tile(theta_other, (t_steps, 1))
+
+        a0 = np.array([0 for _ in range(2 * t_steps)])
+
+        bounds = tuple([(-C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) for _ in range(2 * t_steps)])
+
+        cons_other = ({'type': 'ineq', 'fun': lambda x: s_other[1] + sum(x[t_steps:]) - C.Y_MINIMUM},
+                      {'type': 'ineq', 'fun': lambda x: s_other[1] + sum(x[t_steps:]) + C.Y_MAXIMUM})
+
+        cons_self = ({'type': 'ineq', 'fun': lambda x: s_self[1] + sum(x[t_steps:]) - C.Y_MINIMUM},
+                     {'type': 'ineq', 'fun': lambda x: s_self[1] + sum(x[t_steps:]) + C.Y_MAXIMUM})
+
+        loss_value = 0
+        loss_value_old = loss_value + C.LOSS_THRESHOLD + 1
+        iter_count = 0
+
+        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
+            loss_value_old = loss_value
+            iter_count += 1
+
+            # Estimate machine actions
+            optimization_results = scipy.optimize.minimize(self.loss_func, a0, bounds=bounds, constraints=cons_self,
+                                                           args=(s_other, s_self, actions_other, theta_self, c_self))
+            actions_self = np.transpose(np.vstack((optimization_results.x[:t_steps], optimization_results.x[t_steps:])))
+            loss_value = optimization_results.fun
+
+            # Estimate human actions
+            optimization_results = scipy.optimize.minimize(self.loss_func, a0, bounds=bounds, constraints=cons_other,
+                                                           args=(s_self, s_other, actions_self, theta_other, c_other))
+            actions_other = np.transpose(np.vstack((optimization_results.x[:t_steps], optimization_results.x[t_steps:])))
 
 
-        a0 = np.array([0 for _ in range(2 * C.T_FUTURE)])
+        return actions_self, actions_other
 
-        x_bounds = tuple([(-C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) for i in range(C.T_FUTURE)])
-
-        # Lane keeping
-        if theta_self[1] > 0:
-            y_bound = (0, C.VEHICLE_LATERAL_MOVEMENT_SPEED)
-        elif theta_self[1] < 0:
-            y_bound = (-C.VEHICLE_LATERAL_MOVEMENT_SPEED, 0)
-        else:
-            y_bound = (0, 0)
-
-        y_bounds = tuple([y_bound for i in range(C.T_FUTURE)])
-
-        bounds = x_bounds + y_bounds
-
-        optimization_results = scipy.optimize.minimize(self.loss_func, a0, bounds=bounds,
-                                                       args=(s_other, s_self, theta_other, theta_self, c_self))
-        actions_x = optimization_results.x[:C.T_FUTURE]
-        actions_y = optimization_results.x[C.T_FUTURE:]
-        actions = list(zip(actions_x, actions_y))
-
-        return actions[0]  # return first action
-
-    def loss_func(self, actions, s_other, s_self, theta_other, theta_self, c_self):
-
-        actions_x = actions[:C.T_FUTURE]
-        actions_y = actions[C.T_FUTURE:]
-
-        loss_sum = 0
-        for i in range(C.T_FUTURE):
-
-            state_difference = (np.array(s_other) + np.array(i * np.array(theta_other))) - (np.array(s_self) + np.array(sum(actions_x[:i]) + sum(actions_y[:i])))
-            state_loss = 1 / np.linalg.norm(state_difference)
-            intent_loss = np.linalg.norm(np.array(theta_self) - np.array((actions_x[i], actions_y[i]))) ** 2
-
-            loss_sum += state_loss + c_self * intent_loss
-
-        human_predicted_state = (np.array(s_other) + np.array(i * np.array(theta_other)))
-        self.debug_1 = human_predicted_state[0]
-        self.debug_2 = human_predicted_state[1]
-
-        state_difference = np.array(s_other) - (np.array(s_self) + np.array(actions_x[0] + actions_y[0]))
-        self.debug_3 = np.linalg.norm(state_difference)
-
-        return loss_sum
 
     @staticmethod
-    def get_human_predicted_intent():
+    def loss_func(actions, s_other, s_self, actions_other, theta_self, c):
 
-        pass
+        """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
+
+        t_steps = int(len(actions)/2)
+
+        actions = np.transpose(np.vstack((actions[:t_steps], actions[t_steps:])))
+
+        theta_vectorized = np.tile(theta_self, (t_steps, 1))
+
+        A = np.zeros((t_steps, t_steps))
+        A[np.tril_indices(t_steps, 0)] = 1
+
+        # Define state loss
+        state_loss = np.reciprocal(np.linalg.norm(s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other), axis=1))
+
+        # Define action loss
+        intent_loss = np.square(np.linalg.norm(actions - theta_vectorized))
+
+        return np.sum(state_loss) + c * np.sum(intent_loss)  # Return sum with a weighted factor
 
 
+    def get_human_predicted_intent(self, old_human_intent, old_human_criteria, machine_states, human_states,  machine_intent, machine_criteria, t_steps):
+
+        """ Function accepts initial conditions and a time period for which to correct the
+        attributes of the human car """
+
+        machine_states = machine_states[-t_steps:]
+        human_states = human_states[-t_steps:]
+
+        optimization_results = scipy.optimize.minimize(self.human_loss_func,
+                                                       np.array([old_human_intent[0], old_human_intent[1], old_human_criteria]),
+                                                       args=(machine_states, human_states, machine_intent, machine_criteria))
+
+        predicted_intent_x = optimization_results.x[0]
+        predicted_intent_y = optimization_results.x[1]
+        predicted_intent = [predicted_intent_x, predicted_intent_y]
+
+        predicted_criteria = optimization_results.x[2]
+
+        return [predicted_intent, predicted_criteria]
+
+    def human_loss_func(self, optimized_characteristics, machine_states, human_states, machine_intent, machine_criteria):
+
+        """ Loss function for the human correction defined to be the norm of the difference between actual actions and
+        predicted actions"""
+
+        t_steps = int(len(machine_states))
+
+        intent = optimized_characteristics[0:2]  # 2D
+        criteria = optimized_characteristics[2]  #1D
+
+        actual_actions = np.diff(human_states, axis=0)
+        predicted_actions = self.get_actions(machine_states[0], human_states[0], machine_intent, intent, machine_criteria, criteria, t_steps - 1)
+        predicted_actions_self = predicted_actions[0]
+
+        difference = np.array(actual_actions) - np.array(predicted_actions_self)
+
+        return np.linalg.norm(difference)

@@ -17,4 +17,4 @@ class HumanVehicle:
                 self.states.append(line)
 
     def get_state(self, time_step):
-        return self.states[time_step]
+        return list(self.states[time_step])

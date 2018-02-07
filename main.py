@@ -2,7 +2,7 @@ from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
 from machine_vehicle import MachineVehicle
 import pygame as pg
-
+import numpy as np
 
 def main():
 
@@ -58,17 +58,15 @@ def trial(duration):
 def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     screen.fill((255, 255, 255))
 
-    LANE_WIDTH = C.SCREEN_WIDTH/2
-
     human_pos = human_vehicle.get_state(frame)[0:2]
-    human_pos_adjusted_x = LANE_WIDTH * (human_pos[1] + 0.5)  # flip axis and add offset
-    human_pos_adjusted_y = LANE_WIDTH * -human_pos[0] + C.SCREEN_HEIGHT/2
-    screen.blit(human_vehicle.image, (human_pos_adjusted_x - C.CAR_WIDTH / 2, human_pos_adjusted_y - C.CAR_LENGTH / 2))
+    human_pos_pixels = c2p(human_pos)
+    screen.blit(human_vehicle.image, (human_pos_pixels[0] - C.CAR_WIDTH / 2, human_pos_pixels[1] - C.CAR_LENGTH / 2))
 
     machine_pos = machine_vehicle.get_state()[0:2]
-    machine_pos_adjusted_x = LANE_WIDTH * (machine_pos[1] + 0.5)  # flip axis and add offset
-    machine_pos_adjusted_y = LANE_WIDTH * -machine_pos[0] + C.SCREEN_HEIGHT/2
-    screen.blit(machine_vehicle.image, (machine_pos_adjusted_x - C.CAR_WIDTH / 2, machine_pos_adjusted_y - C.CAR_LENGTH / 2))
+    machine_pos_pixels = c2p(machine_pos)
+    screen.blit(machine_vehicle.image, (machine_pos_pixels[0] - C.CAR_WIDTH / 2, machine_pos_pixels[1] - C.CAR_LENGTH / 2))
+
+    pg.draw.circle(screen, (0, 255, 0), c2p(machine_vehicle.human_predicted_state), 10)
 
     font = pg.font.SysFont("Arial", 15)
     label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
@@ -85,6 +83,12 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     screen.blit(label, (10, 130))
 
     pg.display.flip()
+
+
+def c2p(coordinates):
+    x = int(C.LANE_WIDTH * (coordinates[1] + 0.5))
+    y = int(C.LANE_WIDTH * -coordinates[0] + C.SCREEN_HEIGHT/2)
+    return [x, y]
 
 
 if __name__ == "__main__":
