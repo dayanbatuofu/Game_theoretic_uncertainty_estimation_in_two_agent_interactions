@@ -24,9 +24,8 @@ class MachineVehicle:
         self.human_actions = [(0, 0)]
         self.human_predicted_states = [human_initial_state]
 
-        self.human_predicted_intent = (0, -1)
-        self.human_predicted_criteria = 80
-
+        self.human_predicted_intent = (0, 0)
+        self.human_predicted_criteria = 20
         self.human_predicted_state = human_initial_state
 
         self.debug_1 = 0
@@ -38,25 +37,25 @@ class MachineVehicle:
 
     def update(self, human_state):
 
-        """ Function ran on every frame of simultion"""
+        """ Function ran on every frame of simulation"""
 
         self.human_states.append(human_state)
 
         ########## Update human characteristics here ########
 
-        machine_intent = C.MACHINE_INTENT #?????
-        machine_criteria = C.MACHINE_CRITERIA  # ?????
-
-        if len(self.human_states) > C.T_PAST:
-            human_predicted_intent, human_predicted_criteria = self.get_human_predicted_intent(self.human_predicted_intent,
-                                                                                     self.human_predicted_criteria,
-                                                                                     self.machine_states,
-                                                                                     self.human_states,
-                                                                                     machine_intent,
-                                                                                     machine_criteria,
-                                                                                     C.T_PAST)
-            self.human_predicted_intent = human_predicted_intent
-            self.human_predicted_criteria = human_predicted_criteria
+        # machine_intent = C.MACHINE_INTENT #?????
+        # machine_criteria = C.MACHINE_CRITERIA  # ?????
+        #
+        # if len(self.human_states) > C.T_PAST:
+        #     human_predicted_intent, human_predicted_criteria = self.get_human_predicted_intent(self.human_predicted_intent,
+        #                                                                              self.human_predicted_criteria,
+        #                                                                              self.machine_states,
+        #                                                                              self.human_states,
+        #                                                                              machine_intent,
+        #                                                                              machine_criteria,
+        #                                                                              C.T_PAST)
+        #     self.human_predicted_intent = human_predicted_intent
+        #     self.human_predicted_criteria = human_predicted_criteria
 
 
         ########## Calculate machine actions here ###########
@@ -65,7 +64,10 @@ class MachineVehicle:
                                                                       self.human_predicted_intent, self.machine_intent,
                                                                       self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
 
-        machine_new_action = machine_actions[0]
+        self.human_predicted_state = human_state + sum(human_predicted_actions)
+
+
+        machine_new_action = np.clip(machine_actions[0], -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) # Restrict speed
         self.update_state_action(machine_new_action)
 
         self.human_predicted_state = human_state + sum(human_predicted_actions)
@@ -88,37 +90,51 @@ class MachineVehicle:
         theta_other = np.clip(error_other, -C.THETA_LIMITER_X, C.THETA_LIMITER_X)
         theta_self = np.clip(error_self, -C.THETA_LIMITER_Y, C.THETA_LIMITER_Y)
 
-        actions_other = np.tile(theta_other, (t_steps, 1))
 
-        a0 = np.array([0 for _ in range(2 * t_steps)])
+        # Initialize actions
+        actions_other = np.array([0 for _ in range(2 * t_steps)])
+        actions_self = np.array([0 for _ in range(2 * t_steps)])
 
-        bounds = tuple([(-C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) for _ in range(2 * t_steps)])
 
-        cons_other = ({'type': 'ineq', 'fun': lambda x: s_other[1] + sum(x[t_steps:]) - C.Y_MINIMUM},
-                      {'type': 'ineq', 'fun': lambda x: s_other[1] + sum(x[t_steps:]) + C.Y_MAXIMUM})
+        bounds = tuple([(-C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER, C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) for _ in range(2 * t_steps)])
 
-        cons_self = ({'type': 'ineq', 'fun': lambda x: s_self[1] + sum(x[t_steps:]) - C.Y_MINIMUM},
-                     {'type': 'ineq', 'fun': lambda x: s_self[1] + sum(x[t_steps:]) + C.Y_MAXIMUM})
+        A = np.zeros((t_steps, t_steps))
+        A[np.tril_indices(t_steps, 0)] = 1
+
+        cons_other = ({'type': 'ineq', 'fun': lambda x: s_other[1] + x[10] - C.Y_MINIMUM},
+                      {'type': 'ineq', 'fun': lambda x: -s_other[1] - x[10] + C.Y_MAXIMUM})
+
+        cons_self = ({'type': 'ineq', 'fun': lambda x: s_self[1] + x[10] - C.Y_MINIMUM},
+                     {'type': 'ineq', 'fun': lambda x: -s_self[1] - x[10] + C.Y_MAXIMUM})
 
         loss_value = 0
         loss_value_old = loss_value + C.LOSS_THRESHOLD + 1
         iter_count = 0
 
+        # Estimate machine actions
+        optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
+                                                       args=(s_other, s_self, actions_other, theta_self, c_self))
+        actions_self = optimization_results.x
+        loss_value = optimization_results.fun
+
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
             loss_value_old = loss_value
             iter_count += 1
 
+            # Estimate human actions
+            optimization_results = scipy.optimize.minimize(self.loss_func, actions_other, bounds=bounds, constraints=cons_other,
+                                                           args=(s_self, s_other, actions_self, theta_other, c_other))
+            actions_other = optimization_results.x
+
             # Estimate machine actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, a0, bounds=bounds, constraints=cons_self,
+            optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
                                                            args=(s_other, s_self, actions_other, theta_self, c_self))
-            actions_self = np.transpose(np.vstack((optimization_results.x[:t_steps], optimization_results.x[t_steps:])))
+            actions_self = optimization_results.x
             loss_value = optimization_results.fun
 
-            # Estimate human actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, a0, bounds=bounds, constraints=cons_other,
-                                                           args=(s_self, s_other, actions_self, theta_other, c_other))
-            actions_other = np.transpose(np.vstack((optimization_results.x[:t_steps], optimization_results.x[t_steps:])))
 
+        actions_other = np.transpose(np.vstack((actions_other[:t_steps], actions_other[t_steps:])))
+        actions_self = np.transpose(np.vstack((actions_self[:t_steps], actions_self[t_steps:])))
 
         return actions_self, actions_other
 
@@ -131,6 +147,7 @@ class MachineVehicle:
         t_steps = int(len(actions)/2)
 
         actions = np.transpose(np.vstack((actions[:t_steps], actions[t_steps:])))
+        actions_other = np.transpose(np.vstack((actions_other[:t_steps], actions_other[t_steps:])))
 
         theta_vectorized = np.tile(theta_self, (t_steps, 1))
 
