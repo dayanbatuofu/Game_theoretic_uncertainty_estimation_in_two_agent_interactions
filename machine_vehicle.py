@@ -2,6 +2,7 @@ from constants import CONSTANTS as C
 import numpy as np
 import scipy
 from scipy import optimize
+#from keras.models import load_model
 
 
 class MachineVehicle:
@@ -15,7 +16,7 @@ class MachineVehicle:
     def __init__(self, machine_initial_state, human_initial_state):
 
         self.machine_criteria = C.MACHINE_CRITERIA
-        self.machine_intent = C.MACHINE_INTENT
+        self.machine_s_desired = C.MACHINE_INTENT
 
         self.machine_states = [machine_initial_state]
         self.machine_actions = [(0, 0)]
@@ -24,9 +25,11 @@ class MachineVehicle:
         self.human_actions = [(0, 0)]
         self.human_predicted_states = [human_initial_state]
 
-        self.human_predicted_intent = (0, 0)
-        self.human_predicted_criteria = 20
+        self.human_predicted_criteria = C.HUMAN_CRITERIA
+        self.human_predicted_s_desired = C.HUMAN_INTENT
         self.human_predicted_state = human_initial_state
+
+        #self.action_prediction_model = load_model('nn/action_prediction_model.h5')
 
         self.debug_1 = 0
         self.debug_2 = 0
@@ -43,26 +46,37 @@ class MachineVehicle:
 
         ########## Update human characteristics here ########
 
-        # machine_intent = C.MACHINE_INTENT #?????
+        # machine_s_desired = C.MACHINE_INTENT #?????
         # machine_criteria = C.MACHINE_CRITERIA  # ?????
         #
         # if len(self.human_states) > C.T_PAST:
-        #     human_predicted_intent, human_predicted_criteria = self.get_human_predicted_intent(self.human_predicted_intent,
+        #     human_predicted_s_desired, human_predicted_criteria = self.get_human_predicted_intent(self.human_predicted_s_desired,
         #                                                                              self.human_predicted_criteria,
         #                                                                              self.machine_states,
         #                                                                              self.human_states,
-        #                                                                              machine_intent,
+        #                                                                              machine_s_desired,
         #                                                                              machine_criteria,
         #                                                                              C.T_PAST)
-        #     self.human_predicted_intent = human_predicted_intent
+        #     self.human_predicted_s_desired = human_predicted_s_desired
         #     self.human_predicted_criteria = human_predicted_criteria
 
 
         ########## Calculate machine actions here ###########
 
+        # Use prediction function
         [machine_actions, human_predicted_actions] = self.get_actions(self.human_states[-1], self.machine_states[-1],
-                                                                      self.human_predicted_intent, self.machine_intent,
-                                                                      self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
+                                                                        self.human_predicted_s_desired, self.machine_s_desired,
+                                                                        self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
+
+        # # Use prediction model
+        # machine_actions_m = self.action_prediction_model.predict(np.array([[self.human_states[-1][1],
+        #                                                                     self.machine_states[-1][0],
+        #                                                                     self.machine_states[-1][1],
+        #                                                                     self.human_predicted_s_desired[0],
+        #                                                                     self.human_predicted_s_desired[1],
+        #                                                                     self.human_predicted_criteria]]))
+
+
 
         self.human_predicted_state = human_state + sum(human_predicted_actions)
 
@@ -70,7 +84,6 @@ class MachineVehicle:
         machine_new_action = np.clip(machine_actions[0], -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) # Restrict speed
         self.update_state_action(machine_new_action)
 
-        self.human_predicted_state = human_state + sum(human_predicted_actions)
 
     def update_state_action(self, action):
 
@@ -101,11 +114,19 @@ class MachineVehicle:
         A = np.zeros((t_steps, t_steps))
         A[np.tril_indices(t_steps, 0)] = 1
 
-        cons_other = ({'type': 'ineq', 'fun': lambda x: s_other[1] + x[10] - C.Y_MINIMUM},
-                      {'type': 'ineq', 'fun': lambda x: -s_other[1] - x[10] + C.Y_MAXIMUM})
+        cons_other = []
+        for i in range(t_steps):
+            cons_other.append({'type': 'ineq',
+                               'fun': lambda x, i=i: s_other[1] + sum(x[t_steps:t_steps+i+1]) - C.Y_MINIMUM})
+            cons_other.append({'type': 'ineq',
+                               'fun': lambda x, i=i: -s_other[1] - sum(x[t_steps:t_steps+i+1]) + C.Y_MAXIMUM})
 
-        cons_self = ({'type': 'ineq', 'fun': lambda x: s_self[1] + x[10] - C.Y_MINIMUM},
-                     {'type': 'ineq', 'fun': lambda x: -s_self[1] - x[10] + C.Y_MAXIMUM})
+        cons_self = []
+        for i in range(t_steps):
+            cons_self.append({'type': 'ineq',
+                              'fun': lambda x, i=i: s_self[1] + sum(x[t_steps:t_steps+i+1]) - C.Y_MINIMUM})
+            cons_self.append({'type': 'ineq',
+                              'fun': lambda x, i=i: -s_self[1] - sum(x[t_steps:t_steps+i+1]) + C.Y_MAXIMUM})
 
         loss_value = 0
         loss_value_old = loss_value + C.LOSS_THRESHOLD + 1
@@ -163,7 +184,7 @@ class MachineVehicle:
         return np.sum(state_loss) + c * np.sum(intent_loss)  # Return sum with a weighted factor
 
 
-    def get_human_predicted_intent(self, old_human_intent, old_human_criteria, machine_states, human_states,  machine_intent, machine_criteria, t_steps):
+    def get_human_predicted_intent(self, old_human_s_desired, old_human_criteria, machine_states, human_states,  machine_s_desired, machine_criteria, t_steps):
 
         """ Function accepts initial conditions and a time period for which to correct the
         attributes of the human car """
@@ -172,8 +193,8 @@ class MachineVehicle:
         human_states = human_states[-t_steps:]
 
         optimization_results = scipy.optimize.minimize(self.human_loss_func,
-                                                       np.array([old_human_intent[0], old_human_intent[1], old_human_criteria]),
-                                                       args=(machine_states, human_states, machine_intent, machine_criteria))
+                                                       np.array([old_human_s_desired[0], old_human_s_desired[1], old_human_criteria]),
+                                                       args=(machine_states, human_states, machine_s_desired, machine_criteria))
 
         predicted_intent_x = optimization_results.x[0]
         predicted_intent_y = optimization_results.x[1]
@@ -183,7 +204,7 @@ class MachineVehicle:
 
         return [predicted_intent, predicted_criteria]
 
-    def human_loss_func(self, optimized_characteristics, machine_states, human_states, machine_intent, machine_criteria):
+    def human_loss_func(self, optimized_characteristics, machine_states, human_states, machine_s_desired, machine_criteria):
 
         """ Loss function for the human correction defined to be the norm of the difference between actual actions and
         predicted actions"""
@@ -191,10 +212,10 @@ class MachineVehicle:
         t_steps = int(len(machine_states))
 
         intent = optimized_characteristics[0:2]  # 2D
-        criteria = optimized_characteristics[2]  #1D
+        criteria = optimized_characteristics[2]  # 1D
 
         actual_actions = np.diff(human_states, axis=0)
-        predicted_actions = self.get_actions(machine_states[0], human_states[0], machine_intent, intent, machine_criteria, criteria, t_steps - 1)
+        predicted_actions = self.get_actions(machine_states[0], human_states[0], machine_s_desired, intent, machine_criteria, criteria, t_steps - 1)
         predicted_actions_self = predicted_actions[0]
 
         difference = np.array(actual_actions) - np.array(predicted_actions_self)

@@ -2,12 +2,13 @@ from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
 from machine_vehicle import MachineVehicle
 import pygame as pg
-import numpy as np
+
 
 def main():
 
     duration = 1800
     trial(duration)
+
 
 def trial(duration):
 
@@ -66,7 +67,10 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     machine_pos_pixels = c2p(machine_pos)
     screen.blit(machine_vehicle.image, (machine_pos_pixels[0] - C.CAR_WIDTH / 2, machine_pos_pixels[1] - C.CAR_LENGTH / 2))
 
+
     pg.draw.circle(screen, (0, 255, 0), c2p(machine_vehicle.human_predicted_state), 10)
+
+    pg.draw.circle(screen, (255, 0, 255), c2p(machine_vehicle.human_predicted_s_desired), 5)
 
     font = pg.font.SysFont("Arial", 15)
     label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
@@ -93,8 +97,3 @@ def c2p(coordinates):
 
 if __name__ == "__main__":
     main()
-
-# frame_start = time.time()
-# frame_time = time.time()
-# if frame_time < 1 / fps:
-#     time.sleep(frame_time - 1 / fps)
