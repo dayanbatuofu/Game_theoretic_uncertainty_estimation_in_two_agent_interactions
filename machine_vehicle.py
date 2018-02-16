@@ -2,7 +2,7 @@ from constants import CONSTANTS as C
 import numpy as np
 import scipy
 from scipy import optimize
-#from keras.models import load_model
+from keras.models import load_model
 
 
 class MachineVehicle:
@@ -29,7 +29,7 @@ class MachineVehicle:
         self.human_predicted_s_desired = C.HUMAN_INTENT
         self.human_predicted_state = human_initial_state
 
-        #self.action_prediction_model = load_model('nn/action_prediction_model.h5')
+        self.action_prediction_model = load_model('nn/action_prediction_model.h5')
 
         self.debug_1 = 0
         self.debug_2 = 0
@@ -64,24 +64,25 @@ class MachineVehicle:
         ########## Calculate machine actions here ###########
 
         # Use prediction function
-        [machine_actions, human_predicted_actions] = self.get_actions(self.human_states[-1], self.machine_states[-1],
-                                                                        self.human_predicted_s_desired, self.machine_s_desired,
-                                                                        self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
+        # [machine_actions, human_predicted_actions] = self.get_actions(self.human_states[-1], self.machine_states[-1],
+        #                                                                 self.human_predicted_s_desired, self.machine_s_desired,
+        #                                                                 self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
 
         # # Use prediction model
-        # machine_actions_m = self.action_prediction_model.predict(np.array([[self.human_states[-1][1],
-        #                                                                     self.machine_states[-1][0],
-        #                                                                     self.machine_states[-1][1],
-        #                                                                     self.human_predicted_s_desired[0],
-        #                                                                     self.human_predicted_s_desired[1],
-        #                                                                     self.human_predicted_criteria]]))
+        machine_actions = self.action_prediction_model.predict(np.array([[self.human_states[-1][1],
+                                                                            self.machine_states[-1][0],
+                                                                            self.machine_states[-1][1],
+                                                                            self.human_predicted_s_desired[0],
+                                                                            self.human_predicted_s_desired[1],
+                                                                            self.human_predicted_criteria]]))
+        machine_actions = machine_actions * (2 * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) - (C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER)
 
 
 
-        self.human_predicted_state = human_state + sum(human_predicted_actions)
+        #self.human_predicted_state = human_state + sum(human_predicted_actions)
 
 
-        machine_new_action = np.clip(machine_actions[0], -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) # Restrict speed
+        machine_new_action = np.clip(machine_actions, -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) # Restrict speed
         self.update_state_action(machine_new_action)
 
 

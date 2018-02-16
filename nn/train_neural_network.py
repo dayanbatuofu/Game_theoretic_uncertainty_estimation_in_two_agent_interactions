@@ -5,18 +5,18 @@ from keras.callbacks import EarlyStopping
 import csv
 
 # Read file
-with open('train_data_10000.txt') as f:
+with open('train_data_50000.txt') as f:
     reader = csv.reader(f, delimiter="\t")
     d = array(list(reader))
 
 
 # Input initialization
 inp_dim = 6
-out_dim = 40
+out_dim = 2
 
-data_size = 10000
-validation_ind = 8000
-test_ind = 9000
+data_size = 50000
+validation_ind = 40000
+test_ind = 45000
 
 # Import the data
 train_x = array(d[0:validation_ind, 0:inp_dim])
@@ -58,3 +58,6 @@ model.fit(train_x, train_y, batch_size=validation_ind, epochs=100, verbose=1, va
 
 model.save('action_prediction_model.h5')  # save the model
 
+out = model.predict(train_x)
+
+a = 1

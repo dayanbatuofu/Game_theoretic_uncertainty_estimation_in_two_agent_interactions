@@ -6,7 +6,7 @@ from pyDOE import *
 
 def main():
 
-    fh = open("train_data_50000.txt", "w")
+    fh = open("train_data.txt", "w")
 
 
     s_other_x          = 0
