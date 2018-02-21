@@ -12,7 +12,7 @@ with open('train_data_50000.txt') as f:
 
 # Input initialization
 inp_dim = 6
-out_dim = 2
+out_dim = 40
 
 data_size = 50000
 validation_ind = 40000
@@ -42,7 +42,9 @@ model = Sequential()
 model.add(Dense(50, input_shape=(inp_dim,)))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))  # it's optional
-model.add(Dense(10))
+model.add(Dense(50))
+model.add(Activation('relu'))
+model.add(Dense(50))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))  # it's optional
 model.add(Dense(out_dim))
@@ -57,7 +59,3 @@ model.fit(train_x, train_y, batch_size=validation_ind, epochs=100, verbose=1, va
           callbacks=[early_stop], initial_epoch=10)  # please read the tutorial for the guide of parameter tuning
 
 model.save('action_prediction_model.h5')  # save the model
-
-out = model.predict(train_x)
-
-a = 1
