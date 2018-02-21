@@ -69,17 +69,16 @@ class MachineVehicle:
         #                                                                 self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
 
         # # Use prediction model
-        machine_actions = self.action_prediction_model.predict(np.array([[self.human_states[-1][1],
-                                                                            self.machine_states[-1][0],
-                                                                            self.machine_states[-1][1],
-                                                                            self.human_predicted_s_desired[0],
-                                                                            self.human_predicted_s_desired[1],
-                                                                            self.human_predicted_criteria]]))
+        [machine_actions, human_predicted_actions] = self.get_actions(self.human_states[-1], self.machine_states[-1],
+                                                                      self.human_predicted_s_desired, self.machine_s_desired,
+                                                                      self.human_predicted_criteria, self.machine_criteria, C.T_FUTURE)
+
+
         machine_actions = machine_actions * (2 * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) - (C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER)
 
 
 
-        #self.human_predicted_state = human_state + sum(human_predicted_actions)
+        self.human_predicted_state = human_state + sum(human_predicted_actions)
 
 
         machine_new_action = np.clip(machine_actions, -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED) # Restrict speed
@@ -159,6 +158,42 @@ class MachineVehicle:
         actions_self = np.transpose(np.vstack((actions_self[:t_steps], actions_self[t_steps:])))
 
         return actions_self, actions_other
+
+    def get_learned_action(self, s_other, s_self, s_desired_other, s_desired_self, c_other, c_self, t_steps):
+
+        """ Function that predicts actions based upon loaded neural network """
+
+        s_other_y_range = [0, 1]
+        s_self_x_range = [-2, 2]
+        s_self_y_range = [0, 1]
+        s_desired_other_x_range = [-2, 2]
+        s_desired_other_y_range = [0, 1]
+        c_other_range = [20, 100]
+
+        #  Normalize inputs
+        s_other_y_norm = (s_other[1] - s_other_y_range[0]) / (s_other_y_range[1] - s_other_y_range[0])
+        s_self_x_norm = (s_self[0] - s_self_x_range[0]) / (s_self_x_range[1] - s_self_x_range[0])
+        s_self_y_norm = (s_self[1] - s_self_y_range[0]) / (s_self_y_range[1] - s_self_y_range[0])
+        s_desired_other_x_norm = (s_desired_other[0] - s_desired_other_x_range[0]) / (s_desired_other_x_range[1] - s_desired_other_x_range[0])
+        s_desired_other_y_norm = (s_desired_other[1] - s_desired_other_y_range[0]) / (s_desired_other_y_range[1] - s_desired_other_y_range[0])
+        c_other_norm = (c_other - c_other_range[0]) / (c_other_range[1] - c_other_range[0])
+
+        network_output = self.action_prediction_model.predict(np.array([[s_other_y_norm,
+                                                                         s_self_x_norm,
+                                                                         s_self_y_norm,
+                                                                         s_desired_other_x_norm,
+                                                                         s_desired_other_y_norm,
+                                                                         c_other_norm]]))
+
+        actions_self = np.array(network_output[0:t_steps])
+        actions_other = np.array(network_output[t_steps:])
+
+        # Scale outputs
+        actions_self = actions_self * (2 * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) - (C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER)
+        actions_other = actions_other * (2 * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) - (C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER)
+
+        return actions_self, actions_other
+
 
 
     @staticmethod

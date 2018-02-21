@@ -6,7 +6,7 @@ from pyDOE import *
 
 def main():
 
-    fh = open("train_data.txt", "w")
+    fh = open("train_data_30000.txt", "w")
 
 
     s_other_x          = 0
@@ -23,7 +23,7 @@ def main():
     c_other            = [20, 100]
     c_self             = 13
 
-    lhd = lhs(6, 50000)
+    lhd = lhs(6, 30000)
 
     # fh.write("s_other_y\ts_self_x\ts_self_y\ts_desired_other_x\ts_desired_other_y\tc_other\n")
 
@@ -39,7 +39,7 @@ def main():
 
         [actions_self, actions_other] = get_actionsa([s_other_x, s_other_y_inp], [s_self_x_inp, s_self_y_inp], [s_desired_other_x_inp, s_desired_other_y_inp], [s_desired_self_x, s_desired_self_y], c_other_inp, c_self, C.T_FUTURE)
 
-        fh.write("%f\t%f\t%f\t%f\t%f\t%f\t" % (s_other_y_inp, s_self_x_inp, s_self_y_inp, s_desired_other_x_inp, s_desired_other_y_inp, c_other_inp))
+        fh.write("%f\t%f\t%f\t%f\t%f\t%f\t" % (lhd[i][0], lhd[i][1], lhd[i][2], lhd[i][3], lhd[i][4], lhd[i][5]))
 
         # Write self actions
         for j in range(len(actions_self)):
