@@ -70,7 +70,7 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
 
     pg.draw.circle(screen, (0, 255, 0), c2p(machine_vehicle.human_predicted_state), 10)
 
-    pg.draw.circle(screen, (255, 0, 255), c2p(machine_vehicle.human_predicted_s_desired), 5)
+    #pg.draw.circle(screen, (255, 0, 255), c2p(machine_vehicle.human_predicted_s_desired), 5)
 
     font = pg.font.SysFont("Arial", 15)
     label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
