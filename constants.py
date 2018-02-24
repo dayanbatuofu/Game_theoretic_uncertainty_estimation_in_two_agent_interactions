@@ -26,9 +26,9 @@ class CONSTANTS:
 
     # OPTIMIZATION
 
-    HUMAN_INTENT = (10, 3*np.pi/2)
+    HUMAN_INTENT = (30, 0, -1)
 
-    MACHINE_INTENT = (2, 0)
+    MACHINE_INTENT = (20, 1, 0)
 
     ACTION_PREDICTION_MULTIPLIER = 10
 

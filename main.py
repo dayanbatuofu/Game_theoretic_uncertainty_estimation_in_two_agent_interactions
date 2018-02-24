@@ -1,8 +1,9 @@
 from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
 from machine_vehicle import MachineVehicle
+import numpy as np
 import pygame as pg
-
+import cv2
 
 def main():
 
@@ -29,6 +30,8 @@ def trial(duration):
     end = False
     frame = 0
 
+    sim_out = open("sim_outputs/output.txt", "w")
+
     while running:
 
         # Update model here
@@ -41,13 +44,16 @@ def trial(duration):
 
         # Draw frame
         if not end:
-            draw_frame(screen, frame, human_vehicle, machine_vehicle)
+            draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle)
 
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                cv2.destroyAllWindows()
+
                 running = False
+
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_p:
                     paused = not paused
@@ -56,7 +62,8 @@ def trial(duration):
         clock.tick(fps)
 
 
-def draw_frame(screen, frame, human_vehicle, machine_vehicle):
+def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
+
     screen.fill((255, 255, 255))
 
     human_pos = human_vehicle.get_state(frame)[0:2]
@@ -67,26 +74,31 @@ def draw_frame(screen, frame, human_vehicle, machine_vehicle):
     machine_pos_pixels = c2p(machine_pos)
     screen.blit(machine_vehicle.image, (machine_pos_pixels[0] - C.CAR_WIDTH / 2, machine_pos_pixels[1] - C.CAR_LENGTH / 2))
 
-
-    pg.draw.circle(screen, (0, 255, 0), c2p(machine_vehicle.human_predicted_state), 10)
-
-    #pg.draw.circle(screen, (255, 0, 255), c2p(machine_vehicle.human_predicted_s_desired), 5)
+    human_predicted_state = machine_vehicle.human_predicted_state
+    human_predicted_state_pixels = c2p(human_predicted_state)
+    pg.draw.circle(screen, (0, 255, 0), human_predicted_state_pixels, 10)
 
     font = pg.font.SysFont("Arial", 15)
     label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
     screen.blit(label, (10, 10))
     label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
     screen.blit(label, (10, 30))
-    label = font.render("Frame: %i" % (frame+1), 1, (0, 0, 0))
+    label = font.render("Predicted Human Theta: (%f, %f)" % (machine_vehicle.human_predicted_theta[1], machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
-    label = font.render("Debug 1: %f" % machine_vehicle.debug_1, 1, (0, 0, 0))
+    label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
     screen.blit(label, (10, 90))
-    label = font.render("Debug 2: %f" % machine_vehicle.debug_2, 1, (0, 0, 0))
-    screen.blit(label, (10, 110))
-    label = font.render("Debug 3: %f" % machine_vehicle.debug_3, 1, (0, 0, 0))
-    screen.blit(label, (10, 130))
 
     pg.display.flip()
+
+    if True:
+        sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
+                                                            human_pos[1],
+                                                            machine_pos[0],
+                                                            machine_pos[1],
+                                                            human_predicted_state[0],
+                                                            human_predicted_state[1],
+                                                            machine_vehicle.human_predicted_theta[1],
+                                                            machine_vehicle.human_predicted_theta[2]))
 
 
 def c2p(coordinates):

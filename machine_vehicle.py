@@ -2,7 +2,7 @@ from constants import CONSTANTS as C
 import numpy as np
 import scipy
 from scipy import optimize
-from keras.models import load_model
+# from keras.models import load_model
 
 
 class MachineVehicle:
@@ -25,6 +25,7 @@ class MachineVehicle:
         self.human_predicted_states = [human_initial_state]
 
         self.human_predicted_theta = C.HUMAN_INTENT
+
         self.human_predicted_state = human_initial_state
 
         # self.action_prediction_model = load_model('nn/action_prediction_model.h5')
@@ -183,14 +184,13 @@ class MachineVehicle:
 
         t_steps = int(len(actions)/2)
 
+        action_factor = C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER
+
         actions             = np.transpose(np.vstack((actions[:t_steps], actions[t_steps:])))
         actions_other       = np.transpose(np.vstack((actions_other[:t_steps], actions_other[t_steps:])))
-        theta_directional   = np.tile(theta_self[1], (t_steps, 1))
-
-        # Convert to cartesian before norms
-        #actions_cart        = np.array([actions[:, 0] * np.cos(actions[:, 1]), actions[:, 0] * np.sin(actions[:, 1])]).T
-        #actions_other_cart  = np.array([actions_other[:, 0] * np.cos(actions_other[:,1]), actions_other[:, 0] * np.sin(actions_other[:, 1])]).T
-        theta_cart          = np.array([np.cos(theta_directional), np.sin(theta_directional)]).T
+        theta_vector        = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+                                       theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+                                      (t_steps, 1))
 
         A = np.zeros((t_steps, t_steps))
         A[np.tril_indices(t_steps, 0)] = 1
@@ -199,7 +199,7 @@ class MachineVehicle:
         state_loss = np.reciprocal(np.linalg.norm(s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other), axis=1))
 
         # Define action loss
-        intent_loss = np.square(np.linalg.norm(actions - theta_cart, axis=1))
+        intent_loss = np.square(np.linalg.norm(actions - theta_vector, axis=1))
 
         return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss)  # Return weighted sum
 
@@ -211,21 +211,27 @@ class MachineVehicle:
         machine_states = machine_states[-t_steps:]
         human_states = human_states[-t_steps:]
 
-        bounds = ([0, None], [0, 2*np.pi])
+        bounds = [(-1, 1), (-1, 1)]
+
+        old_human_theta_multiplier = old_human_theta[0]
+        old_human_theta_vector = old_human_theta[1:3]
 
         optimization_results = scipy.optimize.minimize(self.human_loss_func,
-                                                       old_human_theta,
+                                                       old_human_theta_vector,
                                                        bounds=bounds,
-                                                       args=(machine_states, human_states, machine_theta))
+                                                       args=(old_human_theta_multiplier, machine_states, human_states, machine_theta))
+        predicted_theta_vector = optimization_results.x
 
-        predicted_theta = optimization_results.x
+        predicted_theta = (old_human_theta_multiplier, predicted_theta_vector[0], predicted_theta_vector[1])
 
         return predicted_theta
 
-    def human_loss_func(self, human_theta, machine_states, human_states, machine_theta):
+    def human_loss_func(self, human_theta_vector, human_theta_multiplier, machine_states, human_states, machine_theta):
 
         """ Loss function for the human correction defined to be the norm of the difference between actual actions and
         predicted actions"""
+
+        human_theta = (human_theta_multiplier, human_theta_vector[0], human_theta_vector[1])
 
         t_steps = int(len(machine_states))
 
