@@ -1,7 +1,7 @@
 from constants import CONSTANTS as C
 import numpy as np
 import pygame as pg
-import cv2
+# import cv2wrap
 import csv
 
 
