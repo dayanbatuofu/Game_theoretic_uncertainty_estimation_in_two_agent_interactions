@@ -6,7 +6,7 @@ class CONSTANTS:
     MACHINE_INITIAL_POSITION = [-1, 0]
 
     # DISPLAY
-    FPS = 60
+    FPS = 30
 
     CAR_WIDTH = 100
     CAR_LENGTH = 200
@@ -26,9 +26,9 @@ class CONSTANTS:
 
     # OPTIMIZATION
 
-    HUMAN_INTENT = (30, 0, -1)
+    HUMAN_INTENT = (30, 0, -1, 0.5)
 
-    MACHINE_INTENT = (20, 1, 0)
+    MACHINE_INTENT = (20, 1, 0, 0.5)
 
     ACTION_PREDICTION_MULTIPLIER = 10
 

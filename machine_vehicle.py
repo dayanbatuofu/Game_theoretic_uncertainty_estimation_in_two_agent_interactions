@@ -201,7 +201,10 @@ class MachineVehicle:
         # Define action loss
         intent_loss = np.square(np.linalg.norm(actions - theta_vector, axis=1))
 
-        return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss)  # Return weighted sum
+        # Define effort loss
+        effort_loss = 10 * theta_self[3] * np.sum(np.square(actions))
+
+        return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss) + effort_loss  # Return weighted sum
 
     def get_human_predicted_intent(self, old_human_theta, machine_states, human_states, machine_theta, t_steps):
 
@@ -211,27 +214,22 @@ class MachineVehicle:
         machine_states = machine_states[-t_steps:]
         human_states = human_states[-t_steps:]
 
-        bounds = [(-1, 1), (-1, 1)]
-
-        old_human_theta_multiplier = old_human_theta[0]
-        old_human_theta_vector = old_human_theta[1:3]
+        bounds = [(0, 20), (-1, 1), (-1, 1), (0, 1)]
 
         optimization_results = scipy.optimize.minimize(self.human_loss_func,
-                                                       old_human_theta_vector,
+                                                       old_human_theta,
                                                        bounds=bounds,
-                                                       args=(old_human_theta_multiplier, machine_states, human_states, machine_theta))
-        predicted_theta_vector = optimization_results.x
+                                                       args=(machine_states, human_states, machine_theta))
+        human_theta = optimization_results.x
 
-        predicted_theta = (old_human_theta_multiplier, predicted_theta_vector[0], predicted_theta_vector[1])
+        predicted_theta = human_theta
 
         return predicted_theta
 
-    def human_loss_func(self, human_theta_vector, human_theta_multiplier, machine_states, human_states, machine_theta):
+    def human_loss_func(self, human_theta, machine_states, human_states, machine_theta):
 
         """ Loss function for the human correction defined to be the norm of the difference between actual actions and
         predicted actions"""
-
-        human_theta = (human_theta_multiplier, human_theta_vector[0], human_theta_vector[1])
 
         t_steps = int(len(machine_states))
 

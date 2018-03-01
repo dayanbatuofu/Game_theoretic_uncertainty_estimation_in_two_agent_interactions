@@ -3,7 +3,6 @@ from human_vehicle import HumanVehicle
 from machine_vehicle import MachineVehicle
 import numpy as np
 import pygame as pg
-import cv2
 
 def main():
 
@@ -83,10 +82,12 @@ def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
     screen.blit(label, (10, 10))
     label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
     screen.blit(label, (10, 30))
-    label = font.render("Predicted Human Theta: (%f, %f)" % (machine_vehicle.human_predicted_theta[1], machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
+    label = font.render("P Human Theta: (%f, %f, %f)" % (machine_vehicle.human_predicted_theta[0], machine_vehicle.human_predicted_theta[1], machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
+    label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
+    screen.blit(label, (10, 70))
     label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
-    screen.blit(label, (10, 90))
+    screen.blit(label, (10, 110))
 
     pg.display.flip()
 
