@@ -26,7 +26,7 @@ def trial(duration):
     frame = 0
 
     # Read file
-    with open('output_wcorrection.txt') as f:
+    with open('output_weffort.txt') as f:
         reader = csv.reader(f, delimiter="\t")
         data = np.array(list(reader)).astype('float32')
 
@@ -63,7 +63,7 @@ def draw_frame(screen, data, frame, human_vehicle_image, machine_vehicle_image):
     human_state                 = (data[frame][0], data[frame][1])
     machine_state               = (data[frame][2], data[frame][3])
     human_predicted_state       = (data[frame][4], data[frame][5])
-    human_predicted_theta       = (data[frame][6], data[frame][7])
+    human_predicted_theta       = (data[frame][6], data[frame][7], data[frame][8], data[frame][9])
 
     screen.fill((255, 255, 255))
 
@@ -83,11 +83,12 @@ def draw_frame(screen, data, frame, human_vehicle_image, machine_vehicle_image):
     screen.blit(label, (10, 10))
     label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
     screen.blit(label, (10, 30))
-    label = font.render("Predicted Human Theta: (%f, %f)" % (
-        human_predicted_theta[0], human_predicted_theta[1]), 1, (0, 0, 0))
+    label = font.render("P Human Theta: (%f, %f, %f)" % (human_predicted_theta[0], human_predicted_theta[1], human_predicted_theta[2]), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
+    label = font.render("Effort: %f" % (human_predicted_theta[3]), 1, (0, 0, 0))
+    screen.blit(label, (10, 70))
     label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
-    screen.blit(label, (10, 90))
+    screen.blit(label, (10, 110))
 
     pg.display.flip()
 

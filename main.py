@@ -29,7 +29,7 @@ def trial(duration):
     end = False
     frame = 0
 
-    sim_out = open("sim_outputs/output.txt", "w")
+    sim_out = open("sim_outputs/output1.txt", "w")
 
     while running:
 
@@ -49,7 +49,6 @@ def trial(duration):
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
-                cv2.destroyAllWindows()
 
                 running = False
 
@@ -92,14 +91,16 @@ def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
     pg.display.flip()
 
     if True:
-        sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
+        sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
                                                             human_pos[1],
                                                             machine_pos[0],
                                                             machine_pos[1],
                                                             human_predicted_state[0],
                                                             human_predicted_state[1],
+                                                            machine_vehicle.human_predicted_theta[0],
                                                             machine_vehicle.human_predicted_theta[1],
-                                                            machine_vehicle.human_predicted_theta[2]))
+                                                            machine_vehicle.human_predicted_theta[2],
+                                                            machine_vehicle.human_predicted_theta[3],))
 
 
 def c2p(coordinates):
