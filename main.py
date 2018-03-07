@@ -1,6 +1,6 @@
 from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
-from machine_vehicle import MachineVehicle
+from machine_vehicle_max import MachineVehicle
 import numpy as np
 import pygame as pg
 
@@ -27,9 +27,9 @@ def trial(duration):
     running = True
     paused = False
     end = False
-    frame = 0
+    frame = 1
 
-    sim_out = open("sim_outputs/output1.txt", "w")
+    sim_out = open("sim_outputs/output_maxtest.txt", "w")
 
     while running:
 
@@ -83,15 +83,15 @@ def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
     screen.blit(label, (10, 30))
     label = font.render("P Human Theta: (%f, %f, %f)" % (machine_vehicle.human_predicted_theta[0], machine_vehicle.human_predicted_theta[1], machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
     screen.blit(label, (10, 50))
-    label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
-    screen.blit(label, (10, 70))
+    # label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
+    # screen.blit(label, (10, 70))
     label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
     screen.blit(label, (10, 110))
 
     pg.display.flip()
 
     if True:
-        sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
+        sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
                                                             human_pos[1],
                                                             machine_pos[0],
                                                             machine_pos[1],
@@ -100,12 +100,13 @@ def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
                                                             machine_vehicle.human_predicted_theta[0],
                                                             machine_vehicle.human_predicted_theta[1],
                                                             machine_vehicle.human_predicted_theta[2],
-                                                            machine_vehicle.human_predicted_theta[3],))
+                                                            # machine_vehicle.human_predicted_theta[3],
+                                                                    ))
 
 
 def c2p(coordinates):
     x = int(C.LANE_WIDTH * (coordinates[1] + 0.5))
-    y = int(C.LANE_WIDTH * -coordinates[0] + C.SCREEN_HEIGHT/2)
+    y = int(C.LANE_WIDTH * -coordinates[0] + C.SCREEN_HEIGHT/4)
     return [x, y]
 
 

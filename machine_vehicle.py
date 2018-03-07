@@ -145,7 +145,6 @@ class MachineVehicle:
         return actions_self, actions_other
 
     def get_learned_action(self, s_other, s_self, s_desired_other, s_desired_self, t_steps):
-
         """ Function that predicts actions based upon loaded neural network """
 
         s_other_y_range = [0, 1]

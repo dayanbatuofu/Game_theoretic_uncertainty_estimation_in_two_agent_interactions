@@ -7,7 +7,7 @@ class HumanVehicle:
     '''
 
     def __init__(self):
-        input_file = open('human_state_files/human_change_lane.txt')
+        input_file = open('human_state_files/human_change_lane_immediately.txt')
 
         self.states = []
         for line in input_file:
