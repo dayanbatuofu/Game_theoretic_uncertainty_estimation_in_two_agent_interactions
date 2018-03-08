@@ -1,3 +1,5 @@
+from constants import CONSTANTS as C
+
 class HumanVehicle:
 
     '''
@@ -7,7 +9,10 @@ class HumanVehicle:
     '''
 
     def __init__(self):
-        input_file = open('human_state_files/human_change_lane_immediately.txt')
+
+        self.theta = C.HUMAN_INTENT
+
+        input_file = open('human_state_files/human_change_lane.txt')
 
         self.states = []
         for line in input_file:

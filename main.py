@@ -72,9 +72,27 @@ def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
     machine_pos_pixels = c2p(machine_pos)
     screen.blit(machine_vehicle.image, (machine_pos_pixels[0] - C.CAR_WIDTH / 2, machine_pos_pixels[1] - C.CAR_LENGTH / 2))
 
-    human_predicted_state = machine_vehicle.human_predicted_state
-    human_predicted_state_pixels = c2p(human_predicted_state)
-    pg.draw.circle(screen, (0, 255, 0), human_predicted_state_pixels, 10)
+    # Draw human predicted state
+    for i in range(len(machine_vehicle.human_previous_action_set)):
+        human_predicted_state = machine_vehicle.human_states[-1] + np.sum(machine_vehicle.human_previous_action_set[:i+1],axis=0)
+        human_predicted_state_pixels = c2p(human_predicted_state)
+        pg.draw.circle(screen, (0, 255, 0), human_predicted_state_pixels, 6)
+
+    # Draw machine predicted state
+    for i in range(len(machine_vehicle.machine_previous_action_set)):
+        machine_predicted_state = machine_vehicle.machine_states[-1] + np.sum(machine_vehicle.machine_previous_action_set[:i+1],axis=0)
+        machine_predicted_state_pixels = c2p(machine_predicted_state)
+        pg.draw.circle(screen, (0, 255, 0), machine_predicted_state_pixels, 6)
+
+    # Draw human intent
+    start_pos = c2p(human_pos)
+    end_pos = c2p(human_pos + human_vehicle.theta[1:3] * 0.5)
+    pg.draw.line(screen, (0, 0, 0,), start_pos, end_pos, 3)
+
+    # Draw machine intent
+    start_pos = c2p(machine_pos)
+    end_pos = c2p(machine_pos + machine_vehicle.machine_theta[1:3] * 0.5)
+    pg.draw.line(screen, (0, 0, 0,), start_pos, end_pos, 3)
 
     font = pg.font.SysFont("Arial", 15)
     label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
@@ -106,7 +124,7 @@ def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
 
 def c2p(coordinates):
     x = int(C.LANE_WIDTH * (coordinates[1] + 0.5))
-    y = int(C.LANE_WIDTH * -coordinates[0] + C.SCREEN_HEIGHT/4)
+    y = int(C.LANE_WIDTH * -coordinates[0] + C.SCREEN_HEIGHT/3)
     return [x, y]
 
 
