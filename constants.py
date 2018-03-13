@@ -22,7 +22,7 @@ class CONSTANTS:
     # SPEEDS
     VEHICLE_MOVEMENT_SPEED = 0.02
 
-    Y_CLEARANCE_WEIGHT = 0.1
+    Y_CLEARANCE_WEIGHT = 0.3
 
     # POSITION BOUNDS
     Y_MINIMUM = 0
@@ -31,9 +31,9 @@ class CONSTANTS:
 
     # OPTIMIZATION
 
-    HUMAN_INTENT = np.array([25, 0, -1])
+    HUMAN_INTENT = np.array([30, 0, -1])
 
-    MACHINE_INTENT = np.array([8, 1, 0])
+    MACHINE_INTENT = np.array([20, 1, 0])
 
     ACTION_PREDICTION_MULTIPLIER = 10
 
