@@ -13,18 +13,20 @@ class MachineVehicle:
             Y-Position
     """
 
-    def __init__(self, machine_initial_state, human_initial_state):
+    def __init__(self, P, human_initial_state):
 
-        self.machine_theta = C.MACHINE_INTENT
+        self.P = P # Scenario parameters
 
-        self.machine_states = [machine_initial_state]
-        self.machine_actions = [(0, 0)]
+        self.machine_theta = P.MACHINE_INTENT
+
+        self.machine_states = [P.MACHINE_INITIAL_POSITION]
+        self.machine_actions = []
 
         self.human_states = [human_initial_state]
-        self.human_actions = [(0, 0)]
+        self.human_actions = []
         self.human_predicted_states = [human_initial_state]
 
-        self.human_predicted_theta = C.HUMAN_INTENT
+        self.human_predicted_theta = P.HUMAN_INTENT
 
         self.human_predicted_state = human_initial_state
 
@@ -34,6 +36,15 @@ class MachineVehicle:
         self.debug_2 = 0
         self.debug_3 = 0
 
+        t_steps = C.T_FUTURE
+
+        self.machine_previous_action_set = np.tile((P.MACHINE_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+                                                    P.MACHINE_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+                                                   (t_steps, 1))
+        self.human_previous_action_set = np.tile((P.HUMAN_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+                                                  P.HUMAN_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+                                                 (t_steps, 1))
+
     def get_state(self):
         return self.machine_states[-1]
 
@@ -41,37 +52,32 @@ class MachineVehicle:
 
         """ Function ran on every frame of simulation"""
 
-        self.human_states.append(human_state)
-
         ########## Update human characteristics here ########
 
-        machine_theta = C.MACHINE_INTENT  # ?????
-
         if len(self.human_states) > C.T_PAST:
-            human_predicted_theta = self.get_human_predicted_intent(self.human_predicted_theta,
-                                                                    self.machine_states,
-                                                                    self.human_states,
-                                                                    machine_theta,
-                                                                    C.T_PAST)
+            human_predicted_theta = self.get_human_predicted_intent()
 
             self.human_predicted_theta = human_predicted_theta
 
 
         ########## Calculate machine actions here ###########
 
-        # Use prediction function
-        [machine_actions, human_predicted_actions] = self.get_actions(self.human_states[-1], self.machine_states[-1],
-                                                                        self.human_predicted_theta, self.machine_theta, C.T_FUTURE)
 
-        # Use prediction model
-        # [machine_actions, human_predicted_actions] = self.get_learned_action(self.human_states[-1], self.machine_states[-1],
-        #                                                                self.human_theta, self.machine_theta, C.T_FUTURE)
+        [machine_actions, human_predicted_actions] = self.get_actions(1, self.human_previous_action_set, self.machine_previous_action_set,
+                                                                      self.human_states[-1], self.machine_states[-1],
+                                                                      self.human_predicted_theta, self.machine_theta, C.T_FUTURE)
+        self.human_previous_action_set   = human_predicted_actions
+        self.machine_previous_action_set = machine_actions
+
 
 
         self.human_predicted_state = human_state + sum(human_predicted_actions)
 
         self.update_state_action(machine_actions)
 
+        last_human_state = self.human_states[-1]
+        self.human_states.append(human_state)
+        self.human_actions.append(np.array(human_state)-np.array(last_human_state))
 
     def update_state_action(self, actions):
 
@@ -82,14 +88,17 @@ class MachineVehicle:
         self.machine_states.append(np.add(self.machine_states[-1], (action_x, action_y)))
         self.machine_actions.append((action_x, action_y))
 
-    def get_actions(self, s_other, s_self, theta_other, theta_self, t_steps):
+    def get_actions(self, identifier, a0_other, a0_self, s_other, s_self, theta_other, theta_self, t_steps):
 
         """ Function that accepts 2 vehicles states, intents, criteria, and an amount of future steps
-        and return the ideal actions based on the loss function"""
+        and return the ideal actions based on the loss function
+
+        Identifier = 0 for human call
+        Identifier = 1 for machine call"""
 
         # Initialize actions
-        actions_other = np.array([0 for _ in range(2 * t_steps)])
-        actions_self = np.array([0 for _ in range(2 * t_steps)])
+        actions_other = a0_other
+        actions_self = a0_self
 
         bounds = []
         for _ in range(t_steps):
@@ -100,19 +109,54 @@ class MachineVehicle:
         A = np.zeros((t_steps, t_steps))
         A[np.tril_indices(t_steps, 0)] = 1
 
-        cons_other = []
-        for i in range(t_steps):
-            cons_other.append({'type': 'ineq',
-                               'fun': lambda x, i=i: s_other[1] + sum(x[t_steps:t_steps+i+1]) - C.Y_MINIMUM})
-            cons_other.append({'type': 'ineq',
-                               'fun': lambda x, i=i: -s_other[1] - sum(x[t_steps:t_steps+i+1]) + C.Y_MAXIMUM})
+        if identifier == 0: # If human is calling
+            other_bound_x = self.P.BOUND_MACHINE_X
+            other_bound_y = self.P.BOUND_MACHINE_Y
+            self_bound_x = self.P.BOUND_HUMAN_X
+            self_bound_y = self.P.BOUND_HUMAN_Y
 
+        if identifier == 1: # If machine is calling
+            other_bound_x = self.P.BOUND_HUMAN_X
+            other_bound_y = self.P.BOUND_HUMAN_Y
+            self_bound_x = self.P.BOUND_MACHINE_X
+            self_bound_y = self.P.BOUND_MACHINE_Y
+
+        cons_other = []
         cons_self = []
-        for i in range(t_steps):
-            cons_self.append({'type': 'ineq',
-                              'fun': lambda x, i=i: s_self[1] + sum(x[t_steps:t_steps+i+1]) - C.Y_MINIMUM})
-            cons_self.append({'type': 'ineq',
-                              'fun': lambda x, i=i: -s_self[1] - sum(x[t_steps:t_steps+i+1]) + C.Y_MAXIMUM})
+
+
+        if other_bound_x is not None:
+            if other_bound_x[0] is not None:
+                for i in range(t_steps):
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[0] + sum(x[0:i+1]) - other_bound_x[0]})
+            if other_bound_x[1] is not None:
+                for i in range(t_steps):
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[0] - sum(x[0:i+1]) + other_bound_x[1]})
+
+        if other_bound_y is not None:
+            if other_bound_y[0] is not None:
+                for i in range(t_steps):
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[1] + sum(x[t_steps:t_steps+i+1]) - other_bound_y[0]})
+            if other_bound_y[1] is not None:
+                for i in range(t_steps):
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[1] - sum(x[t_steps:t_steps+i+1]) + other_bound_y[1]})
+
+        if self_bound_x is not None:
+            if self_bound_x[0] is not None:
+                for i in range(t_steps):
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[0] + sum(x[0:i+1]) - self_bound_x[0]})
+            if self_bound_x[1] is not None:
+                for i in range(t_steps):
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[0] - sum(x[0:i+1]) + self_bound_x[1]})
+
+        if self_bound_y is not None:
+            if self_bound_y[0] is not None:
+                for i in range(t_steps):
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[1] + sum(x[t_steps:t_steps+i+1]) - self_bound_y[0]})
+            if self_bound_y[1] is not None:
+                for i in range(t_steps):
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[1] - sum(x[t_steps:t_steps+i+1]) + self_bound_y[1]})
+
 
         loss_value = 0
         loss_value_old = loss_value + C.LOSS_THRESHOLD + 1
@@ -120,8 +164,8 @@ class MachineVehicle:
 
         # Estimate machine actions
         optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-                                                       args=(s_other, s_self, actions_other, theta_self))
-        actions_self = optimization_results.x
+                                                       args=(self.P, s_other, s_self, actions_other, theta_self))
+        actions_self = np.column_stack((optimization_results.x[:t_steps],optimization_results.x[t_steps:]))
         loss_value = optimization_results.fun
 
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
@@ -130,54 +174,19 @@ class MachineVehicle:
 
             # Estimate human actions
             optimization_results = scipy.optimize.minimize(self.loss_func, actions_other, bounds=bounds, constraints=cons_other,
-                                                           args=(s_self, s_other, actions_self, theta_other))
-            actions_other = optimization_results.x
+                                                           args=(self.P, s_self, s_other, actions_self, theta_other))
+            actions_other = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
 
             # Estimate machine actions
             optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-                                                           args=(s_other, s_self, actions_other, theta_self))
-            actions_self = optimization_results.x
+                                                           args=(self.P, s_other, s_self, actions_other, theta_self))
+            actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
             loss_value = optimization_results.fun
-
-        actions_other = np.transpose(np.vstack((actions_other[:t_steps], actions_other[t_steps:])))
-        actions_self = np.transpose(np.vstack((actions_self[:t_steps], actions_self[t_steps:])))
-
-        return actions_self, actions_other
-
-    def get_learned_action(self, s_other, s_self, s_desired_other, s_desired_self, t_steps):
-        """ Function that predicts actions based upon loaded neural network """
-
-        s_other_y_range = [0, 1]
-        s_self_x_range = [-2, 2]
-        s_self_y_range = [0, 1]
-        s_desired_other_x_range = [-2, 2]
-        s_desired_other_y_range = [0, 1]
-        c_other_range = [20, 100]
-
-        #  Normalize inputs
-        s_other_y_norm = (s_other[1] - s_other_y_range[0]) / (s_other_y_range[1] - s_other_y_range[0])
-        s_self_x_norm = (s_self[0] - s_self_x_range[0]) / (s_self_x_range[1] - s_self_x_range[0])
-        s_self_y_norm = (s_self[1] - s_self_y_range[0]) / (s_self_y_range[1] - s_self_y_range[0])
-        s_desired_other_x_norm = (s_desired_other[0] - s_desired_other_x_range[0]) / (s_desired_other_x_range[1] - s_desired_other_x_range[0])
-        s_desired_other_y_norm = (s_desired_other[1] - s_desired_other_y_range[0]) / (s_desired_other_y_range[1] - s_desired_other_y_range[0])
-
-        network_output = self.action_prediction_model.predict(np.array([[s_other_y_norm,
-                                                                         s_self_x_norm,
-                                                                         s_self_y_norm,
-                                                                         s_desired_other_x_norm,
-                                                                         s_desired_other_y_norm]]))
-
-        actions_self = np.array(network_output[0:t_steps])
-        actions_other = np.array(network_output[t_steps:])
-
-        # Scale outputs
-        actions_self = actions_self * (2 * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) - (C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER)
-        actions_other = actions_other * (2 * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) - (C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER)
 
         return actions_self, actions_other
 
     @staticmethod
-    def loss_func(actions, s_other, s_self, actions_other, theta_self):
+    def loss_func(actions, P, s_other, s_self, actions_other, theta_self):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
 
@@ -185,8 +194,8 @@ class MachineVehicle:
 
         action_factor = C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER
 
-        actions             = np.transpose(np.vstack((actions[:t_steps], actions[t_steps:])))
-        actions_other       = np.transpose(np.vstack((actions_other[:t_steps], actions_other[t_steps:])))
+        actions             = np.column_stack((actions[:t_steps], actions[t_steps:]))
+
         theta_vector        = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
                                        theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
                                       (t_steps, 1))
@@ -195,31 +204,79 @@ class MachineVehicle:
         A[np.tril_indices(t_steps, 0)] = 1
 
         # Define state loss
-        state_loss = np.reciprocal(np.linalg.norm(s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other), axis=1))
+        difference = s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other)
+        difference[:, 1] *= P.Y_CLEARANCE_WEIGHT # Weight y differences
+        state_loss = np.reciprocal(np.linalg.norm(s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other), axis=1)+1e-12)
 
         # Define action loss
         intent_loss = np.square(np.linalg.norm(actions - theta_vector, axis=1))
 
         # Define effort loss
-        effort_loss = 10 * theta_self[3] * np.sum(np.square(actions))
+        # effort_loss = 10 * theta_self[3] * np.sum(np.square(actions))
 
-        return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss) + effort_loss  # Return weighted sum
+        # return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss) + effort_loss  # Return weighted sum
+        return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss) # Return weighted sum
 
-    def get_human_predicted_intent(self, old_human_theta, machine_states, human_states, machine_theta, t_steps):
-
+    def get_human_predicted_intent(self):
         """ Function accepts initial conditions and a time period for which to correct the
         attributes of the human car """
 
-        machine_states = machine_states[-t_steps:]
-        human_states = human_states[-t_steps:]
+        # machine_states = machine_states[-t_steps:]
+        # human_states = human_states[-t_steps:]
 
-        bounds = [(0, 20), (-1, 1), (-1, 1), (0, 1)]
+        # bounds = [(0, 20), (-1, 1), (-1, 1), (0, 1)]
+        #
+        # optimization_results = scipy.optimize.minimize(self.human_loss_func,
+        #                                                old_human_theta,
+        #                                                bounds=bounds,
+        #                                                args=(machine_states, human_states, machine_theta))
+        # human_theta = optimization_results.x
 
-        optimization_results = scipy.optimize.minimize(self.human_loss_func,
-                                                       old_human_theta,
-                                                       bounds=bounds,
-                                                       args=(machine_states, human_states, machine_theta))
-        human_theta = optimization_results.x
+        ###############################################################################################
+        # Max attempt
+        t_steps = C.T_PAST
+        s_self = self.human_states[-t_steps:]
+        s_other = self.machine_states[-t_steps:]
+        a_self = self.human_actions[-t_steps:]
+        a_other = self.machine_actions[-t_steps:]
+        theta_self = self.human_predicted_theta
+        theta_other = self.machine_theta #TODO: assume human knows machine for now
+        nstate = len(s_other) #number of states
+        alpha_self = theta_self[0]
+        alpha_other = theta_other[0]
+        A = np.zeros((t_steps, t_steps))
+        A[np.tril_indices(t_steps, 0)] = 1 #lower tri 1s
+        B = np.zeros((t_steps, t_steps))
+        for i in range(t_steps-1):
+            B[i,range(i+1,t_steps)]= np.arange(t_steps-1-i,0,-1)
+        B = B + np.transpose(B) + np.diag(np.arange(t_steps,0,-1))
+        b = np.arange(t_steps,0,-1)
+        phi_self = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+                               theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+                              (t_steps, 1))
+        phi_other = np.tile((theta_other[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+                               theta_other[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+                              (t_steps, 1))
+
+        D = np.sum((np.array(s_self)-np.array(s_other))**2, axis=1) + 1e-3 #should be t_steps by 1, add small number for numerical stability
+
+        # compute big K
+        K_self = -2/(D**3)*B
+        ds = np.array(s_self)[0]-np.array(s_other)[0]
+        c_self = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(ds, axis=0))) + \
+                 np.dot(np.diag(2/(D**3)), np.dot(B, a_other))
+        w = np.dot(K_self, a_self)+c_self
+        A = np.sum(a_self,axis=0)
+        W = np.sum(w,axis=0)
+        AW = np.diag(np.dot(np.transpose(a_self),w))
+        AA = np.sum(np.array(a_self)**2,axis=0)
+        theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        bound_y = [0,1] - np.array(s_self)[-1,1]
+        theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
+        alpha = W/(t_steps*theta-A)
+        alpha = np.mean(np.clip(alpha,0.,100.))
+        human_theta = (1-C.LEARNING_RATE)*self.human_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
+        ###############################################################################################
 
         predicted_theta = human_theta
 

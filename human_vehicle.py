@@ -10,9 +10,8 @@ class HumanVehicle:
 
     def __init__(self):
 
-        self.theta = C.HUMAN_INTENT
-
-        input_file = open('human_state_files/human_change_lane.txt')
+        input_file = open('human_state_files/intersection/human_stop.txt')
+        # input_file = open('human_state_files/lane_change/human_change_lane.txt')
 
         self.states = []
         for line in input_file:

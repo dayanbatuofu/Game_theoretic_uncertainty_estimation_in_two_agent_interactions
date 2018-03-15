@@ -1,132 +1,135 @@
 from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
-from machine_vehicle_max import MachineVehicle
+from machine_vehicle import MachineVehicle
 import numpy as np
 import pygame as pg
 
-def main():
+class Main():
 
-    duration = 1800
-    trial(duration)
+    def __init__(self):
 
+        self.duration = 1800
 
-def trial(duration):
+        self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
-    human_vehicle = HumanVehicle()
-    machine_vehicle = MachineVehicle(machine_initial_state=C.MACHINE_INITIAL_POSITION,
-                                     human_initial_state=human_vehicle.get_state(0))
+        self.human_vehicle = HumanVehicle()
+        self.machine_vehicle = MachineVehicle(self.P, self.human_vehicle.get_state(0))
 
-    pg.init()
-    screen = pg.display.set_mode((C.SCREEN_WIDTH, C.SCREEN_HEIGHT))
-    human_vehicle.image = pg.image.load("assets/red_car_sized.png")
-    machine_vehicle.image = pg.image.load("assets/blue_car_sized.png")
+        pg.init()
+        self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH, self.P.SCREEN_HEIGHT))
+        self.human_vehicle.image = pg.transform.rotate(pg.image.load("assets/red_car_sized.png"), self.P.HUMAN_ORIENTATION)
+        self.machine_vehicle.image = pg.transform.rotate(pg.image.load("assets/blue_car_sized.png"), self.P.MACHINE_ORIENTATION)
 
-    fps = C.FPS
+        # Time handling
+        self.clock = pg.time.Clock()
+        self.fps = C.FPS
+        self.running = True
+        self.paused = False
+        self.end = False
+        self.frame = 1
 
-    clock = pg.time.Clock()
-    running = True
-    paused = False
-    end = False
-    frame = 1
+        # Sim output
+        self.sim_out = open("sim_outputs/output_maxtest.txt", "w")
 
-    sim_out = open("sim_outputs/output_maxtest.txt", "w")
-
-    while running:
-
-        # Update model here
-        if not paused and not end:
-            machine_vehicle.update(human_vehicle.get_state(frame))
-            frame += 1
-
-        if frame >= duration:
-            end = True
-
-        # Draw frame
-        if not end:
-            draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle)
+        self.trial()
 
 
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                pg.quit()
+    def trial(self):
 
-                running = False
+        while self.running:
 
-            elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_p:
-                    paused = not paused
+            # Update model here
+            if not self.paused and not self.end:
+                self.machine_vehicle.update(self.human_vehicle.get_state(self.frame))
+                self.frame += 1
 
-        # Keep fps
-        clock.tick(fps)
+            if self.frame >= self.duration:
+                end = True
 
+            # Draw frame
+            if not self.end:
+                self.draw_frame()
 
-def draw_frame(screen, sim_out, frame, human_vehicle, machine_vehicle):
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
 
-    screen.fill((255, 255, 255))
+                    running = False
 
-    human_pos = human_vehicle.get_state(frame)[0:2]
-    human_pos_pixels = c2p(human_pos)
-    screen.blit(human_vehicle.image, (human_pos_pixels[0] - C.CAR_WIDTH / 2, human_pos_pixels[1] - C.CAR_LENGTH / 2))
+                elif event.type == pg.KEYDOWN:
+                    if event.key == pg.K_p:
+                        self.paused = not self.paused
 
-    machine_pos = machine_vehicle.get_state()[0:2]
-    machine_pos_pixels = c2p(machine_pos)
-    screen.blit(machine_vehicle.image, (machine_pos_pixels[0] - C.CAR_WIDTH / 2, machine_pos_pixels[1] - C.CAR_LENGTH / 2))
-
-    # Draw human predicted state
-    for i in range(len(machine_vehicle.human_previous_action_set)):
-        human_predicted_state = machine_vehicle.human_states[-1] + np.sum(machine_vehicle.human_previous_action_set[:i+1],axis=0)
-        human_predicted_state_pixels = c2p(human_predicted_state)
-        pg.draw.circle(screen, (0, 255, 0), human_predicted_state_pixels, 6)
-
-    # Draw machine predicted state
-    for i in range(len(machine_vehicle.machine_previous_action_set)):
-        machine_predicted_state = machine_vehicle.machine_states[-1] + np.sum(machine_vehicle.machine_previous_action_set[:i+1],axis=0)
-        machine_predicted_state_pixels = c2p(machine_predicted_state)
-        pg.draw.circle(screen, (0, 255, 0), machine_predicted_state_pixels, 6)
-
-    # Draw human intent
-    start_pos = c2p(human_pos)
-    end_pos = c2p(human_pos + human_vehicle.theta[1:3] * 0.5)
-    pg.draw.line(screen, (0, 0, 0,), start_pos, end_pos, 3)
-
-    # Draw machine intent
-    start_pos = c2p(machine_pos)
-    end_pos = c2p(machine_pos + machine_vehicle.machine_theta[1:3] * 0.5)
-    pg.draw.line(screen, (0, 0, 0,), start_pos, end_pos, 3)
-
-    font = pg.font.SysFont("Arial", 15)
-    label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
-    screen.blit(label, (10, 10))
-    label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
-    screen.blit(label, (10, 30))
-    label = font.render("P Human Theta: (%f, %f, %f)" % (machine_vehicle.human_predicted_theta[0], machine_vehicle.human_predicted_theta[1], machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
-    screen.blit(label, (10, 50))
-    # label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
-    # screen.blit(label, (10, 70))
-    label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
-    screen.blit(label, (10, 110))
-
-    pg.display.flip()
-
-    if True:
-        sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
-                                                            human_pos[1],
-                                                            machine_pos[0],
-                                                            machine_pos[1],
-                                                            human_predicted_state[0],
-                                                            human_predicted_state[1],
-                                                            machine_vehicle.human_predicted_theta[0],
-                                                            machine_vehicle.human_predicted_theta[1],
-                                                            machine_vehicle.human_predicted_theta[2],
-                                                            # machine_vehicle.human_predicted_theta[3],
-                                                                    ))
+            # Keep fps
+            self.clock.tick(self.fps)
 
 
-def c2p(coordinates):
-    x = int(C.LANE_WIDTH * (coordinates[1] + 0.5))
-    y = int(C.LANE_WIDTH * -coordinates[0] + C.SCREEN_HEIGHT/3)
-    return [x, y]
+    def draw_frame(self):
+
+        self.screen.fill((255, 255, 255))
+
+        human_pos = self.human_vehicle.get_state(self.frame)[0:2]
+        human_pos_pixels = self.c2p(human_pos)
+        human_car_size = self.human_vehicle.image.get_size()
+        self.screen.blit(self.human_vehicle.image, (human_pos_pixels[0] - human_car_size[0] / 2, human_pos_pixels[1] - human_car_size[1] / 2))
+
+        machine_pos = self.machine_vehicle.get_state()[0:2]
+        machine_pos_pixels = self.c2p(machine_pos)
+        machine_car_size = self.machine_vehicle.image.get_size()
+        self.screen.blit(self.machine_vehicle.image, (machine_pos_pixels[0] - machine_car_size[0] / 2, machine_pos_pixels[1] - machine_car_size[1] / 2))
+
+        # Draw human predicted state
+        for i in range(len(self.machine_vehicle.human_previous_action_set)):
+            human_predicted_state = self.machine_vehicle.human_states[-1] + np.sum(self.machine_vehicle.human_previous_action_set[:i+1],axis=0)
+            human_predicted_state_pixels = self.c2p(human_predicted_state)
+            pg.draw.circle(self.screen, (0, 255, 0), human_predicted_state_pixels, 6)
+
+        # Draw machine predicted state
+        for i in range(len(self.machine_vehicle.machine_previous_action_set)):
+            machine_predicted_state = self.machine_vehicle.machine_states[-1] + np.sum(self.machine_vehicle.machine_previous_action_set[:i+1],axis=0)
+            machine_predicted_state_pixels = self.c2p(machine_predicted_state)
+            pg.draw.circle(self.screen, (0, 255, 0), machine_predicted_state_pixels, 6)
+
+        # Draw human intent
+        start_pos = self.c2p(human_pos)
+        end_pos = self.c2p(human_pos + self.machine_vehicle.human_predicted_theta[1:3] * 0.5)
+        pg.draw.line(self.screen, (0, 0, 0,), start_pos, end_pos, 3)
+
+        # Draw machine intent
+        start_pos = self.c2p(machine_pos)
+        end_pos = self.c2p(machine_pos + self.machine_vehicle.machine_theta[1:3] * 0.5)
+        pg.draw.line(self.screen, (0, 0, 0,), start_pos, end_pos, 3)
+
+        font = pg.font.SysFont("Arial", 15)
+        label = font.render("Human State: (%f , %f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 10))
+        label = font.render("Machine State: (%f , %f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 30))
+        label = font.render("P Human Theta: (%f, %f, %f)" % (self.machine_vehicle.human_predicted_theta[0], self.machine_vehicle.human_predicted_theta[1], self.machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 50))
+        # label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
+        # screen.blit(label, (10, 70))
+        label = font.render("Frame: %i" % (self.frame + 1), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 110))
+
+        pg.display.flip()
+
+        if True:
+            self.sim_out.write("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n" % (human_pos[0],
+                                                                human_pos[1],
+                                                                machine_pos[0],
+                                                                machine_pos[1],
+                                                                human_predicted_state[0],
+                                                                human_predicted_state[1],
+                                                                self.machine_vehicle.human_predicted_theta[0],
+                                                                self.machine_vehicle.human_predicted_theta[1],
+                                                                self.machine_vehicle.human_predicted_theta[2]))
+
+    def c2p(self, coordinates):
+        x = int(self.P.COORDINATE_SCALE * coordinates[1] + self.P.ORIGIN[0])
+        y = int(self.P.COORDINATE_SCALE * -coordinates[0] + self.P.ORIGIN[1])
+        return np.array([x, y])
 
 
 if __name__ == "__main__":
-    main()
+    Main()
