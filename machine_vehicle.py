@@ -55,7 +55,7 @@ class MachineVehicle:
         ########## Update human characteristics here ########
 
         if len(self.human_states) > C.T_PAST:
-            human_predicted_theta = self.get_human_predicted_intent()
+            human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
 
             self.human_predicted_theta = human_predicted_theta
 
@@ -262,9 +262,15 @@ class MachineVehicle:
 
         # compute big K
         K_self = -2/(D**3)*B
+        K_other = K_self
         ds = np.array(s_self)[0]-np.array(s_other)[0]
         c_self = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(ds, axis=0))) + \
                  np.dot(np.diag(2/(D**3)), np.dot(B, a_other))
+        c_other = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(-ds, axis=0))) + \
+                 np.dot(np.diag(2/(D**3)), np.dot(B, a_self))
+
+
+        # update theta_hat_H
         w = np.dot(K_self, a_self)+c_self
         A = np.sum(a_self,axis=0)
         W = np.sum(w,axis=0)
@@ -276,11 +282,26 @@ class MachineVehicle:
         alpha = W/(t_steps*theta-A)
         alpha = np.mean(np.clip(alpha,0.,100.))
         human_theta = (1-C.LEARNING_RATE)*self.human_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
+
+        # update theta_tilde_M
+        w = np.dot(K_other, a_other)+c_other
+        A = np.sum(a_other,axis=0)
+        W = np.sum(w,axis=0)
+        AW = np.diag(np.dot(np.transpose(a_other),w))
+        AA = np.sum(np.array(a_other)**2,axis=0)
+        theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        bound_y = [0,1] - np.array(s_other)[-1,1]
+        theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
+        alpha = W/(t_steps*theta-A)
+        alpha = np.mean(np.clip(alpha,0.,100.))
+
+        #TODO: implement machine estimated theta
+        machine_estimated_theta = (1-C.LEARNING_RATE)*self.machine_estimated_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
         ###############################################################################################
 
         predicted_theta = human_theta
 
-        return predicted_theta
+        return predicted_theta, machine_estimated_theta
 
     def human_loss_func(self, human_theta, machine_states, human_states, machine_theta):
 
