@@ -18,6 +18,7 @@ class MachineVehicle:
         self.P = P # Scenario parameters
 
         self.machine_theta = P.MACHINE_INTENT
+        self.machine_predicted_theta = P.MACHINE_INTENT
 
         self.machine_states = [P.MACHINE_INITIAL_POSITION]
         self.machine_actions = []
@@ -41,6 +42,9 @@ class MachineVehicle:
         self.machine_previous_action_set = np.tile((P.MACHINE_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
                                                     P.MACHINE_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
                                                    (t_steps, 1))
+        self.machine_previous_predicted_action_set = np.tile((P.MACHINE_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+                                                              P.MACHINE_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+                                                             (t_steps, 1))
         self.human_previous_action_set = np.tile((P.HUMAN_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
                                                   P.HUMAN_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
                                                  (t_steps, 1))
@@ -58,16 +62,18 @@ class MachineVehicle:
             human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
 
             self.human_predicted_theta = human_predicted_theta
+            self.machine_predicted_theta = machine_estimated_theta
 
 
         ########## Calculate machine actions here ###########
 
 
-        [machine_actions, human_predicted_actions] = self.get_actions(1, self.human_previous_action_set, self.machine_previous_action_set,
-                                                                      self.human_states[-1], self.machine_states[-1],
-                                                                      self.human_predicted_theta, self.machine_theta, C.T_FUTURE)
-        self.human_previous_action_set   = human_predicted_actions
-        self.machine_previous_action_set = machine_actions
+        [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(1, self.human_previous_action_set, self.machine_previous_action_set,
+                                                                             self.human_states[-1], self.machine_states[-1],
+                                                                             self.human_predicted_theta, self.machine_theta, C.T_FUTURE)
+        self.human_previous_action_set              = human_predicted_actions
+        self.machine_previous_action_set            = machine_actions
+        self.machine_previous_predicted_action_set  = predicted_actions_self
 
 
 
@@ -97,8 +103,8 @@ class MachineVehicle:
         Identifier = 1 for machine call"""
 
         # Initialize actions
-        actions_other = a0_other
-        actions_self = a0_self
+        initial_actions_other = a0_other
+        initial_actions_self = a0_self
 
         bounds = []
         for _ in range(t_steps):
@@ -162,7 +168,11 @@ class MachineVehicle:
         loss_value_old = loss_value + C.LOSS_THRESHOLD + 1
         iter_count = 0
 
-        # Estimate machine actions
+        actions_other = initial_actions_other
+        actions_self = initial_actions_self
+        predicted_actions_self = initial_actions_self
+
+        # Choose machine actions
         optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
                                                        args=(self.P, s_other, s_self, actions_other, theta_self))
         actions_self = np.column_stack((optimization_results.x[:t_steps],optimization_results.x[t_steps:]))
@@ -172,9 +182,14 @@ class MachineVehicle:
             loss_value_old = loss_value
             iter_count += 1
 
+            # Estimate human's estimated machine actions
+            optimization_results = scipy.optimize.minimize(self.loss_func, predicted_actions_self, bounds=bounds, constraints=cons_self,
+                                                           args=(self.P, s_other, s_self, initial_actions_other, self.machine_predicted_theta))
+            predicted_actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
+
             # Estimate human actions
             optimization_results = scipy.optimize.minimize(self.loss_func, actions_other, bounds=bounds, constraints=cons_other,
-                                                           args=(self.P, s_self, s_other, actions_self, theta_other))
+                                                           args=(self.P, s_self, s_other, predicted_actions_self, theta_other))
             actions_other = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
 
             # Estimate machine actions
@@ -183,7 +198,7 @@ class MachineVehicle:
             actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
             loss_value = optimization_results.fun
 
-        return actions_self, actions_other
+        return actions_self, actions_other, predicted_actions_self
 
     @staticmethod
     def loss_func(actions, P, s_other, s_self, actions_other, theta_self):
@@ -221,26 +236,13 @@ class MachineVehicle:
         """ Function accepts initial conditions and a time period for which to correct the
         attributes of the human car """
 
-        # machine_states = machine_states[-t_steps:]
-        # human_states = human_states[-t_steps:]
-
-        # bounds = [(0, 20), (-1, 1), (-1, 1), (0, 1)]
-        #
-        # optimization_results = scipy.optimize.minimize(self.human_loss_func,
-        #                                                old_human_theta,
-        #                                                bounds=bounds,
-        #                                                args=(machine_states, human_states, machine_theta))
-        # human_theta = optimization_results.x
-
-        ###############################################################################################
-        # Max attempt
         t_steps = C.T_PAST
         s_self = self.human_states[-t_steps:]
         s_other = self.machine_states[-t_steps:]
         a_self = self.human_actions[-t_steps:]
         a_other = self.machine_actions[-t_steps:]
         theta_self = self.human_predicted_theta
-        theta_other = self.machine_theta #TODO: assume human knows machine for now
+        theta_other = self.machine_predicted_theta
         nstate = len(s_other) #number of states
         alpha_self = theta_self[0]
         alpha_other = theta_other[0]
@@ -295,9 +297,7 @@ class MachineVehicle:
         alpha = W/(t_steps*theta-A)
         alpha = np.mean(np.clip(alpha,0.,100.))
 
-        #TODO: implement machine estimated theta
-        machine_estimated_theta = (1-C.LEARNING_RATE)*self.machine_estimated_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
-        ###############################################################################################
+        machine_estimated_theta = (1-C.LEARNING_RATE)*self.machine_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
 
         predicted_theta = human_theta
 

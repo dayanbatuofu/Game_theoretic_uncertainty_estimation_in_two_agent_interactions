@@ -8,10 +8,9 @@ class HumanVehicle:
             Y-Position
     '''
 
-    def __init__(self):
+    def __init__(self, state_set):
 
-        input_file = open('human_state_files/intersection/human_stop.txt')
-        # input_file = open('human_state_files/lane_change/human_change_lane.txt')
+        input_file = open(state_set)
 
         self.states = []
         for line in input_file:
