@@ -69,6 +69,7 @@ class MachineVehicle:
 
 
         [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(1, self.human_previous_action_set, self.machine_previous_action_set,
+                                                                             self.machine_previous_predicted_action_set,
                                                                              self.human_states[-1], self.machine_states[-1],
                                                                              self.human_predicted_theta, self.machine_theta, C.T_FUTURE)
         self.human_previous_action_set              = human_predicted_actions
@@ -94,7 +95,7 @@ class MachineVehicle:
         self.machine_states.append(np.add(self.machine_states[-1], (action_x, action_y)))
         self.machine_actions.append((action_x, action_y))
 
-    def get_actions(self, identifier, a0_other, a0_self, s_other, s_self, theta_other, theta_self, t_steps):
+    def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, t_steps):
 
         """ Function that accepts 2 vehicles states, intents, criteria, and an amount of future steps
         and return the ideal actions based on the loss function
@@ -105,6 +106,7 @@ class MachineVehicle:
         # Initialize actions
         initial_actions_other = a0_other
         initial_actions_self = a0_self
+        initial_predicted_actions_self = a0_predicted_self
 
         bounds = []
         for _ in range(t_steps):
@@ -170,13 +172,13 @@ class MachineVehicle:
 
         actions_other = initial_actions_other
         actions_self = initial_actions_self
-        predicted_actions_self = initial_actions_self
+        predicted_actions_self = initial_predicted_actions_self
 
-        # Choose machine actions
-        optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-                                                       args=(self.P, s_other, s_self, actions_other, theta_self))
-        actions_self = np.column_stack((optimization_results.x[:t_steps],optimization_results.x[t_steps:]))
-        loss_value = optimization_results.fun
+        # # Choose machine actions
+        # optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
+        #                                                args=(self.P, s_other, s_self, actions_other, theta_self))
+        # actions_self = np.column_stack((optimization_results.x[:t_steps],optimization_results.x[t_steps:]))
+        # loss_value = optimization_results.fun
 
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
             loss_value_old = loss_value
@@ -191,12 +193,12 @@ class MachineVehicle:
             optimization_results = scipy.optimize.minimize(self.loss_func, actions_other, bounds=bounds, constraints=cons_other,
                                                            args=(self.P, s_self, s_other, predicted_actions_self, theta_other))
             actions_other = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
-
-            # Estimate machine actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-                                                           args=(self.P, s_other, s_self, actions_other, theta_self))
-            actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
             loss_value = optimization_results.fun
+
+        # Estimate machine actions
+        optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
+                                                       args=(self.P, s_other, s_self, actions_other, theta_self))
+        actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
 
         return actions_self, actions_other, predicted_actions_self
 
@@ -243,9 +245,9 @@ class MachineVehicle:
         a_other = self.machine_actions[-t_steps:]
         theta_self = self.human_predicted_theta
         theta_other = self.machine_predicted_theta
-        nstate = len(s_other) #number of states
-        alpha_self = theta_self[0]
-        alpha_other = theta_other[0]
+        # nstate = len(s_other) #number of states
+        # alpha_self = theta_self[0]
+        # alpha_other = theta_other[0]
         A = np.zeros((t_steps, t_steps))
         A[np.tril_indices(t_steps, 0)] = 1 #lower tri 1s
         B = np.zeros((t_steps, t_steps))
@@ -253,14 +255,14 @@ class MachineVehicle:
             B[i,range(i+1,t_steps)]= np.arange(t_steps-1-i,0,-1)
         B = B + np.transpose(B) + np.diag(np.arange(t_steps,0,-1))
         b = np.arange(t_steps,0,-1)
-        phi_self = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                               theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-                              (t_steps, 1))
-        phi_other = np.tile((theta_other[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                               theta_other[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-                              (t_steps, 1))
+        # phi_self = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+        #                        theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+        #                       (t_steps, 1))
+        # phi_other = np.tile((theta_other[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
+        #                        theta_other[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
+        #                       (t_steps, 1))
 
-        D = np.sum((np.array(s_self)-np.array(s_other))**2, axis=1) + 1e-3 #should be t_steps by 1, add small number for numerical stability
+        D = np.sqrt(np.sum((np.array(s_self)-np.array(s_other))**2, axis=1)) + 1e-3 #should be t_steps by 1, add small number for numerical stability
 
         # compute big K
         K_self = -2/(D**3)*B
@@ -278,11 +280,28 @@ class MachineVehicle:
         W = np.sum(w,axis=0)
         AW = np.diag(np.dot(np.transpose(a_self),w))
         AA = np.sum(np.array(a_self)**2,axis=0)
-        theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        # theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        # bound_y = [0,1] - np.array(s_self)[-1,1]
+        # theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
+        # alpha = W/(t_steps*theta-A)
+        # alpha = np.mean(np.clip(alpha,0.,100.))
+
+        #Max: found a bug in the derivation, redo as follows
+        numerator = np.dot(W,A)-t_steps*(np.sum(AW))
+        denominator = t_steps*np.sum(AA)-np.dot(A,A)
+        if np.abs(numerator) < 1e-6 and  np.abs(denominator) < 1e-6: # alpha = 0/0
+            alpha = 100.
+            theta = A
+        else:
+            alpha = numerator/denominator
+            alpha = np.mean(np.clip(alpha,0.01,100.))
+            theta = A + W/alpha
+
+        theta = theta / C.VEHICLE_MOVEMENT_SPEED / C.ACTION_PREDICTION_MULTIPLIER
+        bound_x = [-1, 1]
         bound_y = [0,1] - np.array(s_self)[-1,1]
+        theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
         theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
-        alpha = W/(t_steps*theta-A)
-        alpha = np.mean(np.clip(alpha,0.,100.))
         human_theta = (1-C.LEARNING_RATE)*self.human_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
 
         # update theta_tilde_M
@@ -291,11 +310,21 @@ class MachineVehicle:
         W = np.sum(w,axis=0)
         AW = np.diag(np.dot(np.transpose(a_other),w))
         AA = np.sum(np.array(a_other)**2,axis=0)
-        theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        numerator = np.dot(W,A)-t_steps*(np.sum(AW))
+        denominator = t_steps*np.sum(AA)-np.dot(A,A)
+        if np.abs(numerator) < 1e-6 and  np.abs(denominator) < 1e-6: # alpha = 0/0
+            alpha = 100.
+            theta = A
+        else:
+            alpha = numerator/denominator
+            alpha = np.mean(np.clip(alpha,0.01,100.))
+            theta = A + W/alpha
+
+        theta = theta / C.VEHICLE_MOVEMENT_SPEED / C.ACTION_PREDICTION_MULTIPLIER
+        bound_x = [-1, 1]
         bound_y = [0,1] - np.array(s_other)[-1,1]
+        theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
         theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
-        alpha = W/(t_steps*theta-A)
-        alpha = np.mean(np.clip(alpha,0.,100.))
 
         machine_estimated_theta = (1-C.LEARNING_RATE)*self.machine_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
 

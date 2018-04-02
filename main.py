@@ -12,8 +12,8 @@ class Main():
 
         self.P = C.PARAMETERSET_1  # Scenario parameters choice
 
-        #self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
-        self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
+        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane_immediately.txt')
         self.machine_vehicle = MachineVehicle(self.P, self.human_vehicle.get_state(0))
 
         pg.init()

@@ -29,7 +29,7 @@ class CONSTANTS:
 
     LOSS_THRESHOLD = 0.01
 
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.1
 
     # DIVIDE BY ZERO CATCH
     EPS = 0.0000001
@@ -49,7 +49,7 @@ class CONSTANTS:
         MACHINE_INITIAL_POSITION = np.array([-1, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([30, 0, -1])
+        HUMAN_INTENT = np.array([30, 0, 0])
         MACHINE_INTENT = np.array([10, 1, 0])
 
         # VEHICLE ORIENTATIONS
