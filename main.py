@@ -104,7 +104,7 @@ class Main():
             pg.draw.circle(self.screen, (255 - i*10, 0, 255 - i*10), machine_predicted_state_pixels, 4)
 
         # Draw predicted human intent
-        pos = self.c2p(human_pos + self.machine_vehicle.human_predicted_theta[1:3] * 0.5)
+        pos = self.c2p(human_pos + self.machine_vehicle.human_predicted_theta[1:3])
         pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
         pg.draw.circle(self.screen, (0, 255, 255), pos, 6)
 
