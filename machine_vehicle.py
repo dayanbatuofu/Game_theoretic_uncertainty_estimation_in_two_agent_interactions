@@ -330,6 +330,20 @@ class MachineVehicle:
 
         predicted_theta = human_theta
 
+
+        # Clip thetas
+        if self.P.BOUND_HUMAN_X is not None:
+            predicted_theta[1] = np.clip(predicted_theta[1], self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1])
+
+        if self.P.BOUND_HUMAN_Y is not None:
+            predicted_theta[2] = np.clip(predicted_theta[2], self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1])
+
+        if self.P.BOUND_MACHINE_X is not None:
+            machine_estimated_theta[11] = np.clip(machine_estimated_theta[1], self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1])
+
+        if self.P.BOUND_MACHINE_Y is not None:
+            machine_estimated_theta[2] = np.clip(machine_estimated_theta[2], self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1])
+
         return predicted_theta, machine_estimated_theta
 
     def human_loss_func(self, human_theta, machine_states, human_states, machine_theta):

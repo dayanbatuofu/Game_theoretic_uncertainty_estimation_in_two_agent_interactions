@@ -94,7 +94,7 @@ class CONSTANTS:
         BOUND_MACHINE_Y = np.array([0, 0])
 
         # LOSS WEIGHT
-        Y_CLEARANCE_WEIGHT = 0.3
+        Y_CLEARANCE_WEIGHT = 1
 
 
 
