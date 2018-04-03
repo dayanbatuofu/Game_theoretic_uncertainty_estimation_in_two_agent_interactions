@@ -2,7 +2,7 @@ from constants import CONSTANTS as C
 import numpy as np
 import scipy
 from scipy import optimize
-# from keras.models import load_model
+import pygame as pg
 
 
 class MachineVehicle:
@@ -13,9 +13,11 @@ class MachineVehicle:
             Y-Position
     """
 
-    def __init__(self, P, human_initial_state):
+    def __init__(self, P, ot_box, my_box, human_initial_state):
 
-        self.P = P # Scenario parameters
+        self.P = P  # Scenario parameters
+        self.other_collision_box = ot_box
+        self.my_collision_box = my_box
 
         self.machine_theta = P.MACHINE_INTENT
         self.machine_predicted_theta = P.MACHINE_INTENT
@@ -71,7 +73,9 @@ class MachineVehicle:
         [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(1, self.human_previous_action_set, self.machine_previous_action_set,
                                                                              self.machine_previous_predicted_action_set,
                                                                              self.human_states[-1], self.machine_states[-1],
-                                                                             self.human_predicted_theta, self.machine_theta, C.T_FUTURE)
+                                                                             self.human_predicted_theta, self.machine_theta,
+                                                                             self.other_collision_box, self.my_collision_box,
+                                                                             C.T_FUTURE)
         self.human_previous_action_set              = human_predicted_actions
         self.machine_previous_action_set            = machine_actions
         self.machine_previous_predicted_action_set  = predicted_actions_self
@@ -95,7 +99,7 @@ class MachineVehicle:
         self.machine_states.append(np.add(self.machine_states[-1], (action_x, action_y)))
         self.machine_actions.append((action_x, action_y))
 
-    def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, t_steps):
+    def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, box_other, box_self, t_steps):
 
         """ Function that accepts 2 vehicles states, intents, criteria, and an amount of future steps
         and return the ideal actions based on the loss function
@@ -136,34 +140,34 @@ class MachineVehicle:
         if other_bound_x is not None:
             if other_bound_x[0] is not None:
                 for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[0] + sum(x[0:i+1]) - other_bound_x[0]})
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[0] - box_other.height/2 + sum(x[0:i+1]) - other_bound_x[0]})
             if other_bound_x[1] is not None:
                 for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[0] - sum(x[0:i+1]) + other_bound_x[1]})
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[0] - box_other.height/2 - sum(x[0:i+1]) + other_bound_x[1]})
 
         if other_bound_y is not None:
             if other_bound_y[0] is not None:
                 for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[1] + sum(x[t_steps:t_steps+i+1]) - other_bound_y[0]})
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[1]  - box_other.width/2 + sum(x[t_steps:t_steps+i+1]) - other_bound_y[0]})
             if other_bound_y[1] is not None:
                 for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[1] - sum(x[t_steps:t_steps+i+1]) + other_bound_y[1]})
+                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[1] - box_other.width/2 - sum(x[t_steps:t_steps+i+1]) + other_bound_y[1]})
 
         if self_bound_x is not None:
             if self_bound_x[0] is not None:
                 for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[0] + sum(x[0:i+1]) - self_bound_x[0]})
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[0]  - box_self.height/2 + sum(x[0:i+1]) - self_bound_x[0]})
             if self_bound_x[1] is not None:
                 for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[0] - sum(x[0:i+1]) + self_bound_x[1]})
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[0] - box_self.height/2 - sum(x[0:i+1]) + self_bound_x[1]})
 
         if self_bound_y is not None:
             if self_bound_y[0] is not None:
                 for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[1] + sum(x[t_steps:t_steps+i+1]) - self_bound_y[0]})
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[1] - box_self.width/2 + sum(x[t_steps:t_steps+i+1]) - self_bound_y[0]})
             if self_bound_y[1] is not None:
                 for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[1] - sum(x[t_steps:t_steps+i+1]) + self_bound_y[1]})
+                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[1] - box_self.width/2 - sum(x[t_steps:t_steps+i+1]) + self_bound_y[1]})
 
 
         loss_value = 0
@@ -186,24 +190,24 @@ class MachineVehicle:
 
             # Estimate human's estimated machine actions
             optimization_results = scipy.optimize.minimize(self.loss_func, predicted_actions_self, bounds=bounds, constraints=cons_self,
-                                                           args=(self.P, s_other, s_self, initial_actions_other, self.machine_predicted_theta))
+                                                           args=(self.P, s_other, s_self, initial_actions_other, self.machine_predicted_theta, box_other, box_self))
             predicted_actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
 
             # Estimate human actions
             optimization_results = scipy.optimize.minimize(self.loss_func, actions_other, bounds=bounds, constraints=cons_other,
-                                                           args=(self.P, s_self, s_other, predicted_actions_self, theta_other))
+                                                           args=(self.P, s_self, s_other, predicted_actions_self, theta_other, box_self, box_other))
             actions_other = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
             loss_value = optimization_results.fun
 
         # Estimate machine actions
         optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-                                                       args=(self.P, s_other, s_self, actions_other, theta_self))
+                                                       args=(self.P, s_other, s_self, actions_other, theta_self, box_other, box_self))
         actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
 
         return actions_self, actions_other, predicted_actions_self
 
     @staticmethod
-    def loss_func(actions, P, s_other, s_self, actions_other, theta_self):
+    def loss_func(actions, P, s_other, s_self, actions_other, theta_self, box_other, box_self):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
 
@@ -223,7 +227,7 @@ class MachineVehicle:
         # Define state loss
         difference = s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other)
         difference[:, 1] *= P.Y_CLEARANCE_WEIGHT # Weight y differences
-        state_loss = np.reciprocal(np.linalg.norm(s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other), axis=1)+1e-12)
+        state_loss = np.reciprocal(box_self.get_minimum_distance(s_self + np.matmul(A, actions), s_other - np.matmul(A, actions_other), box_other)+1e-12)
 
         # Define action loss
         intent_loss = np.square(np.linalg.norm(actions - theta_vector, axis=1))

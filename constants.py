@@ -87,11 +87,11 @@ class CONSTANTS:
         MACHINE_ORIENTATION = 0
 
         # BOUNDS
-        BOUND_HUMAN_X = np.array([0, 0])
+        BOUND_HUMAN_X = np.array([-0.4, 0.4])
         BOUND_HUMAN_Y = None
 
         BOUND_MACHINE_X = None
-        BOUND_MACHINE_Y = np.array([0, 0])
+        BOUND_MACHINE_Y = np.array([-0.4, 0.4])
 
         # LOSS WEIGHT
         Y_CLEARANCE_WEIGHT = 1

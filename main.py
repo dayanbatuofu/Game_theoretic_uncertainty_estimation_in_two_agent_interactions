@@ -1,6 +1,7 @@
 from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
 from machine_vehicle import MachineVehicle
+from collision_box import Collision_Box
 import numpy as np
 import pygame as pg
 
@@ -12,15 +13,19 @@ class Main():
 
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
-        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
-        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
-        self.machine_vehicle = MachineVehicle(self.P, self.human_vehicle.get_state(0))
-
         pg.init()
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH, self.P.SCREEN_HEIGHT))
-        self.human_vehicle.image = pg.transform.rotate(pg.image.load("assets/red_car_sized.png"), self.P.HUMAN_ORIENTATION)
-        self.machine_vehicle.image = pg.transform.rotate(pg.image.load("assets/blue_car_sized.png"), self.P.MACHINE_ORIENTATION)
+        self.human_image = pg.transform.rotate(pg.image.load("assets/red_car_sized.png"), self.P.HUMAN_ORIENTATION)
+        self.machine_image = pg.transform.rotate(pg.image.load("assets/blue_car_sized.png"), self.P.MACHINE_ORIENTATION)
         self.coordinates_image = pg.image.load("assets/coordinates.png")
+
+        human_collision_box = Collision_Box(self.human_image.get_width() / self.P.COORDINATE_SCALE, self.human_image.get_height() / self.P.COORDINATE_SCALE)
+        machine_collision_box = Collision_Box(self.machine_image.get_width() / self.P.COORDINATE_SCALE, self.machine_image.get_height() / self.P.COORDINATE_SCALE)
+
+        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
+        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
+        self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box, self.human_vehicle.get_state(0))
+
 
         # Time handling
         self.clock = pg.time.Clock()
@@ -74,13 +79,13 @@ class Main():
 
         human_pos = self.human_vehicle.get_state(self.frame)[0:2]
         human_pos_pixels = self.c2p(human_pos)
-        human_car_size = self.human_vehicle.image.get_size()
-        self.screen.blit(self.human_vehicle.image, (human_pos_pixels[0] - human_car_size[0] / 2, human_pos_pixels[1] - human_car_size[1] / 2))
+        human_car_size = self.human_image.get_size()
+        self.screen.blit(self.human_image, (human_pos_pixels[0] - human_car_size[0] / 2, human_pos_pixels[1] - human_car_size[1] / 2))
 
         machine_pos = self.machine_vehicle.get_state()[0:2]
         machine_pos_pixels = self.c2p(machine_pos)
-        machine_car_size = self.machine_vehicle.image.get_size()
-        self.screen.blit(self.machine_vehicle.image, (machine_pos_pixels[0] - machine_car_size[0] / 2, machine_pos_pixels[1] - machine_car_size[1] / 2))
+        machine_car_size = self.machine_image.get_size()
+        self.screen.blit(self.machine_image, (machine_pos_pixels[0] - machine_car_size[0] / 2, machine_pos_pixels[1] - machine_car_size[1] / 2))
 
         coordinates_size = self.coordinates_image.get_size()
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT - coordinates_size[1] - 10 / 2))
