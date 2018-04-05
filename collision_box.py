@@ -21,21 +21,39 @@ class Collision_Box():
                     distance.append(math.hypot((other_pos[i,0] - other_box.height / 2) - (my_pos[i,0] + self.height / 2),
                                       (other_pos[i,1] - other_box.width / 2) - (my_pos[i,1] + self.width / 2)))
 
-                else: # Other is on top-left
+                elif other_pos[i,1] + other_box.width/2 < my_pos[i,1] - self.width/2: # Other is on top-left
 
-                    distance.append(math.hypot((other_pos[i,0] - other_box.height / 2) - (my_pos + self.height / 2),
-                                      (other_pos[i,1] + other_box.width / 2) - (my_pos - self.width / 2)))
+                    distance.append(math.hypot((other_pos[i,0] - other_box.height / 2) - (my_pos[i,0] + self.height / 2),
+                                      (other_pos[i,1] + other_box.width / 2) - (my_pos[i,1] - self.width / 2)))
 
-            else:  # Other is on bottom
+                else: # Other is on top
+
+                    distance.append(np.abs((other_pos[i, 0] - other_box.height / 2) - (my_pos[i, 0] + self.height / 2)))
+
+            elif other_pos[i,0] + other_box.height/2 < my_pos[i,0] - self.height/2:  # Other is on bottom
 
                 if other_pos[i,1] - other_box.width / 2 > my_pos[i,1] + self.width / 2:  # Other is on bottom-right
 
                     distance.append(math.hypot((other_pos[i,0] + other_box.height / 2) - (my_pos[i,0] - self.height / 2),
                                       (other_pos[i,1] - other_box.width / 2) - (my_pos[i,1] + self.width / 2)))
 
-                else:  # Other is on bottom-left
+                elif other_pos[i,1] + other_box.width / 2 < my_pos[i,1] - self.width / 2:  # Other is on bottom-left
 
                     distance.append(math.hypot((other_pos[i,0] + other_box.height / 2) - (my_pos[i,0] - self.height / 2),
                                       (other_pos[i,1] + other_box.width / 2) - (my_pos[i,1] - self.width / 2)))
+
+                else: # Other is on bottom
+
+                    distance.append(np.abs((other_pos[i, 0] + other_box.height / 2) - (my_pos[i, 0] - self.height / 2)))
+
+            else: # Other is to the left or right
+
+                if other_pos[i, 1] - other_box.width / 2 > my_pos[i, 1] + self.width / 2: # Other is on left
+
+                    distance.append(np.abs((other_pos[i, 1] + other_box.width / 2) - (my_pos[i, 1] - self.width / 2)))
+
+                else: # Other is on right
+
+                    distance.append(np.abs((other_pos[i, 1] - other_box.width / 2) - (my_pos[i, 1] + self.width / 2)))
 
         return np.array(distance)

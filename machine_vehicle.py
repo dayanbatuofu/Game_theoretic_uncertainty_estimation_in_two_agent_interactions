@@ -1,8 +1,11 @@
 from constants import CONSTANTS as C
+from constants import MATRICES as M
 import numpy as np
 import scipy
+import bezier
 from scipy import optimize
 import pygame as pg
+from scipy.interpolate import spline
 
 
 class MachineVehicle:
@@ -19,19 +22,21 @@ class MachineVehicle:
         self.other_collision_box = ot_box
         self.my_collision_box = my_box
 
-        self.machine_theta = P.MACHINE_INTENT
-        self.machine_predicted_theta = P.MACHINE_INTENT
-
+        # Initialize machine space
         self.machine_states = [P.MACHINE_INITIAL_POSITION]
+        self.machine_theta = P.MACHINE_INTENT
         self.machine_actions = []
 
+        # Initialize human space
         self.human_states = [human_initial_state]
-        self.human_actions = []
-        self.human_predicted_states = [human_initial_state]
-
         self.human_predicted_theta = P.HUMAN_INTENT
+        self.human_actions = []
 
-        self.human_predicted_state = human_initial_state
+        # Initialize predicted human predicted machine space
+        self.machine_predicted_theta = P.MACHINE_INTENT
+
+        #self.human_predicted_states = [human_initial_state]
+        #self.human_predicted_state = human_initial_state
 
         # self.action_prediction_model = load_model('nn/action_prediction_model.h5')
 
@@ -39,17 +44,9 @@ class MachineVehicle:
         self.debug_2 = 0
         self.debug_3 = 0
 
-        t_steps = C.T_FUTURE
-
-        self.machine_previous_action_set = np.tile((P.MACHINE_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                                                    P.MACHINE_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-                                                   (t_steps, 1))
-        self.machine_previous_predicted_action_set = np.tile((P.MACHINE_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                                                              P.MACHINE_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-                                                             (t_steps, 1))
-        self.human_previous_action_set = np.tile((P.HUMAN_INTENT[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                                                  P.HUMAN_INTENT[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-                                                 (t_steps, 1))
+        self.machine_previous_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.machine_previous_predicted_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.human_previous_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
 
     def get_state(self):
         return self.machine_states[-1]
@@ -74,12 +71,10 @@ class MachineVehicle:
                                                                              self.machine_previous_predicted_action_set,
                                                                              self.human_states[-1], self.machine_states[-1],
                                                                              self.human_predicted_theta, self.machine_theta,
-                                                                             self.other_collision_box, self.my_collision_box,
-                                                                             C.T_FUTURE)
+                                                                             self.other_collision_box, self.my_collision_box)
         self.human_previous_action_set              = human_predicted_actions
         self.machine_previous_action_set            = machine_actions
         self.machine_previous_predicted_action_set  = predicted_actions_self
-
 
 
         self.human_predicted_state = human_state + sum(human_predicted_actions)
@@ -93,13 +88,13 @@ class MachineVehicle:
     def update_state_action(self, actions):
 
         # Restrict speed
-        action_x = np.clip(actions[0][0], -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED)
-        action_y = np.clip(actions[0][1], -C.VEHICLE_MOVEMENT_SPEED, C.VEHICLE_MOVEMENT_SPEED)
+        action_x = np.clip(actions[0][0], -self.P.VEHICLE_MAX_SPEED, self.P.VEHICLE_MAX_SPEED)
+        action_y = np.clip(actions[0][1], -self.P.VEHICLE_MAX_SPEED, self.P.VEHICLE_MAX_SPEED)
 
         self.machine_states.append(np.add(self.machine_states[-1], (action_x, action_y)))
         self.machine_actions.append((action_x, action_y))
 
-    def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, box_other, box_self, t_steps):
+    def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, box_other, box_self):
 
         """ Function that accepts 2 vehicles states, intents, criteria, and an amount of future steps
         and return the ideal actions based on the loss function
@@ -108,135 +103,121 @@ class MachineVehicle:
         Identifier = 1 for machine call"""
 
         # Initialize actions
-        initial_actions_other = a0_other
-        initial_actions_self = a0_self
-        initial_predicted_actions_self = a0_predicted_self
+        initial_trajectory_other = (np.linalg.norm(a0_other[-1]), np.arctan2(a0_other[-1, 0], a0_other[-1, 1]))
+        initial_trajectory_self = (np.linalg.norm(a0_self[-1]), np.arctan2(a0_self[-1, 0], a0_self[-1, 1]))
+        initial_predicted_trajectory_self = (np.linalg.norm(a0_predicted_self[-1]), np.arctan2(a0_predicted_self[-1, 0], a0_predicted_self[-1, 1]))
 
-        bounds = []
-        for _ in range(t_steps):
-            bounds.append((-C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER, C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER))
-        for _ in range(t_steps):
-            bounds.append((-C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER, C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER))
+        if identifier == 0:  # If human is calling
+            defcon_other_x = self.P.BOUND_MACHINE_X
+            defcon_other_y = self.P.BOUND_MACHINE_Y
+            orientation_other = self.P.MACHINE_ORIENTATION
+            bounds_other = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+                            (-C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION,
+                             C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION)]  # Angle
+            defcon_self_x = self.P.BOUND_HUMAN_X
+            defcon_self_y = self.P.BOUND_HUMAN_Y
+            orientation_self = self.P.HUMAN_ORIENTATION
+            bounds_self = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+                           (-C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION,
+                            C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION)]  # Angle
 
-        A = np.zeros((t_steps, t_steps))
-        A[np.tril_indices(t_steps, 0)] = 1
+        if identifier == 1:  # If machine is calling
+            defcon_other_x = self.P.BOUND_HUMAN_X
+            defcon_other_y = self.P.BOUND_HUMAN_Y
+            orientation_other = self.P.HUMAN_ORIENTATION
+            bounds_other = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+                           (-C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION,
+                            C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION)]  # Angle
+            defcon_self_x = self.P.BOUND_MACHINE_X
+            defcon_self_y = self.P.BOUND_MACHINE_Y
+            orientation_self = self.P.MACHINE_ORIENTATION
+            bounds_self = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+                       (-C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION,
+                        C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION)]  # Angle
 
-        if identifier == 0: # If human is calling
-            other_bound_x = self.P.BOUND_MACHINE_X
-            other_bound_y = self.P.BOUND_MACHINE_Y
-            self_bound_x = self.P.BOUND_HUMAN_X
-            self_bound_y = self.P.BOUND_HUMAN_Y
 
-        if identifier == 1: # If machine is calling
-            other_bound_x = self.P.BOUND_HUMAN_X
-            other_bound_y = self.P.BOUND_HUMAN_Y
-            self_bound_x = self.P.BOUND_MACHINE_X
-            self_bound_y = self.P.BOUND_MACHINE_Y
+        A = np.zeros((C.ACTION_TIMESTEPS, C.ACTION_TIMESTEPS))
+        A[np.tril_indices(C.ACTION_TIMESTEPS, 0)] = 1
 
         cons_other = []
         cons_self = []
 
+        if defcon_other_x is not None:
+            if defcon_other_x[0] is not None:
+                cons_other.append({'type': 'ineq','fun': lambda x: s_other[0] - box_other.height/2 + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_other_x[0]})
+            if defcon_other_x[1] is not None:
+                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[0] - box_other.height/2 - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_other_x[1]})
 
-        if other_bound_x is not None:
-            if other_bound_x[0] is not None:
-                for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[0] - box_other.height/2 + sum(x[0:i+1]) - other_bound_x[0]})
-            if other_bound_x[1] is not None:
-                for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[0] - box_other.height/2 - sum(x[0:i+1]) + other_bound_x[1]})
+        if defcon_other_y is not None:
+            if defcon_other_y[0] is not None:
+                cons_other.append({'type': 'ineq','fun': lambda x: s_other[1]  - box_other.width/2 + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_other_y[0]})
+            if defcon_other_y[1] is not None:
+                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[1] - box_other.width/2 - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_other_y[1]})
 
-        if other_bound_y is not None:
-            if other_bound_y[0] is not None:
-                for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: s_other[1]  - box_other.width/2 + sum(x[t_steps:t_steps+i+1]) - other_bound_y[0]})
-            if other_bound_y[1] is not None:
-                for i in range(t_steps):
-                    cons_other.append({'type': 'ineq','fun': lambda x, i=i: -s_other[1] - box_other.width/2 - sum(x[t_steps:t_steps+i+1]) + other_bound_y[1]})
+        if defcon_self_x is not None:
+            if defcon_self_x[0] is not None:
+                cons_self.append({'type': 'ineq','fun': lambda x: s_self[0]  - box_self.height/2 + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_self_x[0]})
+            if defcon_self_x[1] is not None:
+                cons_self.append({'type': 'ineq','fun': lambda x: -s_self[0] - box_self.height/2 - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_self_x[1]})
 
-        if self_bound_x is not None:
-            if self_bound_x[0] is not None:
-                for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[0]  - box_self.height/2 + sum(x[0:i+1]) - self_bound_x[0]})
-            if self_bound_x[1] is not None:
-                for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[0] - box_self.height/2 - sum(x[0:i+1]) + self_bound_x[1]})
-
-        if self_bound_y is not None:
-            if self_bound_y[0] is not None:
-                for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: s_self[1] - box_self.width/2 + sum(x[t_steps:t_steps+i+1]) - self_bound_y[0]})
-            if self_bound_y[1] is not None:
-                for i in range(t_steps):
-                    cons_self.append({'type': 'ineq','fun': lambda x, i=i: -s_self[1] - box_self.width/2 - sum(x[t_steps:t_steps+i+1]) + self_bound_y[1]})
+        if defcon_self_y is not None:
+            if defcon_self_y[0] is not None:
+                    cons_self.append({'type': 'ineq','fun': lambda x: s_self[1] - box_self.width/2 + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_self_y[0]})
+            if defcon_self_y[1] is not None:
+                    cons_self.append({'type': 'ineq','fun': lambda x: -s_self[1] - box_self.width/2 - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_self_y[1]})
 
 
         loss_value = 0
         loss_value_old = loss_value + C.LOSS_THRESHOLD + 1
         iter_count = 0
 
-        actions_other = initial_actions_other
-        actions_self = initial_actions_self
-        predicted_actions_self = initial_predicted_actions_self
-
-        # # Choose machine actions
-        # optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-        #                                                args=(self.P, s_other, s_self, actions_other, theta_self))
-        # actions_self = np.column_stack((optimization_results.x[:t_steps],optimization_results.x[t_steps:]))
-        # loss_value = optimization_results.fun
+        trajectory_other = initial_trajectory_other
+        trajectory_self = initial_trajectory_self
+        predicted_trajectory_self = initial_predicted_trajectory_self
 
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
             loss_value_old = loss_value
             iter_count += 1
 
             # Estimate human's estimated machine actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, predicted_actions_self, bounds=bounds, constraints=cons_self,
-                                                           args=(self.P, s_other, s_self, initial_actions_other, self.machine_predicted_theta, box_other, box_self))
-            predicted_actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
+            optimization_results = scipy.optimize.minimize(self.loss_func, predicted_trajectory_self, bounds=bounds_self, constraints=cons_self,
+                                                           args=(self.P, s_other, s_self, initial_trajectory_other, self.machine_predicted_theta, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self))
+            predicted_trajectory_self = optimization_results.x
 
             # Estimate human actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, actions_other, bounds=bounds, constraints=cons_other,
-                                                           args=(self.P, s_self, s_other, predicted_actions_self, theta_other, box_self, box_other))
-            actions_other = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
+            optimization_results = scipy.optimize.minimize(self.loss_func, trajectory_other, bounds=bounds_other, constraints=cons_other,
+                                                           args=(self.P, s_self, s_other, predicted_trajectory_self, theta_other, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_self, box_other, orientation_other))
+            trajectory_other = optimization_results.x
             loss_value = optimization_results.fun
 
         # Estimate machine actions
-        optimization_results = scipy.optimize.minimize(self.loss_func, actions_self, bounds=bounds, constraints=cons_self,
-                                                       args=(self.P, s_other, s_self, actions_other, theta_self, box_other, box_self))
-        actions_self = np.column_stack((optimization_results.x[:t_steps], optimization_results.x[t_steps:]))
+        optimization_results = scipy.optimize.minimize(self.loss_func, trajectory_self, bounds=bounds_self, constraints=cons_self,
+                                                       args=(self.P, s_other, s_self, trajectory_other, theta_self, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self))
+        trajectory_self = optimization_results.x
+
+
+        # Interpolate for output
+        actions_self = self.interpolate_from_trajectory(trajectory_self, s_self, orientation_self)
+        actions_other = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
+        predicted_actions_self = self.interpolate_from_trajectory(predicted_trajectory_self, s_self, orientation_self)
 
         return actions_self, actions_other, predicted_actions_self
 
-    @staticmethod
-    def loss_func(actions, P, s_other, s_self, actions_other, theta_self, box_other, box_self):
+    def loss_func(self, trajectory, P, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
 
-        t_steps = int(len(actions)/2)
-
-        action_factor = C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER
-
-        actions             = np.column_stack((actions[:t_steps], actions[t_steps:]))
-
-        theta_vector        = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                                       theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-                                      (t_steps, 1))
-
-        A = np.zeros((t_steps, t_steps))
-        A[np.tril_indices(t_steps, 0)] = 1
+        actions_self    = self.interpolate_from_trajectory(trajectory, s_self, orientation)
+        actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation)
 
         # Define state loss
-        difference = s_self + np.matmul(A, actions) - s_other - np.matmul(A, actions_other)
-        difference[:, 1] *= P.Y_CLEARANCE_WEIGHT # Weight y differences
-        state_loss = np.reciprocal(box_self.get_minimum_distance(s_self + np.matmul(A, actions), s_other - np.matmul(A, actions_other), box_other)+1e-12)
+        state_loss = np.reciprocal(box_self.get_minimum_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
+                                                                 s_other - np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
 
         # Define action loss
-        intent_loss = np.square(np.linalg.norm(actions - theta_vector, axis=1))
+        intent_loss = np.square(np.linalg.norm(actions_self - theta_self[1:3], axis=1))
 
-        # Define effort loss
-        # effort_loss = 10 * theta_self[3] * np.sum(np.square(actions))
-
-        # return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss) + effort_loss  # Return weighted sum
-        return np.sum(state_loss) + theta_self[0] * np.sum(intent_loss) # Return weighted sum
+        return np.average(state_loss) + theta_self[0] * np.average(intent_loss) # Return weighted sum
 
     def get_human_predicted_intent(self):
         """ Function accepts initial conditions and a time period for which to correct the
@@ -301,7 +282,7 @@ class MachineVehicle:
             alpha = np.mean(np.clip(alpha,0.01,100.))
             theta = A + W/alpha
 
-        theta = theta / C.VEHICLE_MOVEMENT_SPEED / C.ACTION_PREDICTION_MULTIPLIER
+        theta = theta / self.P.VEHICLE_MAX_SPEED / C.ACTION_TIMESTEPS
         bound_x = [-1, 1]
         bound_y = [0,1] - np.array(s_self)[-1,1]
         theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
@@ -324,7 +305,7 @@ class MachineVehicle:
             alpha = np.mean(np.clip(alpha,0.01,100.))
             theta = A + W/alpha
 
-        theta = theta / C.VEHICLE_MOVEMENT_SPEED / C.ACTION_PREDICTION_MULTIPLIER
+        theta = theta / self.P.VEHICLE_MAX_SPEED / C.ACTION_TIMESTEPS
         bound_x = [-1, 1]
         bound_y = [0,1] - np.array(s_other)[-1,1]
         theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
@@ -334,33 +315,28 @@ class MachineVehicle:
 
         predicted_theta = human_theta
 
-
-        # Clip thetas
-        if self.P.BOUND_HUMAN_X is not None:
-            predicted_theta[1] = np.clip(predicted_theta[1], self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1])
-
-        if self.P.BOUND_HUMAN_Y is not None:
-            predicted_theta[2] = np.clip(predicted_theta[2], self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1])
-
-        if self.P.BOUND_MACHINE_X is not None:
-            machine_estimated_theta[11] = np.clip(machine_estimated_theta[1], self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1])
-
-        if self.P.BOUND_MACHINE_Y is not None:
-            machine_estimated_theta[2] = np.clip(machine_estimated_theta[2], self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1])
+        # # Clip thetas
+        # if self.P.BOUND_HUMAN_X is not None:
+        #     predicted_theta[1] = np.clip(predicted_theta[1], self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1])
+        #
+        # if self.P.BOUND_HUMAN_Y is not None:
+        #     predicted_theta[2] = np.clip(predicted_theta[2], self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1])
+        #
+        # if self.P.BOUND_MACHINE_X is not None:
+        #     machine_estimated_theta[11] = np.clip(machine_estimated_theta[1], self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1])
+        #
+        # if self.P.BOUND_MACHINE_Y is not None:
+        #     machine_estimated_theta[2] = np.clip(machine_estimated_theta[2], self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1])
 
         return predicted_theta, machine_estimated_theta
 
-    def human_loss_func(self, human_theta, machine_states, human_states, machine_theta):
+    def interpolate_from_trajectory(self, trajectory, state, orientation):
 
-        """ Loss function for the human correction defined to be the norm of the difference between actual actions and
-        predicted actions"""
+        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(orientation + trajectory[1]))],
+                          [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(orientation + trajectory[1]))]])
 
-        t_steps = int(len(machine_states))
+        curve = bezier.Curve(nodes, degree=2)
 
-        actual_actions = np.diff(human_states, axis=0)
-        predicted_actions = self.get_actions(machine_states[0], human_states[0], machine_theta, human_theta, t_steps - 1)
-        predicted_actions_self = predicted_actions[0]
+        positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_NUMPOINTS + 1)))
 
-        difference = np.array(actual_actions) - np.array(predicted_actions_self)
-
-        return np.linalg.norm(difference)
+        return np.diff(positions, n=1, axis=0)

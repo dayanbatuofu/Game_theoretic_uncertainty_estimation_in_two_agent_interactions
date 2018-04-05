@@ -18,6 +18,6 @@ y_vel = 0
 for step in range(duration):
 
     if y > intersection_y:
-        y += -C.VEHICLE_MOVEMENT_SPEED
+        y += -C.VEHICLE_MAX_SPEED
 
     file.write("%f %f\n" % (x, y))

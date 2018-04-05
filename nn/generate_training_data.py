@@ -72,8 +72,8 @@ def get_actionsa(s_other, s_self, s_desired_other, s_desired_self, c_other, c_se
     actions_other = np.array([0 for _ in range(2 * t_steps)])
     actions_self = np.array([0 for _ in range(2 * t_steps)])
 
-    bounds = tuple([(-C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-                     C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER) for _ in range(2 * t_steps)])
+    bounds = tuple([(-C.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS,
+                     C.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS) for _ in range(2 * t_steps)])
 
     A = np.zeros((t_steps, t_steps))
     A[np.tril_indices(t_steps, 0)] = 1
@@ -120,8 +120,8 @@ def get_actionsa(s_other, s_self, s_desired_other, s_desired_self, c_other, c_se
         loss_value = optimization_results.fun
 
     # Normalize output for network training
-    actions_other = (actions_other + C.VEHICLE_MOVEMENT_SPEED*C.ACTION_PREDICTION_MULTIPLIER) / (2*C.VEHICLE_MOVEMENT_SPEED*C.ACTION_PREDICTION_MULTIPLIER)
-    actions_self = (actions_self + C.VEHICLE_MOVEMENT_SPEED*C.ACTION_PREDICTION_MULTIPLIER) / (2*C.VEHICLE_MOVEMENT_SPEED*C.ACTION_PREDICTION_MULTIPLIER)
+    actions_other = (actions_other + C.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS) / (2 * C.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS)
+    actions_self = (actions_self + C.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS) / (2 * C.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS)
 
     actions_other = np.transpose(np.vstack((actions_other[:t_steps], actions_other[t_steps:])))
     actions_self = np.transpose(np.vstack((actions_self[:t_steps], actions_self[t_steps:])))

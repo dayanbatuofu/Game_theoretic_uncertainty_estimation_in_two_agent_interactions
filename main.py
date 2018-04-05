@@ -5,25 +5,36 @@ from collision_box import Collision_Box
 import numpy as np
 import pygame as pg
 
+BLACK       = (  0,  0,  0)
+GREY        = (200,200,200)
+MAGENTA     = (255,  0,255)
+TEAL        = (  0,255,255)
+GREEN       = (  0,255,  0)
+
 class Main():
 
     def __init__(self):
 
         self.duration = 1800
 
-        self.P = C.PARAMETERSET_2  # Scenario parameters choice
+        self.P = C.PARAMETERSET_1  # Scenario parameters choice
 
         pg.init()
-        self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH, self.P.SCREEN_HEIGHT))
-        self.human_image = pg.transform.rotate(pg.image.load("assets/red_car_sized.png"), self.P.HUMAN_ORIENTATION)
-        self.machine_image = pg.transform.rotate(pg.image.load("assets/blue_car_sized.png"), self.P.MACHINE_ORIENTATION)
+        self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
+        self.human_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/red_car_sized.png"),
+                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE),
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE))), self.P.HUMAN_ORIENTATION)
+        self.machine_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/blue_car_sized.png"),
+                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE),
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE))), self.P.MACHINE_ORIENTATION)
         self.coordinates_image = pg.image.load("assets/coordinates.png")
+        self.origin = np.array([0, 0])
 
-        human_collision_box = Collision_Box(self.human_image.get_width() / self.P.COORDINATE_SCALE, self.human_image.get_height() / self.P.COORDINATE_SCALE)
-        machine_collision_box = Collision_Box(self.machine_image.get_width() / self.P.COORDINATE_SCALE, self.machine_image.get_height() / self.P.COORDINATE_SCALE)
+        human_collision_box = Collision_Box(self.human_image.get_width() / C.COORDINATE_SCALE, self.human_image.get_height() / C.COORDINATE_SCALE)
+        machine_collision_box = Collision_Box(self.machine_image.get_width() / C.COORDINATE_SCALE, self.machine_image.get_height() / C.COORDINATE_SCALE)
 
-        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
-        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
+        # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box, self.human_vehicle.get_state(0))
 
 
@@ -75,8 +86,12 @@ class Main():
 
         self.screen.fill((255, 255, 255))
 
-        # Draw Images
+        self.origin = self.machine_vehicle.get_state()[0:2]
 
+        # Draw Axis Lines
+        self.draw_axes()
+
+        # Draw Images
         human_pos = self.human_vehicle.get_state(self.frame)[0:2]
         human_pos_pixels = self.c2p(human_pos)
         human_car_size = self.human_image.get_size()
@@ -90,62 +105,65 @@ class Main():
         coordinates_size = self.coordinates_image.get_size()
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT - coordinates_size[1] - 10 / 2))
 
-        # Draw human predicted state
-        for i in range(len(self.machine_vehicle.human_previous_action_set)):
-            human_predicted_state = self.machine_vehicle.human_states[-1] + np.sum(self.machine_vehicle.human_previous_action_set[:i+1],axis=0)
-            human_predicted_state_pixels = self.c2p(human_predicted_state)
-            pg.draw.circle(self.screen, (0, 255 - i*10, 255 - i*10), human_predicted_state_pixels, 6)
-
         # Draw machine decided state
+        machine_predicted_state_pixels = []
         for i in range(len(self.machine_vehicle.machine_previous_action_set)):
             machine_predicted_state = self.machine_vehicle.machine_states[-1] + np.sum(self.machine_vehicle.machine_previous_action_set[:i+1],axis=0)
-            machine_predicted_state_pixels = self.c2p(machine_predicted_state)
-            pg.draw.circle(self.screen, (0, 255 - i*10, 0), machine_predicted_state_pixels, 6)
+            machine_predicted_state_pixels.append(self.c2p(machine_predicted_state))
+        pg.draw.lines(self.screen, GREEN, False, machine_predicted_state_pixels, 6)
+
+        # Draw human predicted state
+        human_predicted_state_pixels = []
+        for i in range(len(self.machine_vehicle.human_previous_action_set)):
+            human_predicted_state = self.machine_vehicle.human_states[-1] + np.sum(self.machine_vehicle.human_previous_action_set[:i+1],axis=0)
+            human_predicted_state_pixels.append(self.c2p(human_predicted_state))
+        pg.draw.lines(self.screen, TEAL, False, human_predicted_state_pixels, 6)
 
         # Draw machine predicted state
+        machine_predicted_state_pixels = []
         for i in range(len(self.machine_vehicle.machine_previous_predicted_action_set)):
             machine_predicted_state = self.machine_vehicle.machine_states[-1] + np.sum(self.machine_vehicle.machine_previous_predicted_action_set[:i+1],axis=0)
-            machine_predicted_state_pixels = self.c2p(machine_predicted_state)
-            pg.draw.circle(self.screen, (255 - i*10, 0, 255 - i*10), machine_predicted_state_pixels, 4)
-
-        # Draw predicted human intent
-        pos = self.c2p(human_pos + self.machine_vehicle.human_predicted_theta[1:3])
-        pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
-        pg.draw.circle(self.screen, (0, 255, 255), pos, 6)
+            machine_predicted_state_pixels.append(self.c2p(machine_predicted_state))
+        pg.draw.lines(self.screen, MAGENTA, False, machine_predicted_state_pixels, 4)
 
         # Draw machine intent
         pos = self.c2p(machine_pos + self.machine_vehicle.machine_theta[1:3])
         pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
-        pg.draw.circle(self.screen, (0, 255, 0), pos, 6)
+        pg.draw.circle(self.screen, GREEN, pos, 6)
+
+        # Draw predicted human intent
+        pos = self.c2p(human_pos + self.machine_vehicle.human_predicted_theta[1:3])
+        pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
+        pg.draw.circle(self.screen, TEAL, pos, 6)
 
         # Draw predicted human's prediction of machine's intent
         pos = self.c2p(machine_pos + self.machine_vehicle.machine_predicted_theta[1:3])
         pg.draw.circle(self.screen, (0, 0, 0), pos, 5)
-        pg.draw.circle(self.screen, (255, 0, 255), pos, 4)
+        pg.draw.circle(self.screen, MAGENTA, pos, 4)
 
         # Annotations
 
         font = pg.font.SysFont("Arial", 15)
-        label = font.render("Human State: (%5.2f , %5.2f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
+        label = font.render("Human State: (%5.4f , %5.4f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 10))
 
-        label = font.render("Machine State: (%5.2f , %5.2f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
+        label = font.render("Machine State: (%5.4f , %5.4f)" % (machine_pos[0], machine_pos[1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 30))
 
-        label = font.render("Machine Theta: (%5.2f, %5.2f, %5.2f)" % (self.machine_vehicle.machine_theta[0], self.machine_vehicle.machine_theta[1], self.machine_vehicle.machine_theta[2]), 1, (0, 0, 0))
+        label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (self.machine_vehicle.machine_theta[0], self.machine_vehicle.machine_theta[1], self.machine_vehicle.machine_theta[2]), 1, (0, 0, 0))
         self.screen.blit(label, (30, 60))
-        pg.draw.circle(self.screen, (0, 0, 0), (15, 65), 5)
-        pg.draw.circle(self.screen, (0, 255, 0), (15, 65), 4)
+        pg.draw.circle(self.screen, BLACK, (15, 70), 5)
+        pg.draw.circle(self.screen, GREEN, (15, 70), 4)
 
-        label = font.render("P Human Theta: (%5.2f, %5.2f, %5.2f)" % (self.machine_vehicle.human_predicted_theta[0], self.machine_vehicle.human_predicted_theta[1], self.machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
+        label = font.render("P Human Theta: (%5.4f, %5.4f, %5.4f)" % (self.machine_vehicle.human_predicted_theta[0], self.machine_vehicle.human_predicted_theta[1], self.machine_vehicle.human_predicted_theta[2]), 1, (0, 0, 0))
         self.screen.blit(label, (30, 80))
-        pg.draw.circle(self.screen, (0, 0, 0), (15, 85), 5)
-        pg.draw.circle(self.screen, (0, 255, 255), (15, 85), 4)
+        pg.draw.circle(self.screen, BLACK, (15, 90), 5)
+        pg.draw.circle(self.screen, (0, 255, 255), (15, 90), 4)
 
-        label = font.render("PP Machine Theta: (%5.2f, %5.2f, %5.2f)" % (self.machine_vehicle.machine_predicted_theta[0], self.machine_vehicle.machine_predicted_theta[1], self.machine_vehicle.machine_predicted_theta[2]), 1, (0, 0, 0))
+        label = font.render("PP Machine Theta: (%5.4f, %5.4f, %5.4f)" % (self.machine_vehicle.machine_predicted_theta[0], self.machine_vehicle.machine_predicted_theta[1], self.machine_vehicle.machine_predicted_theta[2]), 1, (0, 0, 0))
         self.screen.blit(label, (30, 100))
-        pg.draw.circle(self.screen, (0, 0, 0), (15, 105), 5)
-        pg.draw.circle(self.screen, (255, 0, 255), (15, 105), 4)
+        pg.draw.circle(self.screen, BLACK, (15, 110), 5)
+        pg.draw.circle(self.screen, MAGENTA, (15, 110), 4)
 
         # label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
         # screen.blit(label, (10, 70))
@@ -165,9 +183,37 @@ class Main():
                                                                 self.machine_vehicle.human_predicted_theta[1],
                                                                 self.machine_vehicle.human_predicted_theta[2]))
 
+    def draw_axes(self):
+
+        spacing = int(C.AXES_SHOW * C.COORDINATE_SCALE)
+        offset_x = int((self.origin[1] * C.COORDINATE_SCALE) % spacing)
+        offset_y = int((self.origin[0] * C.COORDINATE_SCALE) % spacing)
+
+        distance_x = np.floor((self.origin[0] * C.COORDINATE_SCALE) / spacing)
+        distance_y = np.floor((self.origin[1] * C.COORDINATE_SCALE) / spacing)
+
+        num_vaxes = int(self.P.SCREEN_WIDTH * C.COORDINATE_SCALE / spacing)
+        num_haxes = int(self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE / spacing)
+
+        font = pg.font.SysFont("Arial", 15)
+
+        # Vertical
+        for i in range(num_vaxes):
+            pg.draw.line(self.screen, GREY, (offset_x + i*spacing, 0), (offset_x + i*spacing, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 1)
+            label = (distance_y + 1 + i) * C.AXES_SHOW - self.P.SCREEN_HEIGHT/2
+            text = font.render("%3.2f" % label, 1, GREY)
+            self.screen.blit(text, (10 + offset_x + (i * spacing), 10))
+
+        # Horizontal
+        for i in range(num_haxes):
+            pg.draw.line(self.screen, GREY, (0, offset_y + i*spacing), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, offset_y + i*spacing), 1)
+            label = (distance_x + 1 + i) * C.AXES_SHOW - self.P.SCREEN_WIDTH/2
+            text = font.render("%3.2f" % label, 1, GREY)
+            self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE) - (i * spacing)))
+
     def c2p(self, coordinates):
-        x = int(self.P.COORDINATE_SCALE * coordinates[1] + self.P.ORIGIN[0])
-        y = int(self.P.COORDINATE_SCALE * -coordinates[0] + self.P.ORIGIN[1])
+        x = int(C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH/2))
+        y = int(C.COORDINATE_SCALE * (-coordinates[0] + self.origin[0] + self.P.SCREEN_HEIGHT/2))
         return np.array([x, y])
 
 

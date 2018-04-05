@@ -5,12 +5,12 @@ class CONSTANTS:
     # DISPLAY
     FPS = 10
 
-    CAR_WIDTH = 100
-    CAR_LENGTH = 200
-    LANE_WIDTH = 150
+    CAR_WIDTH = 0.66
+    CAR_LENGTH = 1.33
 
-    # SPEEDS
-    VEHICLE_MOVEMENT_SPEED = 0.02
+    # ORIGIN
+    AXES_SHOW = 0.5
+    COORDINATE_SCALE = 150
 
     # POSITION BOUNDS
     Y_MINIMUM = 0
@@ -18,39 +18,34 @@ class CONSTANTS:
 
 
     # OPTIMIZATION
+    ACTION_TIMESTEPS = 100  # 5 seconds
+    ACTION_TURNANGLE = 30  # degrees
+    ACTION_NUMPOINTS = 100
 
-    ACTION_PREDICTION_MULTIPLIER = 10
-
-    T_FUTURE = 10
     T_PAST = 10
 
-    THETA_LIMITER_X = 0.1
-    THETA_LIMITER_Y = 0.1
+    THETA_LIMITER_X = 0.01
+    THETA_LIMITER_Y = 0.01
 
     LOSS_THRESHOLD = 0.01
 
     LEARNING_RATE = 0.1
 
-    # DIVIDE BY ZERO CATCH
-    EPS = 0.0000001
-
     class PARAMETERSET_1:
 
         # DISPLAY
-        SCREEN_WIDTH = 300
-        SCREEN_HEIGHT = 800
+        SCREEN_WIDTH = 4
+        SCREEN_HEIGHT = 5
 
-        # ORIGIN
-        ORIGIN = np.array([SCREEN_WIDTH/2 - 75, SCREEN_HEIGHT/2])
-        COORDINATE_SCALE = 150
-
+        # SPEED
+        VEHICLE_MAX_SPEED = 0.1
 
         # INITIAL CONDITIONS
         MACHINE_INITIAL_POSITION = np.array([-1, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([30, 0, 0])
-        MACHINE_INTENT = np.array([10, 1, 0])
+        HUMAN_INTENT = np.array([1, 1, -1])
+        MACHINE_INTENT = np.array([0.001, 1, 0])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 0
@@ -67,20 +62,20 @@ class CONSTANTS:
         Y_CLEARANCE_WEIGHT = 0.3
 
     class PARAMETERSET_2:
-        # DISPLAY
-        SCREEN_WIDTH = 1000
-        SCREEN_HEIGHT = 1000
 
-        # ORIGIN
-        ORIGIN = np.array([SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2])
-        COORDINATE_SCALE = 150
+        # DISPLAY
+        SCREEN_WIDTH = 5
+        SCREEN_HEIGHT = 5
+
+        # SPEED
+        VEHICLE_MAX_SPEED = 0.1
 
         # INITIAL CONDITIONS
         MACHINE_INITIAL_POSITION = np.array([-2.5, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([30, 0, -1])
-        MACHINE_INTENT = np.array([10, 1, 0])
+        HUMAN_INTENT = np.array([1, 0, -1])
+        MACHINE_INTENT = np.array([1, 1, 0])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 90
@@ -95,6 +90,12 @@ class CONSTANTS:
 
         # LOSS WEIGHT
         Y_CLEARANCE_WEIGHT = 1
+
+class MATRICES:
+
+    LOWER_TRIANGULAR_MATRIX = np.zeros((CONSTANTS.ACTION_NUMPOINTS, CONSTANTS.ACTION_NUMPOINTS))
+    LOWER_TRIANGULAR_MATRIX[np.tril_indices(CONSTANTS.ACTION_NUMPOINTS, 0)] = 1
+
 
 
 
