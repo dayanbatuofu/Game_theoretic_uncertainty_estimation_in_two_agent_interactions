@@ -225,7 +225,6 @@ class MachineVehicle:
                                                                  s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
 
         # Define action loss
-        #TODO: check with Steven: theta should be in [0,10] if trajectory can go to 10?
         intent_loss = np.square(np.linalg.norm(actions_self - theta_self[1:3], axis=1))
 
         return np.average(state_loss) + theta_self[0] * np.average(intent_loss) # Return weighted sum
