@@ -175,6 +175,8 @@ class MachineVehicle:
         trajectory_self = initial_trajectory_self
         predicted_trajectory_self = initial_predicted_trajectory_self
 
+
+
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
             iter_count += 1
@@ -191,7 +193,11 @@ class MachineVehicle:
             # Estimate human actions
             optimization_results = scipy.optimize.minimize(self.loss_func, trajectory_other, bounds=bounds_other, constraints=cons_other,
                                                            args=(self.P, s_self, s_other, predicted_trajectory_self, theta_other, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_self, box_other, orientation_other))
+
             trajectory_other = optimization_results.x
+
+            self.loss_func(trajectory_other, self.P, s_self, s_other, predicted_trajectory_self, theta_other, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_self, box_other, orientation_other)
+
             loss_value = optimization_results.fun
 
         # Estimate machine actions
