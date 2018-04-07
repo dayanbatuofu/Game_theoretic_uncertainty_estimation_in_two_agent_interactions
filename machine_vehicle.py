@@ -144,27 +144,27 @@ class MachineVehicle:
 
         if defcon_other_x is not None:
             if defcon_other_x[0] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: s_other[0] - box_other.height/2 + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_other_x[0]})
+                cons_other.append({'type': 'ineq','fun': lambda x: s_other[0] + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_other_x[0]})
             if defcon_other_x[1] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[0] - box_other.height/2 - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_other_x[1]})
+                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[0] - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_other_x[1]})
 
         if defcon_other_y is not None:
             if defcon_other_y[0] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: s_other[1]  - box_other.width/2 + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_other_y[0]})
+                cons_other.append({'type': 'ineq','fun': lambda x: s_other[1] + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_other_y[0]})
             if defcon_other_y[1] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[1] - box_other.width/2 - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_other_y[1]})
+                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[1] - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_other_y[1]})
 
         if defcon_self_x is not None:
             if defcon_self_x[0] is not None:
-                cons_self.append({'type': 'ineq','fun': lambda x: s_self[0]  - box_self.height/2 + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_self_x[0]})
+                cons_self.append({'type': 'ineq','fun': lambda x: s_self[0] + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_self_x[0]})
             if defcon_self_x[1] is not None:
-                cons_self.append({'type': 'ineq','fun': lambda x: -s_self[0] - box_self.height/2 - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_self_x[1]})
+                cons_self.append({'type': 'ineq','fun': lambda x: -s_self[0] - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_self_x[1]})
 
         if defcon_self_y is not None:
             if defcon_self_y[0] is not None:
-                    cons_self.append({'type': 'ineq','fun': lambda x: s_self[1] - box_self.width/2 + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_self_y[0]})
+                    cons_self.append({'type': 'ineq','fun': lambda x: s_self[1] + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_self_y[0]})
             if defcon_self_y[1] is not None:
-                    cons_self.append({'type': 'ineq','fun': lambda x: -s_self[1] - box_self.width/2 - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_self_y[1]})
+                    cons_self.append({'type': 'ineq','fun': lambda x: -s_self[1] - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_self_y[1]})
 
 
         loss_value = 0
@@ -175,14 +175,18 @@ class MachineVehicle:
         trajectory_self = initial_trajectory_self
         predicted_trajectory_self = initial_predicted_trajectory_self
 
-        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
+        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
             iter_count += 1
 
             # Estimate human's estimated machine actions
             optimization_results = scipy.optimize.minimize(self.loss_func, predicted_trajectory_self, bounds=bounds_self, constraints=cons_self,
-                                                           args=(self.P, s_other, s_self, initial_trajectory_other, self.machine_predicted_theta, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self))
+                                                           args=(self.P, s_other, s_self, trajectory_other, self.machine_predicted_theta, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self))
+
             predicted_trajectory_self = optimization_results.x
+
+            self.loss_func(predicted_trajectory_self, self.P, s_other, s_self, trajectory_other, self.machine_predicted_theta, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self)
+
 
             # Estimate human actions
             optimization_results = scipy.optimize.minimize(self.loss_func, trajectory_other, bounds=bounds_other, constraints=cons_other,
@@ -212,9 +216,10 @@ class MachineVehicle:
 
         # Define state loss
         state_loss = np.reciprocal(box_self.get_minimum_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
-                                                                 s_other - np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
+                                                                 s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
 
         # Define action loss
+        #TODO: check with Steven: theta should be in [0,10] if trajectory can go to 10?
         intent_loss = np.square(np.linalg.norm(actions_self - theta_self[1:3], axis=1))
 
         return np.average(state_loss) + theta_self[0] * np.average(intent_loss) # Return weighted sum
@@ -338,5 +343,5 @@ class MachineVehicle:
         curve = bezier.Curve(nodes, degree=2)
 
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_NUMPOINTS + 1)))
-
+        #TODO: skip state?
         return np.diff(positions, n=1, axis=0)

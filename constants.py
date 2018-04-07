@@ -38,14 +38,15 @@ class CONSTANTS:
         SCREEN_HEIGHT = 5
 
         # SPEED
-        VEHICLE_MAX_SPEED = 0.1
+        VEHICLE_MAX_SPEED = 0.01
+        #TODO: check with Steven: changed from 0.1 to 0.01 so that the total trajectory is less than 1
 
         # INITIAL CONDITIONS
         MACHINE_INITIAL_POSITION = np.array([-1, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([1, 1, -1])
-        MACHINE_INTENT = np.array([0.001, 1, 0])
+        HUMAN_INTENT = np.array([1, 1, 0])
+        MACHINE_INTENT = np.array([1, 1, 0])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 0
