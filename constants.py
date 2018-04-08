@@ -44,8 +44,8 @@ class CONSTANTS:
         MACHINE_INITIAL_POSITION = np.array([-1, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([1000, 0.1, -0.1])
-        MACHINE_INTENT = np.array([10, 0.1, 0])
+        HUMAN_INTENT = np.array([1000, 5., -11])
+        MACHINE_INTENT = np.array([1000, 5, 0])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 0

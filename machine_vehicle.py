@@ -58,7 +58,12 @@ class MachineVehicle:
         ########## Update human characteristics here ########
 
         if len(self.human_states) > C.T_PAST:
-            human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
+            # human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
+
+            ''' DEBUG ONLY '''
+            human_predicted_theta = C.PARAMETERSET_1.HUMAN_INTENT
+            machine_estimated_theta = C.PARAMETERSET_1.MACHINE_INTENT
+            ''' DEBUG ONLY '''
 
             self.human_predicted_theta = human_predicted_theta
             self.machine_predicted_theta = machine_estimated_theta
@@ -103,9 +108,12 @@ class MachineVehicle:
         Identifier = 1 for machine call"""
 
         # Initialize actions
-        initial_trajectory_other = (np.linalg.norm(a0_other[-1]), np.arctan2(a0_other[-1, 0], a0_other[-1, 1]))
-        initial_trajectory_self = (np.linalg.norm(a0_self[-1]), np.arctan2(a0_self[-1, 0], a0_self[-1, 1]))
-        initial_predicted_trajectory_self = (np.linalg.norm(a0_predicted_self[-1]), np.arctan2(a0_predicted_self[-1, 0], a0_predicted_self[-1, 1]))
+        # initial_trajectory_other = (np.linalg.norm(a0_other[-1]), np.arctan2(a0_other[-1, 0], a0_other[-1, 1]))
+        # initial_trajectory_self = (np.linalg.norm(a0_self[-1]), np.arctan2(a0_self[-1, 0], a0_self[-1, 1]))
+        # initial_predicted_trajectory_self = (np.linalg.norm(a0_predicted_self[-1]), np.arctan2(a0_predicted_self[-1, 0], a0_predicted_self[-1, 1]))
+        initial_trajectory_other = theta_other[1:3]
+        initial_trajectory_self = theta_self[1:3]
+        initial_predicted_trajectory_self = self.machine_predicted_theta[1:3]
 
         if identifier == 0:  # If human is calling
             defcon_other_x = self.P.BOUND_MACHINE_X
@@ -177,22 +185,22 @@ class MachineVehicle:
 
         guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
 
-        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
+        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
             iter_count += 1
 
             # Estimate human's estimated machine actions
-            predicted_trajectory_self, _ = self.multisearch(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
+            predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
                                                          cons_self, s_other, s_self, trajectory_other,
                                                          self.machine_predicted_theta, box_other, box_self, orientation_self)
 
             # Estimate human actions
-            trajectory_other, loss_value = self.multisearch(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
+            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
                                                         s_other, predicted_trajectory_self, theta_other, box_self,
                                                         box_other, orientation_other)
 
         # Estimate machine actions
-        trajectory_self, _ = self.multisearch(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
+        trajectory_self, _ = self.multi_search(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
                                              cons_self, s_other, s_self, trajectory_other,
                                              theta_self, box_other, box_self, orientation_self)
 
@@ -204,7 +212,7 @@ class MachineVehicle:
 
         return actions_self, actions_other, predicted_actions_self
 
-    def multisearch(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_s):
+    def multi_search(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_s):
 
         """ run multiple searches with different initial guesses """
 
@@ -218,6 +226,10 @@ class MachineVehicle:
             loss_value_set = np.append(loss_value_set, optimization_results.fun)
 
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
+
+
+        # self.loss_func((0,0), self.P, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_s)
+
         return trajectory, np.min(loss_value_set)
 
 
@@ -233,7 +245,8 @@ class MachineVehicle:
                                                                  s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
 
         # Define action loss
-        intent_loss = np.square(np.linalg.norm(actions_self - theta_self[1:3], axis=1))
+        intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation)
+        intent_loss = np.square(np.linalg.norm(actions_self - intended_trajectory, axis=1))
 
         return np.average(state_loss) + theta_self[0] * np.average(intent_loss) # Return weighted sum
 
