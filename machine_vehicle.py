@@ -175,35 +175,26 @@ class MachineVehicle:
         trajectory_self = initial_trajectory_self
         predicted_trajectory_self = initial_predicted_trajectory_self
 
+        guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
 
-
-        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
+        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 1:
             loss_value_old = loss_value
             iter_count += 1
 
             # Estimate human's estimated machine actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, predicted_trajectory_self, bounds=bounds_self, constraints=cons_self,
-                                                           args=(self.P, s_other, s_self, trajectory_other, self.machine_predicted_theta, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self))
-
-            predicted_trajectory_self = optimization_results.x
-
-            self.loss_func(predicted_trajectory_self, self.P, s_other, s_self, trajectory_other, self.machine_predicted_theta, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self)
-
+            predicted_trajectory_self, _ = self.multisearch(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
+                                                         cons_self, s_other, s_self, trajectory_other,
+                                                         self.machine_predicted_theta, box_other, box_self, orientation_self)
 
             # Estimate human actions
-            optimization_results = scipy.optimize.minimize(self.loss_func, trajectory_other, bounds=bounds_other, constraints=cons_other,
-                                                           args=(self.P, s_self, s_other, predicted_trajectory_self, theta_other, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_self, box_other, orientation_other))
-
-            trajectory_other = optimization_results.x
-
-            self.loss_func(trajectory_other, self.P, s_self, s_other, predicted_trajectory_self, theta_other, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_self, box_other, orientation_other)
-
-            loss_value = optimization_results.fun
+            trajectory_other, loss_value = self.multisearch(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
+                                                        s_other, predicted_trajectory_self, theta_other, box_self,
+                                                        box_other, orientation_other)
 
         # Estimate machine actions
-        optimization_results = scipy.optimize.minimize(self.loss_func, trajectory_self, bounds=bounds_self, constraints=cons_self,
-                                                       args=(self.P, s_other, s_self, trajectory_other, theta_self, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_other, box_self, orientation_self))
-        trajectory_self = optimization_results.x
+        trajectory_self, _ = self.multisearch(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
+                                             cons_self, s_other, s_self, trajectory_other,
+                                             theta_self, box_other, box_self, orientation_self)
 
 
         # Interpolate for output
@@ -212,6 +203,23 @@ class MachineVehicle:
         predicted_actions_self = self.interpolate_from_trajectory(predicted_trajectory_self, s_self, orientation_self)
 
         return actions_self, actions_other, predicted_actions_self
+
+    def multisearch(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_s):
+
+        """ run multiple searches with different initial guesses """
+
+        trajectory_set = np.empty((0,2)) #TODO: need to generalize
+        loss_value_set = []
+
+        for guess in guess_set:
+            optimization_results = scipy.optimize.minimize(self.loss_func, guess, bounds=bounds, constraints=cons,
+                                                           args=(self.P, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_s))
+            trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
+            loss_value_set = np.append(loss_value_set, optimization_results.fun)
+
+        trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
+        return trajectory, np.min(loss_value_set)
+
 
     def loss_func(self, trajectory, P, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation):
 
