@@ -182,17 +182,17 @@ class MachineVehicle:
             iter_count += 1
 
             # Estimate human's estimated machine actions
-            predicted_trajectory_self, _ = self.multisearch(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
+            predicted_trajectory_self, _ = self.multisearch(np.append(bounds_self, [predicted_trajectory_self], axis=0), bounds_self,
                                                          cons_self, s_other, s_self, trajectory_other,
                                                          self.machine_predicted_theta, box_other, box_self, orientation_self)
 
             # Estimate human actions
-            trajectory_other, loss_value = self.multisearch(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
+            trajectory_other, loss_value = self.multisearch(np.append(bounds_other, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
                                                         s_other, predicted_trajectory_self, theta_other, box_self,
                                                         box_other, orientation_other)
 
         # Estimate machine actions
-        trajectory_self, _ = self.multisearch(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
+        trajectory_self, _ = self.multisearch(np.append(bounds_self, [trajectory_self], axis=0), bounds_self,
                                              cons_self, s_other, s_self, trajectory_other,
                                              theta_self, box_other, box_self, orientation_self)
 
