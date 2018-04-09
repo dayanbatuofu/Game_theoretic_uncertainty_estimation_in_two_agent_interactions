@@ -104,7 +104,7 @@ class Main():
         self.screen.blit(self.machine_image, (machine_pos_pixels[0] - machine_car_size[0] / 2, machine_pos_pixels[1] - machine_car_size[1] / 2))
 
         coordinates_size = self.coordinates_image.get_size()
-        self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT - coordinates_size[1] - 10 / 2))
+        self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE - coordinates_size[1] - 10 / 2))
 
         # Draw machine decided state
         machine_predicted_state_pixels = []
@@ -143,7 +143,6 @@ class Main():
         pg.draw.circle(self.screen, MAGENTA, pos, 4)
 
         # Annotations
-
         font = pg.font.SysFont("Arial", 15)
         label = font.render("Human State: (%5.4f , %5.4f)" % (human_pos[0], human_pos[1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 10))
@@ -166,10 +165,17 @@ class Main():
         pg.draw.circle(self.screen, BLACK, (15, 110), 5)
         pg.draw.circle(self.screen, MAGENTA, (15, 110), 4)
 
-        # label = font.render("Effort: %f" % (machine_vehicle.human_predicted_theta[3]), 1, (0, 0, 0))
-        # screen.blit(label, (10, 70))
         label = font.render("Frame: %i" % (self.frame + 1), 1, (0, 0, 0))
         self.screen.blit(label, (10, 130))
+
+        label = font.render("Machine Action: (%5.4f, %5.4f)" % (self.machine_vehicle.machine_previous_action_set[0][0], self.machine_vehicle.machine_previous_action_set[0][1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 160))
+
+        label = font.render("P Human Action: (%5.4f, %5.4f)" % (self.machine_vehicle.human_previous_action_set[0][0], self.machine_vehicle.human_previous_action_set[0][1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 180))
+
+        label = font.render("PP Machine Action: (%5.4f, %5.4f)" % (self.machine_vehicle.machine_previous_predicted_action_set[0][0], self.machine_vehicle.machine_previous_predicted_action_set[0][1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 200))
 
         pg.display.flip()
 
