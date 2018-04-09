@@ -67,12 +67,12 @@ class Collision_Box():
 
             angle = np.arctan2(other_pos[i, 1] - my_pos[i, 1], other_pos[i, 0] - other_pos[i, 0])
 
-            my_rad = self.radius_at_angle(angle, self.width*2, self.height*2)
-            other_rad = self.radius_at_angle(angle, other_box.width*2, other_box.height*2)
+            my_rad = self.radius_at_angle(angle, self.width, self.height)
+            other_rad = self.radius_at_angle(angle, other_box.width, other_box.height)
 
-            center_distance = math.hypot(other_pos[i, 0] - my_pos[i, 0], other_pos[i, 1] - other_pos[i, 1])
+            center_distance = math.hypot(other_pos[i, 0] - my_pos[i, 0], other_pos[i, 1] - my_pos[i, 1])
 
-            distance.append(distance - my_rad - other_rad)
+            distance.append(center_distance - my_rad - other_rad)
 
         return np.array(distance)
 
