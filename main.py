@@ -2,6 +2,7 @@ from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
 from machine_vehicle import MachineVehicle
 from collision_box import Collision_Box
+import math
 import numpy as np
 import pygame as pg
 
@@ -24,9 +25,13 @@ class Main():
         self.human_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/red_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE),
                                                                    int(C.CAR_LENGTH * C.COORDINATE_SCALE))), self.P.HUMAN_ORIENTATION)
+        self.human_image = pg.transform.scale(self.human_image,(int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
+                                                                int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM)))
         self.machine_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/blue_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE),
                                                                    int(C.CAR_LENGTH * C.COORDINATE_SCALE))), self.P.MACHINE_ORIENTATION)
+        self.machine_image = pg.transform.scale(self.machine_image, (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
+                                                                     int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM)))
         self.coordinates_image = pg.image.load("assets/coordinates.png")
         self.origin = np.array([0, 0])
 
@@ -185,35 +190,41 @@ class Main():
 
     def draw_axes(self):
 
-        spacing = int(C.AXES_SHOW * C.COORDINATE_SCALE)
-        offset_x = int((self.origin[1] * C.COORDINATE_SCALE) % spacing)
-        offset_y = int((self.origin[0] * C.COORDINATE_SCALE) % spacing)
+        rel_coor_scale = C.COORDINATE_SCALE * C.ZOOM
+        rel_screen_width = self.P.SCREEN_WIDTH / C.ZOOM
+        rel_screen_height = self.P.SCREEN_HEIGHT / C.ZOOM
 
-        distance_x = np.floor((self.origin[0] * C.COORDINATE_SCALE) / spacing)
-        distance_y = np.floor((self.origin[1] * C.COORDINATE_SCALE) / spacing)
+        spacing = int(C.AXES_SHOW * rel_coor_scale)
+        offset_x = int(math.fmod(self.origin[1] * rel_coor_scale, spacing))
+        offset_y = int(math.fmod(self.origin[0] * rel_coor_scale, spacing))
 
-        num_vaxes = int(self.P.SCREEN_WIDTH * C.COORDINATE_SCALE / spacing)
-        num_haxes = int(self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE / spacing)
+        distance_x = int((self.origin[1] * rel_coor_scale) / spacing)
+        distance_y = int((self.origin[0] * rel_coor_scale) / spacing)
+
+        num_vaxes = int(rel_screen_width * rel_coor_scale / spacing) + 1
+        num_haxes = int(rel_screen_height * rel_coor_scale / spacing) + 1
 
         font = pg.font.SysFont("Arial", 15)
 
         # Vertical
         for i in range(num_vaxes):
             pg.draw.line(self.screen, GREY, (offset_x + i*spacing, 0), (offset_x + i*spacing, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 1)
-            label = (distance_y + 1 + i) * C.AXES_SHOW - self.P.SCREEN_HEIGHT/2
+            label = (distance_x + 1 + i) * C.AXES_SHOW - rel_screen_width/2
             text = font.render("%3.2f" % label, 1, GREY)
             self.screen.blit(text, (10 + offset_x + (i * spacing), 10))
 
         # Horizontal
         for i in range(num_haxes):
             pg.draw.line(self.screen, GREY, (0, offset_y + i*spacing), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, offset_y + i*spacing), 1)
-            label = (distance_x + 1 + i) * C.AXES_SHOW - self.P.SCREEN_WIDTH/2
+            label = (distance_y + 1 + i) * C.AXES_SHOW - rel_screen_height/2
             text = font.render("%3.2f" % label, 1, GREY)
-            self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE) - (i * spacing)))
+            self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
 
     def c2p(self, coordinates):
-        x = int(C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH/2))
-        y = int(C.COORDINATE_SCALE * (-coordinates[0] + self.origin[0] + self.P.SCREEN_HEIGHT/2))
+        x = C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH/2)
+        y = C.COORDINATE_SCALE * (-coordinates[0] + self.origin[0] + self.P.SCREEN_HEIGHT/2)
+        x = int((x - self.P.SCREEN_WIDTH * C.COORDINATE_SCALE * 0.5) * C.ZOOM + self.P.SCREEN_WIDTH * C.COORDINATE_SCALE * 0.5)
+        y = int((y - self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE * 0.5) * C.ZOOM + self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE * 0.5)
         return np.array([x, y])
 
 

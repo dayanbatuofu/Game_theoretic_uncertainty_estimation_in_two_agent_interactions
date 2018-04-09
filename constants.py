@@ -4,13 +4,14 @@ class CONSTANTS:
 
     # DISPLAY
     FPS = 10
+    AXES_SHOW = 0.5
+    COORDINATE_SCALE = 150
 
     CAR_WIDTH = 0.66
     CAR_LENGTH = 1.33
 
-    # ORIGIN
-    AXES_SHOW = 0.5
-    COORDINATE_SCALE = 150
+    ZOOM = 0.5
+
 
     # POSITION BOUNDS
     Y_MINIMUM = 0
