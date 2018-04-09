@@ -69,7 +69,7 @@ class CONSTANTS:
         SCREEN_HEIGHT = 5
 
         # SPEED
-        VEHICLE_MAX_SPEED = 0.1
+        VEHICLE_MAX_SPEED = 0.05
 
         # INITIAL CONDITIONS
         MACHINE_INITIAL_POSITION = np.array([-2.5, 0])

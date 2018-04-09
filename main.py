@@ -23,15 +23,11 @@ class Main():
         pg.init()
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
         self.human_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/red_car_sized.png"),
-                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE))), self.P.HUMAN_ORIENTATION)
-        self.human_image = pg.transform.scale(self.human_image,(int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM)))
+                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P.HUMAN_ORIENTATION)
         self.machine_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/blue_car_sized.png"),
-                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE))), self.P.MACHINE_ORIENTATION)
-        self.machine_image = pg.transform.scale(self.machine_image, (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                     int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM)))
+                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P.MACHINE_ORIENTATION)
         self.coordinates_image = pg.image.load("assets/coordinates.png")
         self.origin = np.array([0, 0])
 
