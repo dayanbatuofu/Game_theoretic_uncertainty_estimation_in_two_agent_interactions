@@ -10,7 +10,7 @@ class CONSTANTS:
     CAR_WIDTH = 0.66
     CAR_LENGTH = 1.33
 
-    ZOOM = 0.5
+    ZOOM = 0.25
 
 
     # POSITION BOUNDS
@@ -30,7 +30,8 @@ class CONSTANTS:
 
     LOSS_THRESHOLD = 0.01
 
-    LEARNING_RATE = 0.1
+    LEARNING_RATE = 0.5
+    INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
     class PARAMETERSET_1:
 
@@ -42,11 +43,11 @@ class CONSTANTS:
         VEHICLE_MAX_SPEED = 0.1
 
         # INITIAL CONDITIONS
-        MACHINE_INITIAL_POSITION = np.array([-1, 0])
+        MACHINE_INITIAL_POSITION = np.array([-2, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([1000, 5., -11])
-        MACHINE_INTENT = np.array([1000, 5, 0])
+        HUMAN_INTENT = np.array([1000., 7.5, -7.7])
+        MACHINE_INTENT = np.array([1., 9.5, 0.])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 0
@@ -96,6 +97,9 @@ class MATRICES:
 
     LOWER_TRIANGULAR_MATRIX = np.zeros((CONSTANTS.ACTION_NUMPOINTS, CONSTANTS.ACTION_NUMPOINTS))
     LOWER_TRIANGULAR_MATRIX[np.tril_indices(CONSTANTS.ACTION_NUMPOINTS, 0)] = 1
+
+    LOWER_TRIANGULAR_SMALL = np.zeros((CONSTANTS.T_PAST, CONSTANTS.T_PAST))
+    LOWER_TRIANGULAR_SMALL[np.tril_indices(CONSTANTS.T_PAST, 0)] = 1
 
 
 

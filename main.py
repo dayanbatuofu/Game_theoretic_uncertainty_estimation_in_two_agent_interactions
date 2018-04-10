@@ -35,7 +35,7 @@ class Main():
         machine_collision_box = Collision_Box(self.machine_image.get_width() / C.COORDINATE_SCALE, self.machine_image.get_height() / C.COORDINATE_SCALE)
 
         # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
-        self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane_immediately.txt')
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box, self.human_vehicle.get_state(0))
 
 
@@ -128,17 +128,23 @@ class Main():
         pg.draw.lines(self.screen, MAGENTA, False, machine_predicted_state_pixels, 4)
 
         # Draw machine intent
-        pos = self.c2p(machine_pos + self.machine_vehicle.machine_theta[1:3])
+        x = self.machine_vehicle.machine_theta[1]*np.cos(np.deg2rad(self.machine_vehicle.machine_theta[2]))
+        y = self.machine_vehicle.machine_theta[1]*np.sin(np.deg2rad(self.machine_vehicle.machine_theta[2]))
+        pos = self.c2p(np.array(machine_pos) + [x, y])
         pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
         pg.draw.circle(self.screen, GREEN, pos, 6)
 
         # Draw predicted human intent
-        pos = self.c2p(human_pos + self.machine_vehicle.human_predicted_theta[1:3])
+        x = self.machine_vehicle.human_predicted_theta[1]*np.cos(np.deg2rad(self.machine_vehicle.human_predicted_theta[2]))
+        y = self.machine_vehicle.human_predicted_theta[1]*np.sin(np.deg2rad(self.machine_vehicle.human_predicted_theta[2]))
+        pos = self.c2p(np.array(human_pos) + [x, y])
         pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
         pg.draw.circle(self.screen, TEAL, pos, 6)
 
         # Draw predicted human's prediction of machine's intent
-        pos = self.c2p(machine_pos + self.machine_vehicle.machine_predicted_theta[1:3])
+        x = self.machine_vehicle.machine_predicted_theta[1]*np.cos(np.deg2rad(self.machine_vehicle.machine_predicted_theta[2]))
+        y = self.machine_vehicle.machine_predicted_theta[1]*np.sin(np.deg2rad(self.machine_vehicle.machine_predicted_theta[2]))
+        pos = self.c2p(np.array(machine_pos) + [x, y])
         pg.draw.circle(self.screen, (0, 0, 0), pos, 5)
         pg.draw.circle(self.screen, MAGENTA, pos, 4)
 

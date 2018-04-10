@@ -58,12 +58,12 @@ class MachineVehicle:
         ########## Update human characteristics here ########
 
         if len(self.human_states) > C.T_PAST:
-            # human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
+            human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
 
-            ''' DEBUG ONLY '''
-            human_predicted_theta = C.PARAMETERSET_1.HUMAN_INTENT
-            machine_estimated_theta = C.PARAMETERSET_1.MACHINE_INTENT
-            ''' DEBUG ONLY '''
+            # ''' DEBUG ONLY '''
+            # human_predicted_theta = C.PARAMETERSET_1.HUMAN_INTENT
+            # machine_estimated_theta = C.PARAMETERSET_1.MACHINE_INTENT
+            # ''' DEBUG ONLY '''
 
             self.human_predicted_theta = human_predicted_theta
             self.machine_predicted_theta = machine_estimated_theta
@@ -183,21 +183,24 @@ class MachineVehicle:
         trajectory_self = initial_trajectory_self
         predicted_trajectory_self = initial_predicted_trajectory_self
 
-        guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
+        # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
+        guess_set = np.empty((0,2))
 
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
             iter_count += 1
+
+            # Estimate human actions
+            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
+                                                        s_other, predicted_trajectory_self, theta_other, box_self,
+                                                        box_other, orientation_other)
 
             # Estimate human's estimated machine actions
             predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
                                                          cons_self, s_other, s_self, trajectory_other,
                                                          self.machine_predicted_theta, box_other, box_self, orientation_self)
 
-            # Estimate human actions
-            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
-                                                        s_other, predicted_trajectory_self, theta_other, box_self,
-                                                        box_other, orientation_other)
+
 
         # Estimate machine actions
         trajectory_self, _ = self.multi_search(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
@@ -255,96 +258,136 @@ class MachineVehicle:
         attributes of the human car """
 
         t_steps = C.T_PAST
-        s_self = self.human_states[-t_steps:]
-        s_other = self.machine_states[-t_steps:]
-        a_self = self.human_actions[-t_steps:]
-        a_other = self.machine_actions[-t_steps:]
+        s_self = np.array(self.human_states[-t_steps:])
+        s_other = np.array(self.machine_states[-t_steps:])
+        a_self = np.array(self.human_actions[-t_steps:])
+        a_other = np.array(self.machine_actions[-t_steps:])
         theta_self = self.human_predicted_theta
         theta_other = self.machine_predicted_theta
-        # nstate = len(s_other) #number of states
-        # alpha_self = theta_self[0]
-        # alpha_other = theta_other[0]
-        A = np.zeros((t_steps, t_steps))
-        A[np.tril_indices(t_steps, 0)] = 1 #lower tri 1s
-        B = np.zeros((t_steps, t_steps))
-        for i in range(t_steps-1):
-            B[i,range(i+1,t_steps)]= np.arange(t_steps-1-i,0,-1)
-        B = B + np.transpose(B) + np.diag(np.arange(t_steps,0,-1))
-        b = np.arange(t_steps,0,-1)
-        # phi_self = np.tile((theta_self[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-        #                        theta_self[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-        #                       (t_steps, 1))
-        # phi_other = np.tile((theta_other[1] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER,
-        #                        theta_other[2] * C.VEHICLE_MOVEMENT_SPEED * C.ACTION_PREDICTION_MULTIPLIER),
-        #                       (t_steps, 1))
+        # A = np.zeros((t_steps, t_steps))
+        # A[np.tril_indices(t_steps, 0)] = 1 #lower tri 1s
+        A = M.LOWER_TRIANGULAR_SMALL
 
-        D = np.sqrt(np.sum((np.array(s_self)-np.array(s_other))**2, axis=1)) + 1e-3 #should be t_steps by 1, add small number for numerical stability
+        # B = np.zeros((t_steps, t_steps))
+        # for i in range(t_steps-1):
+        #     B[i,range(i+1,t_steps)]= np.arange(t_steps-1-i,0,-1)
+        # B = B + np.transpose(B) + np.diag(np.arange(t_steps,0,-1))
+        # b = np.arange(t_steps,0,-1)
 
-        # compute big K
-        K_self = -2/(D**3)*B
-        K_other = K_self
-        ds = np.array(s_self)[0]-np.array(s_other)[0]
-        c_self = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(ds, axis=0))) + \
-                 np.dot(np.diag(2/(D**3)), np.dot(B, a_other))
-        c_other = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(-ds, axis=0))) + \
-                 np.dot(np.diag(2/(D**3)), np.dot(B, a_self))
+        D = np.sum((np.array(s_self)-np.array(s_other))**2, axis=1) + 1e-12 #should be t_steps by 1, add small number for numerical stability
+        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*2)))
+        dsigD = 10.*sigD / (1 + np.exp(10.*(D - C.CAR_LENGTH**2*2)))
+        ds = s_self[-1,:] - s_other[-1,:]
+
+        # dD/da
+        dDda_self = - np.dot(np.expand_dims(np.dot(A.transpose(), sigD**(-2)*dsigD),axis=1), np.expand_dims(ds, axis=0)) \
+               -  np.dot(np.dot(A.transpose(), np.diag(sigD**(-2)*dsigD)), np.dot(A, a_self - a_other))
+        dDda_other = - np.dot(np.expand_dims(np.dot(A.transpose(), sigD**(-2)*dsigD),axis=1), np.expand_dims(-ds, axis=0)) \
+               - np.dot(np.dot(A.transpose(), np.diag(sigD**(-2)*dsigD)), np.dot(A, a_other - a_self))
+        # K_self = -2/(D**3)*B
+        # K_other = K_self
+        # ds = np.array(s_self)[0]-np.array(s_other)[0]
+        # c_self = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(ds, axis=0))) + \
+        #          np.dot(np.diag(2/(D**3)), np.dot(B, a_other))
+        # c_other = np.dot(np.diag(-2/(D**3)), np.dot(np.expand_dims(b, axis=1), np.expand_dims(-ds, axis=0))) + \
+        #          np.dot(np.diag(2/(D**3)), np.dot(B, a_self))
 
 
         # update theta_hat_H
-        w = np.dot(K_self, a_self)+c_self
-        A = np.sum(a_self,axis=0)
-        W = np.sum(w,axis=0)
-        AW = np.diag(np.dot(np.transpose(a_self),w))
-        AA = np.sum(np.array(a_self)**2,axis=0)
-        # theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        w = - dDda_self # negative gradient direction
+        w[np.all([s_self[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+        w[np.all([s_self[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        w = -w
+
+        # A = np.sum(a_self,axis=0)
+        # W = np.sum(w,axis=0)
+        # AW = np.diag(np.dot(np.transpose(a_self),w))
+        # AA = np.sum(np.array(a_self)**2,axis=0)
+        # # theta = (AW*A+W*AA)/(-W*A+AW*t_steps+1e-6)
+        # # bound_y = [0,1] - np.array(s_self)[-1,1]
+        # # theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
+        # # alpha = W/(t_steps*theta-A)
+        # # alpha = np.mean(np.clip(alpha,0.,100.))
+        #
+        # #Max: found a bug in the derivation, redo as follows
+        # numerator = np.dot(W,A)-t_steps*(np.sum(AW))
+        # denominator = t_steps*np.sum(AA)-np.dot(A,A)
+        # if np.abs(numerator) < 1e-6 and np.abs(denominator) < 1e-6: # alpha = 0/0
+        #     alpha = C.INTENT_LIMIT
+        #     theta = A
+        # else:
+        #     alpha = numerator/denominator
+        #     alpha = np.mean(np.clip(alpha,0.01,C.INTENT_LIMIT))
+        #     theta = A + W/alpha
+
+        intent_bounds = [(0, np.Inf), # alpha
+                         (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                         (-90, 90)] # angle, to accommodate crazy behavior
+
+        intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.human_predicted_theta,
+                                                              bounds=intent_bounds, args=(w, a_self))
+        alpha, r, rho = intent_optimization_results.x
+        theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
+
+        # theta = theta / t_steps * C.ACTION_TIMESTEPS
+        # bound_x = [-1, 1]
         # bound_y = [0,1] - np.array(s_self)[-1,1]
+        # theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
         # theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
-        # alpha = W/(t_steps*theta-A)
-        # alpha = np.mean(np.clip(alpha,0.,100.))
 
-        #Max: found a bug in the derivation, redo as follows
-        numerator = np.dot(W,A)-t_steps*(np.sum(AW))
-        denominator = t_steps*np.sum(AA)-np.dot(A,A)
-        if np.abs(numerator) < 1e-6 and  np.abs(denominator) < 1e-6: # alpha = 0/0
-            alpha = 100.
-            theta = A
-        else:
-            alpha = numerator/denominator
-            alpha = np.mean(np.clip(alpha,0.01,100.))
-            theta = A + W/alpha
-
-        theta = theta / self.P.VEHICLE_MAX_SPEED / C.ACTION_TIMESTEPS
-        bound_x = [-1, 1]
+        current_theta_point = [self.human_predicted_theta[1] * scipy.cos(np.deg2rad(self.human_predicted_theta[2])),
+                               self.human_predicted_theta[1] * scipy.sin(np.deg2rad(self.human_predicted_theta[2]))]
+        intent_theta_point = [theta[0] * scipy.cos(np.deg2rad(theta[1])),
+                               theta[0] * scipy.sin(np.deg2rad(theta[1]))]
+        theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
         bound_y = [0,1] - np.array(s_self)[-1,1]
-        theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
-        theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
-        human_theta = (1-C.LEARNING_RATE)*self.human_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
+        theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
+        dist, angle = np.linalg.norm(theta_point), scipy.arctan2(theta_point[1],theta_point[0])/np.pi*180
+        human_theta = [(1-C.LEARNING_RATE)*self.human_predicted_theta[0] + C.LEARNING_RATE*alpha, dist, angle]
+
+        # human_theta = self.P.HUMAN_INTENT
+
 
         # update theta_tilde_M
-        w = np.dot(K_other, a_other)+c_other
-        A = np.sum(a_other,axis=0)
-        W = np.sum(w,axis=0)
-        AW = np.diag(np.dot(np.transpose(a_other),w))
-        AA = np.sum(np.array(a_other)**2,axis=0)
-        numerator = np.dot(W,A)-t_steps*(np.sum(AW))
-        denominator = t_steps*np.sum(AA)-np.dot(A,A)
-        if np.abs(numerator) < 1e-6 and  np.abs(denominator) < 1e-6: # alpha = 0/0
-            alpha = 100.
-            theta = A
-        else:
-            alpha = numerator/denominator
-            alpha = np.mean(np.clip(alpha,0.01,100.))
-            theta = A + W/alpha
+        w = - dDda_other # negative gradient direction
+        w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+        w[np.all([s_other[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        w = -w
 
-        theta = theta / self.P.VEHICLE_MAX_SPEED / C.ACTION_TIMESTEPS
-        bound_x = [-1, 1]
+        # A = np.sum(a_other,axis=0)
+        # W = np.sum(w,axis=0)
+        # AW = np.diag(np.dot(np.transpose(a_other),w))
+        # AA = np.sum(np.array(a_other)**2,axis=0)
+        # numerator = np.dot(W,A)-t_steps*(np.sum(AW))
+        # denominator = t_steps*np.sum(AA)-np.dot(A,A)
+        # if np.abs(numerator) < 1e-6 and np.abs(denominator) < 1e-6: # alpha = 0/0
+        #     alpha = C.INTENT_LIMIT
+        #     theta = A
+        # else:
+        #     alpha = numerator/denominator
+        #     alpha = np.mean(np.clip(alpha,0.01,C.INTENT_LIMIT))
+        #     theta = A + W/alpha
+
+        intent_bounds = [(0, np.Inf), # alpha
+                         (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                         (-C.ACTION_TURNANGLE, C.ACTION_TURNANGLE)] # angle
+
+        intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.machine_predicted_theta,
+                                                              bounds=intent_bounds, args=(w, a_other))
+        alpha, r, rho = intent_optimization_results.x
+        theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
+
+        # theta = theta / t_steps * C.ACTION_TIMESTEPS
+        current_theta_point = [self.machine_predicted_theta[1] * scipy.cos(np.deg2rad(self.machine_predicted_theta[2])),
+                               self.machine_predicted_theta[1] * scipy.sin(np.deg2rad(self.machine_predicted_theta[2]))]
+        intent_theta_point = [theta[0] * scipy.cos(np.deg2rad(theta[1])), theta[0] * scipy.sin(np.deg2rad(theta[1]))]
+        theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
         bound_y = [0,1] - np.array(s_other)[-1,1]
-        theta[0] = np.clip(theta[0], bound_x[0], bound_x[1])
-        theta[1] = np.clip(theta[1], bound_y[0], bound_y[1])
+        theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
+        dist, angle = np.linalg.norm(theta_point), scipy.arctan2(theta_point[1],theta_point[0])/np.pi*180
+        machine_predicted_theta = [(1-C.LEARNING_RATE)*self.machine_predicted_theta[0] + C.LEARNING_RATE*alpha, dist, angle]
 
-        machine_estimated_theta = (1-C.LEARNING_RATE)*self.machine_predicted_theta + C.LEARNING_RATE*np.hstack((alpha,theta))
-
-        predicted_theta = human_theta
+        # machine_predicted_theta = C.PARAMETERSET_1.MACHINE_INTENT
 
         # # Clip thetas
         # if self.P.BOUND_HUMAN_X is not None:
@@ -359,7 +402,7 @@ class MachineVehicle:
         # if self.P.BOUND_MACHINE_Y is not None:
         #     machine_estimated_theta[2] = np.clip(machine_estimated_theta[2], self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1])
 
-        return predicted_theta, machine_estimated_theta
+        return human_theta, machine_predicted_theta
 
     def interpolate_from_trajectory(self, trajectory, state, orientation):
 
@@ -371,3 +414,20 @@ class MachineVehicle:
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_NUMPOINTS + 1)))
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
+
+    def intent_loss_func(self, intent, w, a):
+        alpha, r, rho = intent
+        # theta = [r*np.cos(np.deg2rad(a)), r*np.sin(np.deg2rad(a))]
+
+        state = [0,0]
+        orientation = 0
+        trajectory = [r,rho]
+        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(orientation + trajectory[1]))],
+                  [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(orientation + trajectory[1]))]])
+        curve = bezier.Curve(nodes, degree=2)
+        positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.T_PAST + 1)))
+        intent_a = np.diff(positions, n=1, axis=0)
+
+        x = w + alpha*(a - intent_a)
+        L = np.sum(x**2)
+        return L
