@@ -24,7 +24,7 @@ class Main():
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
         self.human_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/red_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P.HUMAN_ORIENTATION)
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), -self.P.HUMAN_ORIENTATION)
         self.machine_image = pg.transform.rotate(pg.transform.scale(pg.image.load("assets/blue_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
                                                                    int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P.MACHINE_ORIENTATION)
@@ -34,7 +34,7 @@ class Main():
         human_collision_box = Collision_Box(self.human_image.get_width() / C.COORDINATE_SCALE, self.human_image.get_height() / C.COORDINATE_SCALE)
         machine_collision_box = Collision_Box(self.machine_image.get_width() / C.COORDINATE_SCALE, self.machine_image.get_height() / C.COORDINATE_SCALE)
 
-        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
         # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane_immediately.txt')
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box, self.human_vehicle.get_state(0))
 

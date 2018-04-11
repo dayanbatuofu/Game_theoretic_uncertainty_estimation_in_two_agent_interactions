@@ -120,28 +120,30 @@ class MachineVehicle:
             defcon_other_y = self.P.BOUND_MACHINE_Y
             orientation_other = self.P.MACHINE_ORIENTATION
             bounds_other = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
-                            (-C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION,
-                             C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION)]  # Angle
+                            (-C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION,
+                             C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION)]  # Angle
             defcon_self_x = self.P.BOUND_HUMAN_X
             defcon_self_y = self.P.BOUND_HUMAN_Y
             orientation_self = self.P.HUMAN_ORIENTATION
             bounds_self = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
-                           (-C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION,
-                            C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION)]  # Angle
+                           (-C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION,
+                            C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION)]  # Angle
 
         if identifier == 1:  # If machine is calling
             defcon_other_x = self.P.BOUND_HUMAN_X
             defcon_other_y = self.P.BOUND_HUMAN_Y
             orientation_other = self.P.HUMAN_ORIENTATION
+
             bounds_other = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
-                           (-C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION,
-                            C.ACTION_TURNANGLE - self.P.MACHINE_ORIENTATION)]  # Angle
+                           (-C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION,
+                            C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION)]  # Angle
+
             defcon_self_x = self.P.BOUND_MACHINE_X
             defcon_self_y = self.P.BOUND_MACHINE_Y
             orientation_self = self.P.MACHINE_ORIENTATION
             bounds_self = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
-                       (-C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION,
-                        C.ACTION_TURNANGLE - self.P.HUMAN_ORIENTATION)]  # Angle
+                       (-C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION,
+                        C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION)]  # Angle
 
 
         A = np.zeros((C.ACTION_TIMESTEPS, C.ACTION_TIMESTEPS))
@@ -275,8 +277,8 @@ class MachineVehicle:
         # b = np.arange(t_steps,0,-1)
 
         D = np.sum((np.array(s_self)-np.array(s_other))**2, axis=1) + 1e-12 #should be t_steps by 1, add small number for numerical stability
-        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*2)))
-        dsigD = 10.*sigD / (1 + np.exp(10.*(D - C.CAR_LENGTH**2*2)))
+        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))
+        dsigD = 10.*sigD / (1 + np.exp(10.*(D - C.CAR_LENGTH**2*5)))
         ds = s_self[-1,:] - s_other[-1,:]
 
         # dD/da
@@ -295,8 +297,13 @@ class MachineVehicle:
 
         # update theta_hat_H
         w = - dDda_self # negative gradient direction
-        w[np.all([s_self[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
-        w[np.all([s_self[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+
+        if self.P.BOUND_HUMAN_X is not None: # intersection
+            w[np.all([s_self[:,0]<=0, w[:,0] <= 0], axis=0),0] = 0 #if against wall and push towards the wall, get a reaction force
+            w[np.all([s_self[:,0]>=0, w[:,0] >= 0], axis=0),0] = 0 #TODO: these two lines are hard coded for intersection, need to check the interval
+        else: # lane changing
+            w[np.all([s_self[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+            w[np.all([s_self[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
         w = -w
 
         # A = np.sum(a_self,axis=0)
@@ -319,13 +326,17 @@ class MachineVehicle:
         #     alpha = numerator/denominator
         #     alpha = np.mean(np.clip(alpha,0.01,C.INTENT_LIMIT))
         #     theta = A + W/alpha
-
-        intent_bounds = [(0, np.Inf), # alpha
-                         (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
-                         (-90, 90)] # angle, to accommodate crazy behavior
+        if self.P.BOUND_HUMAN_X is not None:
+            intent_bounds = [(0.1, None), # alpha
+                             (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                             (-180, 0)] # angle, to accommodate crazy behavior
+        else:
+            intent_bounds = [(0.1, None), # alpha
+                             (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                             (-90, 90)] # angle, to accommodate crazy behavior
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.human_predicted_theta,
-                                                              bounds=intent_bounds, args=(w, a_self))
+                                                              bounds=intent_bounds, args=(w, a_self, self.P.HUMAN_ORIENTATION))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
@@ -341,7 +352,7 @@ class MachineVehicle:
                                theta[0] * scipy.sin(np.deg2rad(theta[1]))]
         theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
         bound_y = [0,1] - np.array(s_self)[-1,1]
-        theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
+        # theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
 
         if self.P.BOUND_HUMAN_X is not None:
             _bound = [self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1]] - np.array(s_self)[-1, 0]
@@ -377,12 +388,12 @@ class MachineVehicle:
         #     alpha = np.mean(np.clip(alpha,0.01,C.INTENT_LIMIT))
         #     theta = A + W/alpha
 
-        intent_bounds = [(0, np.Inf), # alpha
+        intent_bounds = [(0.1, None), # alpha
                          (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                          (-C.ACTION_TURNANGLE, C.ACTION_TURNANGLE)] # angle
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.machine_predicted_theta,
-                                                              bounds=intent_bounds, args=(w, a_other))
+                                                              bounds=intent_bounds, args=(w, a_other, self.P.MACHINE_ORIENTATION))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
@@ -393,11 +404,11 @@ class MachineVehicle:
         theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
 
         if self.P.BOUND_MACHINE_X is not None:
-            _bound = [self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1]] - np.array(s_self)[-1, 0]
+            _bound = [self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1]] - np.array(s_other)[-1, 0]
             theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
 
         if self.P.BOUND_MACHINE_Y is not None:
-            _bound = [self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1]] - np.array(s_self)[-1, 1]
+            _bound = [self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1]] - np.array(s_other)[-1, 1]
             theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
 
 
@@ -423,8 +434,8 @@ class MachineVehicle:
 
     def interpolate_from_trajectory(self, trajectory, state, orientation):
 
-        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(orientation + trajectory[1]))],
-                          [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(orientation + trajectory[1]))]])
+        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
+                          [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
 
         curve = bezier.Curve(nodes, degree=2)
 
@@ -432,15 +443,14 @@ class MachineVehicle:
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
 
-    def intent_loss_func(self, intent, w, a):
+    def intent_loss_func(self, intent, w, a, orientation):
         alpha, r, rho = intent
         # theta = [r*np.cos(np.deg2rad(a)), r*np.sin(np.deg2rad(a))]
 
         state = [0,0]
-        orientation = 0
         trajectory = [r,rho]
-        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(orientation + trajectory[1]))],
-                  [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(orientation + trajectory[1]))]])
+        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
+                  [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
         curve = bezier.Curve(nodes, degree=2)
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.T_PAST + 1)))
         intent_a = np.diff(positions, n=1, axis=0)
