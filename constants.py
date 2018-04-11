@@ -10,7 +10,7 @@ class CONSTANTS:
     CAR_WIDTH = 0.66
     CAR_LENGTH = 1.33
 
-    ZOOM = 0.25
+    ZOOM = 1
 
 
     # POSITION BOUNDS

@@ -18,7 +18,7 @@ class Main():
 
         self.duration = 1800
 
-        self.P = C.PARAMETERSET_1  # Scenario parameters choice
+        self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
         pg.init()
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
@@ -34,8 +34,8 @@ class Main():
         human_collision_box = Collision_Box(self.human_image.get_width() / C.COORDINATE_SCALE, self.human_image.get_height() / C.COORDINATE_SCALE)
         machine_collision_box = Collision_Box(self.machine_image.get_width() / C.COORDINATE_SCALE, self.machine_image.get_height() / C.COORDINATE_SCALE)
 
-        # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
-        self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane_immediately.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop.txt')
+        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane_immediately.txt')
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box, self.human_vehicle.get_state(0))
 
 
@@ -217,16 +217,45 @@ class Main():
         # Vertical
         for i in range(num_vaxes):
             pg.draw.line(self.screen, GREY, (offset_x + i*spacing, 0), (offset_x + i*spacing, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 1)
-            label = (distance_x + 1 + i) * C.AXES_SHOW - rel_screen_width/2
-            text = font.render("%3.2f" % label, 1, GREY)
-            self.screen.blit(text, (10 + offset_x + (i * spacing), 10))
+            # label = (distance_x + 1 + i) * C.AXES_SHOW - rel_screen_width/2
+            # text = font.render("%3.2f" % label, 1, GREY)
+            # self.screen.blit(text, (10 + offset_x + (i * spacing), 10))
 
         # Horizontal
         for i in range(num_haxes):
             pg.draw.line(self.screen, GREY, (0, offset_y + i*spacing), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, offset_y + i*spacing), 1)
-            label = (distance_y + 1 + i) * C.AXES_SHOW - rel_screen_height/2
-            text = font.render("%3.2f" % label, 1, GREY)
-            self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
+            # label = (distance_y + 1 + i) * C.AXES_SHOW - rel_screen_height/2
+            # text = font.render("%3.2f" % label, 1, GREY)
+            # self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
+
+        # Bounds
+        if self.P.BOUND_HUMAN_X is not None:
+            _bound1 = self.c2p((self.P.BOUND_HUMAN_X[0], 0))
+            _bound2 = self.c2p((self.P.BOUND_HUMAN_X[1], 0))
+            bounds = np.array([_bound1[1], _bound2[1]])
+            pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+            pg.draw.line(self.screen, BLACK, (0, bounds[1]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[1]), 2)
+
+        if self.P.BOUND_HUMAN_Y is not None:
+            _bound1 = self.c2p((0, self.P.BOUND_HUMAN_Y[0]))
+            _bound2 = self.c2p((0, self.P.BOUND_HUMAN_Y[1]))
+            bounds = np.array([_bound1[0], _bound2[0]])
+            pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+            pg.draw.line(self.screen, BLACK, (bounds[1], 0), (bounds[1], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+
+        if self.P.BOUND_MACHINE_X is not None:
+            _bound1 = self.c2p((self.P.BOUND_MACHINE_X[0], 0))
+            _bound2 = self.c2p((self.P.BOUND_MACHINE_X[1], 0))
+            bounds = np.array([_bound1[1], _bound2[1]])
+            pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+            pg.draw.line(self.screen, BLACK, (0, bounds[1]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[1]), 2)
+
+        if self.P.BOUND_MACHINE_Y is not None:
+            _bound1 = self.c2p((0, self.P.BOUND_MACHINE_Y[0]))
+            _bound2 = self.c2p((0, self.P.BOUND_MACHINE_Y[1]))
+            bounds = np.array([_bound1[0], _bound2[0]])
+            pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+            pg.draw.line(self.screen, BLACK, (bounds[1], 0), (bounds[1], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
 
     def c2p(self, coordinates):
         x = C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH/2)

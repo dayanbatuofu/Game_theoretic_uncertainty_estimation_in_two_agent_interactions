@@ -342,6 +342,15 @@ class MachineVehicle:
         theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
         bound_y = [0,1] - np.array(s_self)[-1,1]
         theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
+
+        if self.P.BOUND_HUMAN_X is not None:
+            _bound = [self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1]] - np.array(s_self)[-1, 0]
+            theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
+
+        if self.P.BOUND_HUMAN_Y is not None:
+            _bound = [self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1]] - np.array(s_self)[-1, 1]
+            theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
+
         dist, angle = np.linalg.norm(theta_point), scipy.arctan2(theta_point[1],theta_point[0])/np.pi*180
         human_theta = [(1-C.LEARNING_RATE)*self.human_predicted_theta[0] + C.LEARNING_RATE*alpha, dist, angle]
 
@@ -382,8 +391,16 @@ class MachineVehicle:
                                self.machine_predicted_theta[1] * scipy.sin(np.deg2rad(self.machine_predicted_theta[2]))]
         intent_theta_point = [theta[0] * scipy.cos(np.deg2rad(theta[1])), theta[0] * scipy.sin(np.deg2rad(theta[1]))]
         theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
-        bound_y = [0,1] - np.array(s_other)[-1,1]
-        theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
+
+        if self.P.BOUND_MACHINE_X is not None:
+            _bound = [self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1]] - np.array(s_self)[-1, 0]
+            theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
+
+        if self.P.BOUND_MACHINE_Y is not None:
+            _bound = [self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1]] - np.array(s_self)[-1, 1]
+            theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
+
+
         dist, angle = np.linalg.norm(theta_point), scipy.arctan2(theta_point[1],theta_point[0])/np.pi*180
         machine_predicted_theta = [(1-C.LEARNING_RATE)*self.machine_predicted_theta[0] + C.LEARNING_RATE*alpha, dist, angle]
 
