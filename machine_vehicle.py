@@ -35,18 +35,14 @@ class MachineVehicle:
         # Initialize predicted human predicted machine space
         self.machine_predicted_theta = P.MACHINE_INTENT
 
-        #self.human_predicted_states = [human_initial_state]
-        #self.human_predicted_state = human_initial_state
-
-        # self.action_prediction_model = load_model('nn/action_prediction_model.h5')
 
         self.debug_1 = 0
         self.debug_2 = 0
         self.debug_3 = 0
 
-        self.machine_previous_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
-        self.machine_previous_predicted_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
-        self.human_previous_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.machine_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.machine_predicted_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.human_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
 
     def get_state(self):
         return self.machine_states[-1]
@@ -72,32 +68,24 @@ class MachineVehicle:
         ########## Calculate machine actions here ###########
 
 
-        [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(1, self.human_previous_action_set, self.machine_previous_action_set,
-                                                                             self.machine_previous_predicted_action_set,
-                                                                             self.human_states[-1], self.machine_states[-1],
-                                                                             self.human_predicted_theta, self.machine_theta,
-                                                                             self.other_collision_box, self.my_collision_box)
-        self.human_previous_action_set              = human_predicted_actions
-        self.machine_previous_action_set            = machine_actions
-        self.machine_previous_predicted_action_set  = predicted_actions_self
+        [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(1, self.human_action_set, self.machine_action_set,
+                                                                                              self.machine_predicted_action_set,
+                                                                                              self.human_states[-1], self.machine_states[-1],
+                                                                                              self.human_predicted_theta, self.machine_theta,
+                                                                                              self.other_collision_box, self.my_collision_box)
+        self.human_predicted_action_set    = human_predicted_actions
+        self.machine_action_set            = machine_actions
+        self.machine_predicted_action_set  = predicted_actions_self
 
+        # Update machine state
+        self.machine_states.append(np.add(self.machine_states[-1], (machine_actions[0][0], machine_actions[0][1])))
+        self.machine_actions.append(machine_actions[0])
 
-        self.human_predicted_state = human_state + sum(human_predicted_actions)
-
-        self.update_state_action(machine_actions)
-
+        # Update human state
         last_human_state = self.human_states[-1]
         self.human_states.append(human_state)
         self.human_actions.append(np.array(human_state)-np.array(last_human_state))
 
-    def update_state_action(self, actions):
-
-        # Restrict speed
-        action_x = np.clip(actions[0][0], -self.P.VEHICLE_MAX_SPEED, self.P.VEHICLE_MAX_SPEED)
-        action_y = np.clip(actions[0][1], -self.P.VEHICLE_MAX_SPEED, self.P.VEHICLE_MAX_SPEED)
-
-        self.machine_states.append(np.add(self.machine_states[-1], (action_x, action_y)))
-        self.machine_actions.append((action_x, action_y))
 
     def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, box_other, box_self):
 
@@ -188,7 +176,7 @@ class MachineVehicle:
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
         guess_set = [(0,0)]
 
-        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
+        while np.abs(loss_value-loss_value_old)/loss_value_old > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
             iter_count += 1
 
