@@ -186,7 +186,7 @@ class MachineVehicle:
         predicted_trajectory_self = initial_predicted_trajectory_self
 
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
-        guess_set = np.empty((0,2))
+        guess_set = [(0,0)]
 
         while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
@@ -195,19 +195,19 @@ class MachineVehicle:
             # Estimate human actions
             trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
                                                         s_other, predicted_trajectory_self, theta_other, box_self,
-                                                        box_other, orientation_other)
+                                                        box_other, orientation_self, orientation_other)
 
             # Estimate human's estimated machine actions
             predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
                                                          cons_self, s_other, s_self, trajectory_other,
-                                                         self.machine_predicted_theta, box_other, box_self, orientation_self)
+                                                         self.machine_predicted_theta, box_other, box_self, orientation_other, orientation_self)
 
 
 
         # Estimate machine actions
         trajectory_self, _ = self.multi_search(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
                                              cons_self, s_other, s_self, trajectory_other,
-                                             theta_self, box_other, box_self, orientation_self)
+                                             theta_self, box_other, box_self, orientation_other, orientation_self)
 
 
         # Interpolate for output
@@ -217,7 +217,7 @@ class MachineVehicle:
 
         return actions_self, actions_other, predicted_actions_self
 
-    def multi_search(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_s):
+    def multi_search(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_o, orientation_s):
 
         """ run multiple searches with different initial guesses """
 
@@ -226,7 +226,7 @@ class MachineVehicle:
 
         for guess in guess_set:
             optimization_results = scipy.optimize.minimize(self.loss_func, guess, bounds=bounds, constraints=cons,
-                                                           args=(self.P, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_s))
+                                                           args=(self.P, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s))
             trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
             loss_value_set = np.append(loss_value_set, optimization_results.fun)
 
@@ -238,22 +238,22 @@ class MachineVehicle:
         return trajectory, np.min(loss_value_set)
 
 
-    def loss_func(self, trajectory, P, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation):
+    def loss_func(self, trajectory, P, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation_other, orientation_self):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
 
-        actions_self    = self.interpolate_from_trajectory(trajectory, s_self, orientation)
-        actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation)
+        actions_self    = self.interpolate_from_trajectory(trajectory, s_self, orientation_self)
+        actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
 
         # Define state loss
         state_loss = np.reciprocal(box_self.get_minimum_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
                                                                  s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
 
         # Define action loss
-        intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation)
+        intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation_self)
         intent_loss = np.square(np.linalg.norm(actions_self - intended_trajectory, axis=1))
 
-        return np.average(state_loss) + theta_self[0] * np.average(intent_loss) # Return weighted sum
+        return np.linalg.norm(state_loss) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
 
     def get_human_predicted_intent(self):
         """ Function accepts initial conditions and a time period for which to correct the

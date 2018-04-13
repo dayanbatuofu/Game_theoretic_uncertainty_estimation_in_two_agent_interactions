@@ -46,8 +46,8 @@ class CONSTANTS:
         MACHINE_INITIAL_POSITION = np.array([-1, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([1000., VEHICLE_MAX_SPEED*0.75*20, -7.7])
-        MACHINE_INTENT = np.array([1., VEHICLE_MAX_SPEED*0.95*20, 0.])
+        HUMAN_INTENT = np.array([10., VEHICLE_MAX_SPEED*0.75*20, -7.7])
+        MACHINE_INTENT = np.array([10, VEHICLE_MAX_SPEED*0.95*20, 0.])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 0
@@ -76,8 +76,8 @@ class CONSTANTS:
         MACHINE_INITIAL_POSITION = np.array([-7.0, 0])
 
         # INTENTS
-        HUMAN_INTENT = np.array([1, VEHICLE_MAX_SPEED*1.0*100, -90])
-        MACHINE_INTENT = np.array([100., VEHICLE_MAX_SPEED*100, 0])
+        HUMAN_INTENT = np.array([10, VEHICLE_MAX_SPEED*1.0*100, -90])
+        MACHINE_INTENT = np.array([800., VEHICLE_MAX_SPEED*100, 0])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = -90
