@@ -14,7 +14,7 @@ class Main():
 
         self.duration = 300
 
-        self.P = C.PARAMETERSET_1  # Scenario parameters choice
+        self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
         self.sim_draw = Sim_Draw(self.P, "assets/")
 
@@ -24,20 +24,20 @@ class Main():
         self.running = True
         self.paused = False
         self.end = False
-        self.frame = -1
+        self.frame = 0
 
         # Sim output
         self.sim_data = Sim_Data()
         self.sim_out = open("sim_outputs/output_intersection.pkl", "wb")
 
         # Create Vehicles
-        human_collision_box = Collision_Box(self.sim_draw.human_image.get_width() / C.COORDINATE_SCALE,
-                                            self.sim_draw.human_image.get_height() / C.COORDINATE_SCALE)
-        machine_collision_box = Collision_Box(self.sim_draw.machine_image.get_width() / C.COORDINATE_SCALE,
-                                              self.sim_draw.machine_image.get_height() / C.COORDINATE_SCALE)
+        human_collision_box = Collision_Box(self.sim_draw.human_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
+                                            self.sim_draw.human_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
+        machine_collision_box = Collision_Box(self.sim_draw.machine_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
+                                              self.sim_draw.machine_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
 
-        # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
-        self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
+        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box,
                                               self.human_vehicle.get_state(0))
 
@@ -52,7 +52,6 @@ class Main():
             # Update model here
             if not self.paused:
                 self.machine_vehicle.update(self.human_vehicle.get_state(self.frame))
-                self.frame += 1
 
                 # Update data
                 self.sim_data.append(self.machine_vehicle.human_states[-1],
@@ -85,6 +84,9 @@ class Main():
 
             # Keep fps
             self.clock.tick(self.fps)
+
+            if not self.paused:
+                self.frame += 1
 
         pickle.dump(self.sim_data,  self.sim_out, pickle.HIGHEST_PROTOCOL)
         print('Output pickled and dumped.')

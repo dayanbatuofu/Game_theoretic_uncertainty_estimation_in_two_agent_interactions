@@ -10,7 +10,7 @@ class CONSTANTS:
     CAR_WIDTH = 0.66
     CAR_LENGTH = 1.33
 
-    ZOOM = 0.5
+    ZOOM = 0.3
 
 
     # POSITION BOUNDS
@@ -47,7 +47,7 @@ class CONSTANTS:
 
         # INTENTS
         HUMAN_INTENT = np.array([10., VEHICLE_MAX_SPEED*0.75*100, -7.7])
-        MACHINE_INTENT = np.array([10000, VEHICLE_MAX_SPEED*100, 0.])
+        MACHINE_INTENT = np.array([10, VEHICLE_MAX_SPEED*100, 0.])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = 0
@@ -55,10 +55,13 @@ class CONSTANTS:
 
         # BOUNDS
         BOUND_HUMAN_X = None
-        BOUND_HUMAN_Y = np.array([0, 1])
+        BOUND_HUMAN_Y = np.array([-0.5, 1.5])
 
         BOUND_MACHINE_X = None
-        BOUND_MACHINE_Y = np.array([0, 1])
+        BOUND_MACHINE_Y = np.array([-0.5, 1.5])
+
+        # COLLISION BOXES
+        COLLISION_BOXES = np.array([(-np.inf, np.inf, -0.5, 0.5), (-np.inf, np.inf, 0.5, 1.5)])  # List of separate collision boxes (-x, x, -y, y)
 
         # LOSS WEIGHT
         Y_CLEARANCE_WEIGHT = 0.3
@@ -89,6 +92,9 @@ class CONSTANTS:
 
         BOUND_MACHINE_X = None
         BOUND_MACHINE_Y = np.array([-0.4, 0.4])
+
+        # COLLISION BOXES
+        COLLISION_BOXES = np.array([(-0.4, 0.4, -0.4, 0.4)])  # List of separate collision boxes (-x, x, -y, y)
 
         # LOSS WEIGHT
         Y_CLEARANCE_WEIGHT = 1

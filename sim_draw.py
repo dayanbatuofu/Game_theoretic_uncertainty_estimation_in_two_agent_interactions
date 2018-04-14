@@ -154,8 +154,8 @@ class Sim_Draw():
         rel_screen_height = self.P.SCREEN_HEIGHT / C.ZOOM
 
         spacing = int(C.AXES_SHOW * rel_coor_scale)
-        offset_x = int(math.fmod(self.origin[1] * rel_coor_scale, spacing))
-        offset_y = int(math.fmod(self.origin[0] * rel_coor_scale, spacing))
+        offset_x = int(math.fmod(self.origin[1] * rel_coor_scale, spacing)) + int(math.fmod(rel_screen_width * rel_coor_scale/2,spacing))
+        offset_y = int(math.fmod(self.origin[0] * rel_coor_scale, spacing)) + int(math.fmod(rel_screen_height * rel_coor_scale/2,spacing))
 
         distance_x = int((self.origin[1] * rel_coor_scale) / spacing)
         distance_y = int((self.origin[0] * rel_coor_scale) / spacing)

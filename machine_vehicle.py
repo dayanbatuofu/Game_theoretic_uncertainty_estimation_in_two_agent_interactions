@@ -142,27 +142,27 @@ class MachineVehicle:
 
         if defcon_other_x is not None:
             if defcon_other_x[0] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: s_other[0] + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_other_x[0]})
+                cons_other.append({'type': 'ineq','fun': lambda x: s_other[0] + (x[0]*scipy.cos(np.deg2rad(x[1]))) - box_other.height/2 - defcon_other_x[0]})
             if defcon_other_x[1] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[0] - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_other_x[1]})
+                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[0] - (x[0]*scipy.cos(np.deg2rad(x[1]))) - box_other.height/2 + defcon_other_x[1]})
 
         if defcon_other_y is not None:
             if defcon_other_y[0] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: s_other[1] + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_other_y[0]})
+                cons_other.append({'type': 'ineq','fun': lambda x: s_other[1] + (x[0]*scipy.sin(np.deg2rad(x[1]))) - box_other.width/2 - defcon_other_y[0]})
             if defcon_other_y[1] is not None:
-                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[1] - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_other_y[1]})
+                cons_other.append({'type': 'ineq','fun': lambda x: -s_other[1] - (x[0]*scipy.sin(np.deg2rad(x[1]))) - box_other.width/2 + defcon_other_y[1]})
 
         if defcon_self_x is not None:
             if defcon_self_x[0] is not None:
-                cons_self.append({'type': 'ineq','fun': lambda x: s_self[0] + (x[0]*scipy.cos(np.deg2rad(x[1]))) - defcon_self_x[0]})
+                cons_self.append({'type': 'ineq','fun': lambda x: s_self[0] + (x[0]*scipy.cos(np.deg2rad(x[1]))) - box_self.height/2 - defcon_self_x[0]})
             if defcon_self_x[1] is not None:
-                cons_self.append({'type': 'ineq','fun': lambda x: -s_self[0] - (x[0]*scipy.cos(np.deg2rad(x[1]))) + defcon_self_x[1]})
+                cons_self.append({'type': 'ineq','fun': lambda x: -s_self[0] - (x[0]*scipy.cos(np.deg2rad(x[1]))) - box_self.height/2 + defcon_self_x[1]})
 
         if defcon_self_y is not None:
             if defcon_self_y[0] is not None:
-                    cons_self.append({'type': 'ineq','fun': lambda x: s_self[1] + (x[0]*scipy.sin(np.deg2rad(x[1]))) - defcon_self_y[0]})
+                    cons_self.append({'type': 'ineq','fun': lambda x: s_self[1] + (x[0]*scipy.sin(np.deg2rad(x[1]))) - box_self.width/2 - defcon_self_y[0]})
             if defcon_self_y[1] is not None:
-                    cons_self.append({'type': 'ineq','fun': lambda x: -s_self[1] - (x[0]*scipy.sin(np.deg2rad(x[1]))) + defcon_self_y[1]})
+                    cons_self.append({'type': 'ineq','fun': lambda x: -s_self[1] - (x[0]*scipy.sin(np.deg2rad(x[1]))) - box_self.width/2 + defcon_self_y[1]})
 
 
         loss_value = 0
@@ -214,7 +214,7 @@ class MachineVehicle:
 
         for guess in guess_set:
             optimization_results = scipy.optimize.minimize(self.loss_func, guess, bounds=bounds, constraints=cons,
-                                                           args=(self.P, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s))
+                                                           args=(s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s))
             trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
             loss_value_set = np.append(loss_value_set, optimization_results.fun)
 
@@ -226,7 +226,7 @@ class MachineVehicle:
         return trajectory, np.min(loss_value_set)
 
 
-    def loss_func(self, trajectory, P, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation_other, orientation_self):
+    def loss_func(self, trajectory, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation_other, orientation_self):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
 
@@ -234,8 +234,8 @@ class MachineVehicle:
         actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
 
         # Define state loss
-        state_loss = np.reciprocal(box_self.get_minimum_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
-                                                                 s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
+        state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
+                                                                   s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
 
         # Define action loss
         intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation_self)
@@ -422,8 +422,8 @@ class MachineVehicle:
 
     def interpolate_from_trajectory(self, trajectory, state, orientation):
 
-        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
-                          [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
+        nodes = np.array([[state[0], state[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))/2, state[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
+                          [state[1], state[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))/2, state[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
 
         curve = bezier.Curve(nodes, degree=2)
 

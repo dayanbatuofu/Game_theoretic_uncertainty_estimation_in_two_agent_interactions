@@ -4,12 +4,13 @@ import numpy as np
 
 class Collision_Box():
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, P):
 
+            self.P = P
             self.width = width
             self.height = height
 
-    def get_minimum_distance(self, my_pos, other_pos, other_box):
+    def get_collision_distance(self, my_pos, other_pos, other_box):
 
         ## Rectangular boxes
 
@@ -66,17 +67,50 @@ class Collision_Box():
 
         for i in range(len(my_pos)):
 
-            angle = np.arctan2(other_pos[i, 1] - my_pos[i, 1], other_pos[i, 0] - other_pos[i, 0])
+            in_collision_box = False
 
-            my_rad = self.radius_at_angle(angle, self.width, self.height)
-            other_rad = self.radius_at_angle(angle, other_box.width, other_box.height)
+            # Loop through collision boxes
+            for j in range(len(self.P.COLLISION_BOXES)):
 
-            center_distance = math.hypot(other_pos[i, 0] - my_pos[i, 0], other_pos[i, 1] - my_pos[i, 1])
+                # Check if other in box
+                if other_pos[i, 0] + other_box.height / 2 > self.P.COLLISION_BOXES[j, 0] and  \
+                   other_pos[i, 0] - other_box.height / 2 < self.P.COLLISION_BOXES[j, 1] and \
+                   other_pos[i, 1] + other_box.width / 2 > self.P.COLLISION_BOXES[j, 2] and \
+                   other_pos[i, 1] - other_box.width / 2 < self.P.COLLISION_BOXES[j, 3]:
+                    other_in = True
+                else:
+                    other_in = False
 
-            if center_distance - my_rad - other_rad < 0:
-                distance.append(1e-12)
+                # Check if self in box
+                if my_pos[i, 0] + self.height / 2 > self.P.COLLISION_BOXES[j, 0] and \
+                   my_pos[i, 0] - self.height / 2 < self.P.COLLISION_BOXES[j, 1] and \
+                   my_pos[i, 1] + self.width / 2 > self.P.COLLISION_BOXES[j, 2] and \
+                   my_pos[i, 1] - self.width / 2 < self.P.COLLISION_BOXES[j, 3]:
+                    self_in = True
+                else:
+                    self_in = False
+
+                if other_in and self_in:
+                    in_collision_box = True
+                    break
+
+            if not in_collision_box:
+
+                distance.append(np.inf)
+
             else:
-                distance.append(center_distance - my_rad - other_rad)
+
+                angle = np.arctan2(other_pos[i, 1] - my_pos[i, 1], other_pos[i, 0] - other_pos[i, 0])
+
+                my_rad = self.radius_at_angle(angle, self.width/2, self.height/2)
+                other_rad = self.radius_at_angle(angle, other_box.width/2, other_box.height/2)
+
+                center_distance = math.hypot(other_pos[i, 0] - my_pos[i, 0], other_pos[i, 1] - my_pos[i, 1])
+
+                if center_distance - my_rad - other_rad < 0:
+                    distance.append(1e-12)
+                else:
+                    distance.append(center_distance - my_rad - other_rad)
 
 
         ## Max implementation
