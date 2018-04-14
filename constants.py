@@ -76,7 +76,7 @@ class CONSTANTS:
         VEHICLE_MAX_SPEED = 0.05
 
         # INITIAL CONDITIONS
-        MACHINE_INITIAL_POSITION = np.array([-7.0, 0])
+        MACHINE_INITIAL_POSITION = np.array([-3.0, 0])
 
         # INTENTS
         HUMAN_INTENT = np.array([10, VEHICLE_MAX_SPEED*1.0*100, -90])

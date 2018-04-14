@@ -1,7 +1,7 @@
 from constants import CONSTANTS as C
 import numpy as np
 
-file_name = 'human_stop.txt'
+file_name = 'human_no_stop.txt'
 file = open(file_name, 'w')
 
 
@@ -17,7 +17,7 @@ y_vel = 0
 
 for step in range(duration):
 
-    if y > intersection_y:
-        y += -C.VEHICLE_MAX_SPEED
+    # if y > intersection_y:
+    y += -C.PARAMETERSET_2.VEHICLE_MAX_SPEED
 
     file.write("%f %f\n" % (x, y))
