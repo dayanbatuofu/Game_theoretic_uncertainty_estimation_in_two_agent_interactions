@@ -10,7 +10,7 @@ class Main():
 
         self.duration = 300
 
-        self.P = C.PARAMETERSET_1  # Scenario parameters choice
+        self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
         self.sim_draw = Sim_Draw(self.P, "../assets/")
 

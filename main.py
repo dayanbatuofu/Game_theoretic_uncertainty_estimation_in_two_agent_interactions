@@ -36,7 +36,7 @@ class Main():
         machine_collision_box = Collision_Box(self.sim_draw.machine_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
                                               self.sim_draw.machine_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
 
-        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_no_stop.txt')
+        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
         # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box,
                                               self.human_vehicle.get_state(0))

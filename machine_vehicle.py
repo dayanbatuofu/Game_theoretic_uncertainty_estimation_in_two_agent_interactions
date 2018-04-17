@@ -174,9 +174,9 @@ class MachineVehicle:
         predicted_trajectory_self = initial_predicted_trajectory_self
 
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
-        guess_set = [(0,0)]
+        guess_set = [(0,0),(0,-90)] #TODO: max added (0,-90) to address a nan issue that appears in the intersection case for human
 
-        while np.abs(loss_value-loss_value_old)/loss_value_old > C.LOSS_THRESHOLD and iter_count < 10:
+        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 2:
             loss_value_old = loss_value
             iter_count += 1
 
@@ -215,8 +215,9 @@ class MachineVehicle:
         for guess in guess_set:
             optimization_results = scipy.optimize.minimize(self.loss_func, guess, bounds=bounds, constraints=cons,
                                                            args=(s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s))
-            trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
-            loss_value_set = np.append(loss_value_set, optimization_results.fun)
+            if np.isfinite(optimization_results.fun):
+                trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
+                loss_value_set = np.append(loss_value_set, optimization_results.fun)
 
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
 
