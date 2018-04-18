@@ -222,7 +222,7 @@ class MachineVehicle:
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
 
 
-        # self.loss_func((0,0), self.P, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_s)
+        # self.loss_func((0,0), s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s)
 
         return trajectory, np.min(loss_value_set)
 
@@ -266,7 +266,12 @@ class MachineVehicle:
         # b = np.arange(t_steps,0,-1)
 
         D = np.sum((np.array(s_self)-np.array(s_other))**2, axis=1) + 1e-12 #should be t_steps by 1, add small number for numerical stability
-        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))
+        # need to check if states are in the collision box
+        for i in range(s_self.shape[0]):
+            if s_self[i,1]<=-1.5 or s_self[i,1]>=1.5 or s_other[i,0]>=1.5 or s_other[i,0]<=-1.5:
+                D[i] = np.inf
+
+        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))+0.01
         dsigD = 10.*sigD / (1 + np.exp(10.*(D - C.CAR_LENGTH**2*5)))
         ds = s_self[-1,:] - s_other[-1,:]
 
@@ -325,7 +330,8 @@ class MachineVehicle:
                              (-90, 90)] # angle, to accommodate crazy behavior
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.human_predicted_theta,
-                                                              bounds=intent_bounds, args=(w, a_self, self.P.HUMAN_ORIENTATION))
+                                                              bounds=intent_bounds, args=(w, a_self,
+                                                              self.P.HUMAN_ORIENTATION, self.human_predicted_theta[0]))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
@@ -359,8 +365,13 @@ class MachineVehicle:
 
         # update theta_tilde_M
         w = - dDda_other # negative gradient direction
-        w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
-        w[np.all([s_other[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        if self.P.BOUND_HUMAN_X is not None: #intersection
+            w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+            w[np.all([s_other[:,1]>=0, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        else:
+            w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+            w[np.all([s_other[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+
         w = -w
 
         # A = np.sum(a_other,axis=0)
@@ -382,7 +393,8 @@ class MachineVehicle:
                          (-C.ACTION_TURNANGLE, C.ACTION_TURNANGLE)] # angle
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.machine_predicted_theta,
-                                                              bounds=intent_bounds, args=(w, a_other, self.P.MACHINE_ORIENTATION))
+                                                              bounds=intent_bounds, args=(w, a_other,
+                                                              self.P.MACHINE_ORIENTATION, self.machine_predicted_theta[0]))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
@@ -432,7 +444,7 @@ class MachineVehicle:
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
 
-    def intent_loss_func(self, intent, w, a, orientation):
+    def intent_loss_func(self, intent, w, a, orientation, alpha0):
         alpha, r, rho = intent
         # theta = [r*np.cos(np.deg2rad(a)), r*np.sin(np.deg2rad(a))]
 
@@ -445,5 +457,6 @@ class MachineVehicle:
         intent_a = np.diff(positions, n=1, axis=0)
 
         x = w + alpha*(a - intent_a)
-        L = np.sum(x**2)
+        L = np.sum(x**2) + 0.001*(alpha-alpha0)**2
+        #TODO: added a small penalty on moving alpha to avoid abitrary alpha when a-intent_a = 0
         return L

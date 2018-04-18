@@ -70,7 +70,7 @@ class Collision_Box():
             in_collision_box = False
 
             # Loop through collision boxes
-            for j in range(len(self.P.COLLISION_BOXES)):
+            for j in range(len(self.P.COLLISION_BOXES)): #TODO: what should be the size of the collision box?
 
                 # Check if other in box
                 if other_pos[i, 0] + other_box.height / 2 > self.P.COLLISION_BOXES[j, 0] and  \
