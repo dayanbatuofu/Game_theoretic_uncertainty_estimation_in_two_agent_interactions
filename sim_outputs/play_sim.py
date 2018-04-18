@@ -39,7 +39,9 @@ class Main():
 
             # Draw frame
             self.sim_draw.draw_frame(self.sim_data, self.frame)
-            self.frame += 1
+
+            if not paused:
+                self.frame += 1
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
