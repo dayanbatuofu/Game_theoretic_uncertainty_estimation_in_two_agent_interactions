@@ -16,7 +16,8 @@ class Main():
 
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
-        self.sim_draw = Sim_Draw(self.P, "assets/")
+        self.sim_draw_machine = Sim_Draw(self.P, "assets/")
+        self.sim_draw_human = Sim_Draw(self.P, "assets/")
 
         # Time handling
         self.clock = pg.time.Clock()
@@ -27,19 +28,27 @@ class Main():
         self.frame = 0
 
         # Sim output
-        self.sim_data = Sim_Data()
-        self.sim_out = open("sim_outputs/output_intersection.pkl", "wb")
+        self.sim_data_machine = Sim_Data()
+        self.sim_data_human = Sim_Data()
+        self.sim_out = open("sim_outputs/output_intersection_aggressive.pkl", "wb")
 
         # Create Vehicles
-        human_collision_box = Collision_Box(self.sim_draw.human_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
-                                            self.sim_draw.human_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
-        machine_collision_box = Collision_Box(self.sim_draw.machine_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
-                                              self.sim_draw.machine_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
+        human_collision_box = Collision_Box(self.sim_draw_machine.human_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
+                                            self.sim_draw_machine.human_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
+        machine_collision_box = Collision_Box(self.sim_draw_machine.machine_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
+                                              self.sim_draw_machine.machine_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
 
-        self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
+        # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
         # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
+        self.human_vehicle = MachineVehicle(self.P, machine_collision_box, human_collision_box,
+                                              self.P.MACHINE_INITIAL_POSITION, self.P.HUMAN_INITIAL_POSITION,
+                                              self.P.MACHINE_INTENT, self.P.HUMAN_INTENT, self.P.MACHINE_ORIENTATION,
+                                              self.P.HUMAN_ORIENTATION, 1)
+
         self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box,
-                                              self.human_vehicle.get_state(0))
+                                              self.human_vehicle.get_state(0), self.P.MACHINE_INITIAL_POSITION,
+                                              self.P.HUMAN_INTENT, self.P.MACHINE_INTENT, self.P.HUMAN_ORIENTATION,
+                                              self.P.MACHINE_ORIENTATION, 1)
 
         # Go
         self.trial()
@@ -51,10 +60,11 @@ class Main():
 
             # Update model here
             if not self.paused:
-                self.machine_vehicle.update(self.human_vehicle.get_state(self.frame))
+                self.machine_vehicle.update(self.human_vehicle.get_state(1))
+                self.human_vehicle.update(self.machine_vehicle.get_state(2))
 
                 # Update data
-                self.sim_data.append(self.machine_vehicle.human_states[-1],
+                self.sim_data_machine.append(self.machine_vehicle.human_states[-1],
                                      self.machine_vehicle.human_predicted_theta,
                                      self.machine_vehicle.human_predicted_action_set,
                                      self.machine_vehicle.machine_states[-1],
@@ -63,11 +73,21 @@ class Main():
                                      self.machine_vehicle.machine_action_set,
                                      self.machine_vehicle.machine_predicted_action_set)
 
+                self.sim_data_human.append(self.human_vehicle.human_states[-1], #this "human" is the machine
+                                     self.human_vehicle.human_predicted_theta,
+                                     self.human_vehicle.human_predicted_action_set,
+                                     self.human_vehicle.machine_states[-1], #machine here is the human
+                                     self.human_vehicle.machine_theta,
+                                     self.human_vehicle.machine_predicted_theta,
+                                     self.human_vehicle.machine_action_set,
+                                     self.human_vehicle.machine_predicted_action_set)
+
             if self.frame >= self.duration:
                 break
 
             # Draw frame
-            self.sim_draw.draw_frame(self.sim_data, self.frame)
+            self.sim_draw_machine.draw_frame(self.sim_data_machine, self.frame)
+            self.sim_draw_human.draw_frame(self.sim_data_human, self.frame)
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -88,7 +108,7 @@ class Main():
             if not self.paused:
                 self.frame += 1
 
-        pickle.dump(self.sim_data,  self.sim_out, pickle.HIGHEST_PROTOCOL)
+        pickle.dump([self.sim_data_machine, self.sim_data_human], self.sim_out, pickle.HIGHEST_PROTOCOL)
         print('Output pickled and dumped.')
 
 

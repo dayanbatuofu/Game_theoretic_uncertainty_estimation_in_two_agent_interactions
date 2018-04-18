@@ -16,24 +16,25 @@ class MachineVehicle:
             Y-Position
     """
 
-    def __init__(self, P, ot_box, my_box, human_initial_state):
+    def __init__(self, P, ot_box, my_box, ot_initial_state, my_intial_state, ot_intent, my_intent,
+                 ot_orientation, my_orientation, who):
 
         self.P = P  # Scenario parameters
         self.other_collision_box = ot_box
         self.my_collision_box = my_box
 
         # Initialize machine space
-        self.machine_states = [P.MACHINE_INITIAL_POSITION]
-        self.machine_theta = P.MACHINE_INTENT
+        self.machine_states = [my_intial_state]
+        self.machine_theta = my_intent
         self.machine_actions = []
 
         # Initialize human space
-        self.human_states = [human_initial_state]
-        self.human_predicted_theta = P.HUMAN_INTENT
+        self.human_states = [ot_initial_state]
+        self.human_predicted_theta = ot_intent
         self.human_actions = []
 
         # Initialize predicted human predicted machine space
-        self.machine_predicted_theta = P.MACHINE_INTENT
+        self.machine_predicted_theta = my_intent
 
 
         self.debug_1 = 0
@@ -44,8 +45,12 @@ class MachineVehicle:
         self.machine_predicted_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
         self.human_action_set = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
 
-    def get_state(self):
-        return self.machine_states[-1]
+        self.who = who
+        self.human_orientation = ot_orientation
+        self.machine_orientation = my_orientation
+
+    def get_state(self, delay):
+        return self.machine_states[-1*delay]
 
     def update(self, human_state):
 
@@ -68,7 +73,7 @@ class MachineVehicle:
         ########## Calculate machine actions here ###########
 
 
-        [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(1, self.human_action_set, self.machine_action_set,
+        [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(self.who, self.human_action_set, self.machine_action_set,
                                                                                               self.machine_predicted_action_set,
                                                                                               self.human_states[-1], self.machine_states[-1],
                                                                                               self.human_predicted_theta, self.machine_theta,
@@ -180,17 +185,15 @@ class MachineVehicle:
             loss_value_old = loss_value
             iter_count += 1
 
-            # Estimate human actions
-            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
-                                                        s_other, predicted_trajectory_self, theta_other, box_self,
-                                                        box_other, orientation_self, orientation_other)
-
             # Estimate human's estimated machine actions
             predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
                                                          cons_self, s_other, s_self, trajectory_other,
                                                          self.machine_predicted_theta, box_other, box_self, orientation_other, orientation_self)
 
-
+            # Estimate human actions
+            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
+                                                        s_other, predicted_trajectory_self, theta_other, box_self,
+                                                        box_other, orientation_self, orientation_other)
 
         # Estimate machine actions
         trajectory_self, _ = self.multi_search(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
@@ -292,12 +295,21 @@ class MachineVehicle:
         # update theta_hat_H
         w = - dDda_self # negative gradient direction
 
-        if self.P.BOUND_HUMAN_X is not None: # intersection
-            w[np.all([s_self[:,0]<=0, w[:,0] <= 0], axis=0),0] = 0 #if against wall and push towards the wall, get a reaction force
-            w[np.all([s_self[:,0]>=0, w[:,0] >= 0], axis=0),0] = 0 #TODO: these two lines are hard coded for intersection, need to check the interval
-        else: # lane changing
-            w[np.all([s_self[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
-            w[np.all([s_self[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        if self.who == 1: #machine
+            if self.P.BOUND_HUMAN_X is not None: # intersection
+                w[np.all([s_self[:,0]<=0, w[:,0] <= 0], axis=0),0] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_self[:,0]>=0, w[:,0] >= 0], axis=0),0] = 0 #TODO: these two lines are hard coded for intersection, need to check the interval
+            else: # lane changing
+                w[np.all([s_self[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_self[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        else: #human
+            if self.P.BOUND_HUMAN_X is not None: # intersection
+                w[np.all([s_self[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_self[:,1]>=0, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for intersection, need to check the interval
+            else: # lane changing
+                w[np.all([s_self[:,0]<=0, w[:,0] <= 0], axis=0),0] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_self[:,0]>=1, w[:,0] >= 0], axis=0),0] = 0 #TODO: these two lines are hard coded for lane changing
+
         w = -w
 
         # A = np.sum(a_self,axis=0)
@@ -320,7 +332,8 @@ class MachineVehicle:
         #     alpha = numerator/denominator
         #     alpha = np.mean(np.clip(alpha,0.01,C.INTENT_LIMIT))
         #     theta = A + W/alpha
-        if self.P.BOUND_HUMAN_X is not None:
+
+        if self.P.BOUND_HUMAN_X is not None: #intersection
             intent_bounds = [(0.1, None), # alpha
                              (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                              (-180, 0)] # angle, to accommodate crazy behavior
@@ -331,7 +344,7 @@ class MachineVehicle:
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.human_predicted_theta,
                                                               bounds=intent_bounds, args=(w, a_self,
-                                                              self.P.HUMAN_ORIENTATION, self.human_predicted_theta[0]))
+                                                              self.human_orientation, self.human_predicted_theta[0]))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
@@ -349,13 +362,22 @@ class MachineVehicle:
         bound_y = [0,1] - np.array(s_self)[-1,1]
         # theta_point[1] = np.clip(theta_point[1], bound_y[0], bound_y[1])
 
-        if self.P.BOUND_HUMAN_X is not None:
-            _bound = [self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1]] - np.array(s_self)[-1, 0]
-            theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
+        if self.who == 1:
+            if self.P.BOUND_HUMAN_X is not None:
+                _bound = [self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1]] - np.array(s_self)[-1, 0]
+                theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
 
-        if self.P.BOUND_HUMAN_Y is not None:
-            _bound = [self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1]] - np.array(s_self)[-1, 1]
-            theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
+            if self.P.BOUND_HUMAN_Y is not None:
+                _bound = [self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1]] - np.array(s_self)[-1, 1]
+                theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
+        else:
+            if self.P.BOUND_MACHINE_X is not None:
+                _bound = [self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1]] - np.array(s_self)[-1, 0]
+                theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
+
+            if self.P.BOUND_MACHINE_Y is not None:
+                _bound = [self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1]] - np.array(s_self)[-1, 1]
+                theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
 
         dist, angle = np.linalg.norm(theta_point), scipy.arctan2(theta_point[1],theta_point[0])/np.pi*180
         human_theta = [(1-C.LEARNING_RATE)*self.human_predicted_theta[0] + C.LEARNING_RATE*alpha, dist, angle]
@@ -365,12 +387,20 @@ class MachineVehicle:
 
         # update theta_tilde_M
         w = - dDda_other # negative gradient direction
-        if self.P.BOUND_HUMAN_X is not None: #intersection
-            w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
-            w[np.all([s_other[:,1]>=0, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
-        else:
-            w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
-            w[np.all([s_other[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        if self.who == 1: #machine
+            if self.P.BOUND_HUMAN_X is not None: #intersection
+                w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_other[:,1]>=0, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+            else:
+                w[np.all([s_other[:,1]<=0, w[:,1] <= 0], axis=0),1] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_other[:,1]>=1, w[:,1] >= 0], axis=0),1] = 0 #TODO: these two lines are hard coded for lane changing
+        else: #human
+             if self.P.BOUND_HUMAN_X is not None: #intersection
+                w[np.all([s_other[:,0]<=0, w[:,0] <= 0], axis=0),0] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_other[:,0]>=0, w[:,0] >= 0], axis=0),0] = 0 #TODO: these two lines are hard coded for lane changing
+             else:
+                w[np.all([s_other[:,0]<=0, w[:,0] <= 0], axis=0),0] = 0 #if against wall and push towards the wall, get a reaction force
+                w[np.all([s_other[:,0]>=1, w[:,0] >= 0], axis=0),0] = 0 #TODO: these two lines are hard coded for lane changing
 
         w = -w
 
@@ -394,7 +424,7 @@ class MachineVehicle:
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.machine_predicted_theta,
                                                               bounds=intent_bounds, args=(w, a_other,
-                                                              self.P.MACHINE_ORIENTATION, self.machine_predicted_theta[0]))
+                                                              self.machine_actions, self.machine_predicted_theta[0]))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
@@ -404,14 +434,23 @@ class MachineVehicle:
         intent_theta_point = [theta[0] * scipy.cos(np.deg2rad(theta[1])), theta[0] * scipy.sin(np.deg2rad(theta[1]))]
         theta_point = (1-C.LEARNING_RATE)*np.array(current_theta_point) + C.LEARNING_RATE*np.array(intent_theta_point)
 
-        if self.P.BOUND_MACHINE_X is not None:
-            _bound = [self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1]] - np.array(s_other)[-1, 0]
-            theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
+        if self.who == 1:
+            if self.P.BOUND_MACHINE_X is not None:
+                _bound = [self.P.BOUND_MACHINE_X[0], self.P.BOUND_MACHINE_X[1]] - np.array(s_other)[-1, 0]
+                theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
 
-        if self.P.BOUND_MACHINE_Y is not None:
-            _bound = [self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1]] - np.array(s_other)[-1, 1]
-            theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
+            if self.P.BOUND_MACHINE_Y is not None:
+                _bound = [self.P.BOUND_MACHINE_Y[0], self.P.BOUND_MACHINE_Y[1]] - np.array(s_other)[-1, 1]
+                theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
 
+        else:
+            if self.P.BOUND_HUMAN_X is not None:
+                _bound = [self.P.BOUND_HUMAN_X[0], self.P.BOUND_HUMAN_X[1]] - np.array(s_other)[-1, 0]
+                theta_point[0] = np.clip(theta_point[0], _bound[0], _bound[1])
+
+            if self.P.BOUND_HUMAN_Y is not None:
+                _bound = [self.P.BOUND_HUMAN_Y[0], self.P.BOUND_HUMAN_Y[1]] - np.array(s_other)[-1, 1]
+                theta_point[1] = np.clip(theta_point[1], _bound[0], _bound[1])
 
         dist, angle = np.linalg.norm(theta_point), scipy.arctan2(theta_point[1],theta_point[0])/np.pi*180
         machine_predicted_theta = [(1-C.LEARNING_RATE)*self.machine_predicted_theta[0] + C.LEARNING_RATE*alpha, dist, angle]

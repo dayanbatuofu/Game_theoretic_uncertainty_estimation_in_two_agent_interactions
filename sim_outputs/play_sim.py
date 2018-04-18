@@ -40,7 +40,7 @@ class Main():
             # Draw frame
             self.sim_draw.draw_frame(self.sim_data, self.frame)
 
-            if not paused:
+            if not self.paused:
                 self.frame += 1
 
             for event in pg.event.get():
