@@ -34,17 +34,26 @@ class Sim_Draw():
         self.origin = np.array([0, 0])
 
     def draw_frame(self, sim_data, frame):
+        sim_data_machine, sim_data_human = sim_data
 
         # Define characteristics of current frame
-        human_state = sim_data.human_state[frame]
-        human_predicted_theta = sim_data.human_predicted_theta[frame]
-        human_previous_action_set = sim_data.human_action_set[frame]
+        human_state = sim_data_human.machine_state[frame] # get this from human
+        human_predicted_theta = sim_data_machine.human_predicted_theta[frame]
+        human_previous_action_set = sim_data_machine.human_predicted_action_set[frame]
 
-        machine_state = sim_data.machine_state[frame]
-        machine_theta = sim_data.machine_theta[frame]
-        machine_predicted_theta = sim_data.machine_predicted_theta[frame]
-        machine_previous_action_set = sim_data.machine_action_set[frame]
-        machine_previous_predicted_action_set = sim_data.machine_predicted_action_set[frame]
+        machine_state = sim_data_machine.machine_state[frame]
+        machine_theta = sim_data_machine.machine_theta[frame]
+        machine_predicted_theta = sim_data_machine.machine_predicted_theta[frame]
+        machine_previous_action_set = sim_data_machine.machine_action_set[frame]
+        machine_previous_predicted_action_set = sim_data_machine.machine_predicted_action_set[frame]
+
+        machine_predicted_theta_by_human = sim_data_human.human_predicted_theta[frame]
+        machine_previous_action_set_by_human = sim_data_human.human_predicted_action_set[frame]
+
+        human_theta = sim_data_human.machine_theta[frame]
+        human_predicted_theta_by_human = sim_data_human.machine_predicted_theta[frame]
+        human_previous_action_set_by_human = sim_data_human.machine_action_set[frame]
+        human_previous_predicted_action_set_by_human = sim_data_human.machine_predicted_action_set[frame]
 
 
         # Draw the current frame
@@ -144,6 +153,25 @@ class Sim_Draw():
 
         label = font.render("PP Machine Action: (%5.4f, %5.4f)" % (machine_previous_predicted_action_set[0][0], machine_previous_predicted_action_set[0][1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 200))
+
+        # draw from human's perspective
+        gap = 400
+        label = font.render("Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_theta[0], human_theta[1], human_theta[2]), 1, (0, 0, 0))
+        self.screen.blit(label, (30+gap, 60))
+        pg.draw.circle(self.screen, BLACK, (15+gap, 70), 5)
+        pg.draw.circle(self.screen, GREEN, (15+gap, 70), 4)
+
+        label = font.render("P Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta_by_human[0], machine_predicted_theta_by_human[1],
+                                                                      machine_predicted_theta_by_human[2]), 1, (0, 0, 0))
+        self.screen.blit(label, (30+gap, 80))
+        pg.draw.circle(self.screen, BLACK, (15+gap, 90), 5)
+        pg.draw.circle(self.screen, (0, 255, 255), (15+gap, 90), 4)
+
+        label = font.render("PP Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta_by_human[0], human_predicted_theta_by_human[1],
+                                                                         human_predicted_theta_by_human[2]), 1, (0, 0, 0))
+        self.screen.blit(label, (30+gap, 100))
+        pg.draw.circle(self.screen, BLACK, (15+gap, 110), 5)
+        pg.draw.circle(self.screen, MAGENTA, (15+gap, 110), 4)
 
         pg.display.flip()
 

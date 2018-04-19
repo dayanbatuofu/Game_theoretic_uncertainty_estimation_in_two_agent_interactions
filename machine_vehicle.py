@@ -16,25 +16,26 @@ class MachineVehicle:
             Y-Position
     """
 
-    def __init__(self, P, ot_box, my_box, ot_initial_state, my_intial_state, ot_intent, my_intent,
-                 ot_orientation, my_orientation, who):
+    def __init__(self, P, ot_box, my_box, my_intial_state, ot_intent, ot_my_intent, my_intent,
+                 ot_orientation, my_orientation, who, script):
 
         self.P = P  # Scenario parameters
         self.other_collision_box = ot_box
         self.my_collision_box = my_box
 
         # Initialize machine space
-        self.machine_states = [my_intial_state]
+        if script is None:
+            self.machine_states = [my_intial_state]
         self.machine_theta = my_intent
         self.machine_actions = []
 
         # Initialize human space
-        self.human_states = [ot_initial_state]
+        self.human_states = []
         self.human_predicted_theta = ot_intent
         self.human_actions = []
 
         # Initialize predicted human predicted machine space
-        self.machine_predicted_theta = my_intent
+        self.machine_predicted_theta = ot_my_intent
 
 
         self.debug_1 = 0
@@ -49,17 +50,40 @@ class MachineVehicle:
         self.human_orientation = ot_orientation
         self.machine_orientation = my_orientation
 
+        self.scripted_state = None
+        if script is not None:
+            input_file = open(script)
+            self.scripted_state = []
+            for line in input_file:
+                line = line.split()  # to deal with blank
+                if line:  # lines (ie skip them)
+                    line = tuple([float(i) for i in line])
+                    self.scripted_state.append(line)
+            self.machine_states = [self.scripted_state[0]]
+
+
     def get_state(self, delay):
         return self.machine_states[-1*delay]
 
-    def update(self, human_state):
+    def update(self, human, frame):
 
         """ Function ran on every frame of simulation"""
 
         ########## Update human characteristics here ########
+        if self.who == 0:
+            self.human_states = np.array(human.machine_states)[:-1] #get other's states
+            self.human_actions = np.array(human.machine_actions)[:-1] #get other's actions
+        else:
+            self.human_states = np.array(human.machine_states) #get other's states
+            self.human_actions = np.array(human.machine_actions) #get other's actions
 
-        if len(self.human_states) > C.T_PAST:
-            human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent()
+        if len(self.human_states) > C.T_PAST and len(self.machine_states) > C.T_PAST and self.who == 1: # human will not repeat this
+            human_predicted_theta, machine_estimated_theta = self.get_human_predicted_intent(1-self.who) #"self" inside prediction is human (who=0)
+            self.human_predicted_theta = human_predicted_theta
+            self.machine_predicted_theta = machine_estimated_theta
+        elif len(self.human_states) > C.T_PAST and len(self.machine_states) > C.T_PAST and self.who == 0:
+            human_predicted_theta = human.machine_predicted_theta
+            machine_estimated_theta = human.human_predicted_theta
 
             # ''' DEBUG ONLY '''
             # human_predicted_theta = C.PARAMETERSET_1.HUMAN_INTENT
@@ -69,27 +93,30 @@ class MachineVehicle:
             self.human_predicted_theta = human_predicted_theta
             self.machine_predicted_theta = machine_estimated_theta
 
-
         ########## Calculate machine actions here ###########
-
-
         [machine_actions, human_predicted_actions, predicted_actions_self] = self.get_actions(self.who, self.human_action_set, self.machine_action_set,
                                                                                               self.machine_predicted_action_set,
                                                                                               self.human_states[-1], self.machine_states[-1],
                                                                                               self.human_predicted_theta, self.machine_theta,
                                                                                               self.other_collision_box, self.my_collision_box)
+
         self.human_predicted_action_set    = human_predicted_actions
         self.machine_action_set            = machine_actions
         self.machine_predicted_action_set  = predicted_actions_self
 
-        # Update machine state
-        self.machine_states.append(np.add(self.machine_states[-1], (machine_actions[0][0], machine_actions[0][1])))
-        self.machine_actions.append(machine_actions[0])
+        # Update self state
+        if self.scripted_state is not None: #if action scripted
+            self.machine_states.append(self.scripted_state[frame+1]) # get the NEXT state
+            machine_actions = np.subtract(self.machine_states[-1], self.machine_states[-2])
+            self.machine_actions.append(machine_actions)
+        else:
+            self.machine_states.append(np.add(self.machine_states[-1], (machine_actions[0][0], machine_actions[0][1])))
+            self.machine_actions.append(machine_actions[0])
 
-        # Update human state
-        last_human_state = self.human_states[-1]
-        self.human_states.append(human_state)
-        self.human_actions.append(np.array(human_state)-np.array(last_human_state))
+        # # Update human state
+        # last_human_state = self.human_states[-1]
+        # self.human_states.append(human_state)
+        # self.human_actions.append(np.array(human_state)-np.array(last_human_state))
 
 
     def get_actions(self, identifier, a0_other, a0_self, a0_predicted_self, s_other, s_self, theta_other, theta_self, box_other, box_self):
@@ -179,26 +206,30 @@ class MachineVehicle:
         predicted_trajectory_self = initial_predicted_trajectory_self
 
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
-        guess_set = [(0,0),(0,-90)] #TODO: max added (0,-90) to address a nan issue that appears in the intersection case for human
+        guess_set = [(0,0)] #TODO: max added (0,-90) to address a nan issue that appears in the intersection case for human
 
-        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 2:
+        while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
             loss_value_old = loss_value
             iter_count += 1
 
-            # Estimate human's estimated machine actions
-            predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0), bounds_self,
-                                                         cons_self, s_other, s_self, trajectory_other,
-                                                         self.machine_predicted_theta, box_other, box_self, orientation_other, orientation_self)
-
             # Estimate human actions
-            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0), bounds_other, cons_other, s_self,
+            trajectory_other, loss_value = self.multi_search(np.append(guess_set, [trajectory_other], axis=0),
+                                                             bounds_other, cons_other, s_self,
                                                         s_other, predicted_trajectory_self, theta_other, box_self,
-                                                        box_other, orientation_self, orientation_other)
+                                                        box_other, orientation_self, orientation_other, 1 - self.who)
+
+            # Estimate human's estimated machine actions
+            predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0),
+                                                             bounds_self,
+                                                         cons_self, s_other, s_self, trajectory_other,
+                                                         self.machine_predicted_theta, box_other, box_self,
+                                                             orientation_other, orientation_self, self.who)
 
         # Estimate machine actions
         trajectory_self, _ = self.multi_search(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
                                              cons_self, s_other, s_self, trajectory_other,
-                                             theta_self, box_other, box_self, orientation_other, orientation_self)
+                                             theta_self, box_other, box_self, orientation_other, orientation_self,
+                                                self.who)
 
 
         # Interpolate for output
@@ -208,7 +239,8 @@ class MachineVehicle:
 
         return actions_self, actions_other, predicted_actions_self
 
-    def multi_search(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_o, orientation_s):
+    def multi_search(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_o,
+                     orientation_s, who):
 
         """ run multiple searches with different initial guesses """
 
@@ -217,7 +249,9 @@ class MachineVehicle:
 
         for guess in guess_set:
             optimization_results = scipy.optimize.minimize(self.loss_func, guess, bounds=bounds, constraints=cons,
-                                                           args=(s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s))
+                                                           args=(s_o, s_s, traj_o, theta_s,
+                                                                 self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o,
+                                                                 box_s, orientation_o, orientation_s, who))
             if np.isfinite(optimization_results.fun):
                 trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
                 loss_value_set = np.append(loss_value_set, optimization_results.fun)
@@ -226,11 +260,44 @@ class MachineVehicle:
 
 
         # self.loss_func((0,0), s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s)
+        # s_other = s_o
+        # s_self = s_s
+        # trajectory_other = traj_o
+        # theta_self = theta_s
+        # theta_max = self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS
+        # box_other = box_o
+        # box_self = box_s
+        # orientation_other = orientation_o
+        # orientation_self = orientation_s
+        # actions_self    = self.interpolate_from_trajectory(trajectory, s_self, orientation_self)
+        # actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
+        #
+        # # Define state loss
+        # # state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
+        # #                                                            s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
+        #
+        # s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+        # s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+        # D = box_self.get_collision_distance(s_self_predict, s_other_predict, box_other)+1e-12
+        # for i in range(s_self_predict.shape[0]):
+        #     if self.who == 1:
+        #         if s_self_predict[i,1]<=-1.5 or s_self_predict[i,1]>=1.5 or s_other_predict[i,0]>=1.5 or s_other_predict[i,0]<=-1.5:
+        #             D[i] = np.inf
+        #     elif self.who == 0:
+        #         if s_self_predict[i,0]<=-1.5 or s_self_predict[i,0]>=1.5 or s_other_predict[i,1]>=1.5 or s_other_predict[i,1]<=-1.5:
+        #             D[i] = np.inf
+        #
+        # sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))+0.01
+        #
+        # # Define action loss
+        # intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation_self)
+        # intent_loss = np.square(np.linalg.norm(actions_self - intended_trajectory, axis=1))
 
         return trajectory, np.min(loss_value_set)
 
 
-    def loss_func(self, trajectory, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self, orientation_other, orientation_self):
+    def loss_func(self, trajectory, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self,
+                  orientation_other, orientation_self, who):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
 
@@ -238,16 +305,30 @@ class MachineVehicle:
         actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
 
         # Define state loss
-        state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
-                                                                   s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
+        # state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
+        #                                                            s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
+
+        s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+        s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+        D = box_self.get_collision_distance(s_self_predict, s_other_predict, box_other)+1e-12
+        gap = 1.29 #TODO: generalize this
+        for i in range(s_self_predict.shape[0]):
+            if who == 1:
+                if s_self_predict[i,0]<=-gap or s_self_predict[i,0]>=gap or s_other_predict[i,1]>=gap or s_other_predict[i,1]<=-gap:
+                    D[i] = np.inf
+            elif who == 0:
+                if s_self_predict[i,1]<=-gap or s_self_predict[i,1]>=gap or s_other_predict[i,0]>=gap or s_other_predict[i,0]<=-gap:
+                    D[i] = np.inf
+
+        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*1.5)))
 
         # Define action loss
         intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation_self)
         intent_loss = np.square(np.linalg.norm(actions_self - intended_trajectory, axis=1))
 
-        return np.linalg.norm(state_loss) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
+        return np.linalg.norm(np.reciprocal(sigD)) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
 
-    def get_human_predicted_intent(self):
+    def get_human_predicted_intent(self, who):
         """ Function accepts initial conditions and a time period for which to correct the
         attributes of the human car """
 
@@ -270,12 +351,23 @@ class MachineVehicle:
 
         D = np.sum((np.array(s_self)-np.array(s_other))**2, axis=1) + 1e-12 #should be t_steps by 1, add small number for numerical stability
         # need to check if states are in the collision box
+        gap = 1.29
         for i in range(s_self.shape[0]):
-            if s_self[i,1]<=-1.5 or s_self[i,1]>=1.5 or s_other[i,0]>=1.5 or s_other[i,0]<=-1.5:
-                D[i] = np.inf
+            if who == 1:
+                if s_self[i,0]<=-gap or s_self[i,0]>=gap or s_self[i,1]>=gap or s_self[i,1]<=-gap:
+                    D[i] = np.inf
+            elif who == 0:
+                if s_self[i,1]<=-gap or s_self[i,1]>=gap or s_self[i,0]>=gap or s_self[i,0]<=-gap:
+                    D[i] = np.inf
 
-        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))+0.01
-        dsigD = 10.*sigD / (1 + np.exp(10.*(D - C.CAR_LENGTH**2*5)))
+        sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*1.5)))
+
+        # for i in range(s_self.shape[0]):
+        #     if s_self[i,1]<=-1.5 or s_self[i,1]>=1.5 or s_other[i,0]>=1.5 or s_other[i,0]<=-1.5:
+        #         D[i] = np.inf
+
+        # sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))+0.01
+        dsigD = 10.*sigD / (1 + np.exp(10.*(D - C.CAR_LENGTH**2*1.5)))
         ds = s_self[-1,:] - s_other[-1,:]
 
         # dD/da
@@ -333,14 +425,24 @@ class MachineVehicle:
         #     alpha = np.mean(np.clip(alpha,0.01,C.INTENT_LIMIT))
         #     theta = A + W/alpha
 
-        if self.P.BOUND_HUMAN_X is not None: #intersection
-            intent_bounds = [(0.1, None), # alpha
-                             (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
-                             (-180, 0)] # angle, to accommodate crazy behavior
-        else:
-            intent_bounds = [(0.1, None), # alpha
-                             (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
-                             (-90, 90)] # angle, to accommodate crazy behavior
+        if self.who == 1: # machine looking at human
+            if self.P.BOUND_HUMAN_X is not None: #intersection
+                intent_bounds = [(0.1, None), # alpha
+                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-180, 0)] # angle, to accommodate crazy behavior
+            else:
+                intent_bounds = [(0.1, None), # alpha
+                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-90, 90)] # angle, to accommodate crazy behavior
+        else: # human looking at machine
+            if self.P.BOUND_HUMAN_X is not None: #intersection
+                intent_bounds = [(0.1, None), # alpha
+                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-90 + self.human_orientation, 90 + self.human_orientation)] # angle, to accommodate crazy behavior
+            else:
+                intent_bounds = [(0.1, None), # alpha
+                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-90, 90)] # angle, to accommodate crazy behavior
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.human_predicted_theta,
                                                               bounds=intent_bounds, args=(w, a_self,
@@ -420,11 +522,11 @@ class MachineVehicle:
 
         intent_bounds = [(0.1, None), # alpha
                          (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
-                         (-C.ACTION_TURNANGLE, C.ACTION_TURNANGLE)] # angle
+                         (-C.ACTION_TURNANGLE + self.machine_orientation, C.ACTION_TURNANGLE + self.machine_orientation)] # angle, to accommodate crazy behavior
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.machine_predicted_theta,
                                                               bounds=intent_bounds, args=(w, a_other,
-                                                              self.machine_actions, self.machine_predicted_theta[0]))
+                                                              self.machine_orientation, self.machine_predicted_theta[0]))
         alpha, r, rho = intent_optimization_results.x
         theta = [r / t_steps * C.ACTION_TIMESTEPS, rho] # scale the radius
 
