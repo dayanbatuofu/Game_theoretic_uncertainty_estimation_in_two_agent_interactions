@@ -139,13 +139,13 @@ class MachineVehicle:
             defcon_other_x = self.P.BOUND_MACHINE_X
             defcon_other_y = self.P.BOUND_MACHINE_Y
             orientation_other = self.P.MACHINE_ORIENTATION
-            bounds_other = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+            bounds_other = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                             (-C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION,
                              C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION)]  # Angle
             defcon_self_x = self.P.BOUND_HUMAN_X
             defcon_self_y = self.P.BOUND_HUMAN_Y
             orientation_self = self.P.HUMAN_ORIENTATION
-            bounds_self = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+            bounds_self = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                            (-C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION,
                             C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION)]  # Angle
 
@@ -154,14 +154,14 @@ class MachineVehicle:
             defcon_other_y = self.P.BOUND_HUMAN_Y
             orientation_other = self.P.HUMAN_ORIENTATION
 
-            bounds_other = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+            bounds_other = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                            (-C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION,
                             C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION)]  # Angle
 
             defcon_self_x = self.P.BOUND_MACHINE_X
             defcon_self_y = self.P.BOUND_MACHINE_Y
             orientation_self = self.P.MACHINE_ORIENTATION
-            bounds_self = [(0, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
+            bounds_self = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                        (-C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION,
                         C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION)]  # Angle
 
@@ -230,7 +230,7 @@ class MachineVehicle:
                                              cons_self, s_other, s_self, trajectory_other,
                                              theta_self, box_other, box_self, orientation_other, orientation_self,
                                                 self.who)
-
+        # trajectory_self = predicted_trajectory_self
 
         # Interpolate for output
         actions_self = self.interpolate_from_trajectory(trajectory_self, s_self, orientation_self)
@@ -428,20 +428,20 @@ class MachineVehicle:
         if self.who == 1: # machine looking at human
             if self.P.BOUND_HUMAN_X is not None: #intersection
                 intent_bounds = [(0.1, None), # alpha
-                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                                  (-180, 0)] # angle, to accommodate crazy behavior
             else:
                 intent_bounds = [(0.1, None), # alpha
-                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                                  (-90, 90)] # angle, to accommodate crazy behavior
         else: # human looking at machine
             if self.P.BOUND_HUMAN_X is not None: #intersection
                 intent_bounds = [(0.1, None), # alpha
-                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                                  (-90 + self.human_orientation, 90 + self.human_orientation)] # angle, to accommodate crazy behavior
             else:
                 intent_bounds = [(0.1, None), # alpha
-                                 (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                                 (-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                                  (-90, 90)] # angle, to accommodate crazy behavior
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.human_predicted_theta,
@@ -521,7 +521,7 @@ class MachineVehicle:
         #     theta = A + W/alpha
 
         intent_bounds = [(0.1, None), # alpha
-                         (0, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
+                         (-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.T_PAST * self.P.VEHICLE_MAX_SPEED), # radius
                          (-C.ACTION_TURNANGLE + self.machine_orientation, C.ACTION_TURNANGLE + self.machine_orientation)] # angle, to accommodate crazy behavior
 
         intent_optimization_results = scipy.optimize.minimize(self.intent_loss_func, self.machine_predicted_theta,

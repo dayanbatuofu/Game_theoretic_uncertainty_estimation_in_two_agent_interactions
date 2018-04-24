@@ -1,6 +1,6 @@
 from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
-from machine_vehicle import MachineVehicle
+from machine_vehicle_intersection import MachineVehicle
 from collision_box import Collision_Box
 from sim_draw import Sim_Draw
 from sim_data import Sim_Data
@@ -29,7 +29,7 @@ class Main():
         # Sim output
         self.sim_data_machine = Sim_Data()
         self.sim_data_human = Sim_Data()
-        self.sim_out = open("sim_outputs/output_intersection_aggressive2.pkl", "wb")
+        self.sim_out = open("sim_outputs/output_intersection_passive_aggressive.pkl", "wb")
 
         # Create Vehicles
         human_collision_box = Collision_Box(self.sim_draw.human_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
@@ -54,8 +54,8 @@ class Main():
                                               self.P.HUMAN_ORIENTATION,
                                               self.P.MACHINE_ORIENTATION, 1, None)
         #initialize others' states
-        self.human_vehicle.human_states.append(self.machine_vehicle.machine_states[0])
-        self.machine_vehicle.human_states.append(self.human_vehicle.machine_states[0])
+        # self.human_vehicle.human_states.append(self.machine_vehicle.machine_states[0])
+        # self.machine_vehicle.human_states.append(self.human_vehicle.machine_states[0])
 
         # Go
         self.trial()
@@ -71,21 +71,26 @@ class Main():
                 # self.machine_vehicle.update(self.human_vehicle, self.frame)
 
                 # Update data
-                self.sim_data_machine.append(self.machine_vehicle.human_predicted_theta,
-                                     self.machine_vehicle.human_predicted_action_set,
-                                     self.machine_vehicle.machine_states[-1],
-                                     self.machine_vehicle.machine_theta,
-                                     self.machine_vehicle.machine_predicted_theta,
-                                     self.machine_vehicle.machine_action_set,
-                                     self.machine_vehicle.machine_predicted_action_set)
 
-                self.sim_data_human.append(self.human_vehicle.human_predicted_theta, #this "human" is the machine
-                                     self.human_vehicle.human_predicted_action_set,
-                                     self.human_vehicle.machine_states[-1], #machine here is the human
-                                     self.human_vehicle.machine_theta,
-                                     self.human_vehicle.machine_predicted_theta,
-                                     self.human_vehicle.machine_action_set,
-                                     self.human_vehicle.machine_predicted_action_set)
+                self.sim_data_machine.append(self.machine_vehicle.machine_states_set,
+                                     self.machine_vehicle.machine_actions_set,
+                                     self.machine_vehicle.machine_theta,
+                                     self.machine_vehicle.human_predicted_theta,
+                                     self.machine_vehicle.machine_expected_actions,
+                                     self.machine_vehicle.machine_trajectory,
+                                     self.machine_vehicle.machine_planed_actions_set,
+                                     self.machine_vehicle.human_predicted_trajectory,
+                                     self.machine_vehicle.human_predicted_actions)
+
+                self.sim_data_human.append(self.human_vehicle.machine_states_set,
+                                     self.human_vehicle.machine_actions_set,
+                                     self.human_vehicle.machine_theta, #this "human" is the machine
+                                     self.human_vehicle.human_predicted_theta,
+                                     self.human_vehicle.machine_expected_actions, #machine here is the human
+                                     self.human_vehicle.machine_trajectory,
+                                     self.human_vehicle.machine_planed_actions_set,
+                                     self.human_vehicle.human_predicted_trajectory,
+                                     self.human_vehicle.human_predicted_actions)
 
             if self.frame >= self.duration:
                 break
@@ -112,8 +117,8 @@ class Main():
             if not self.paused:
                 self.frame += 1
 
-        pickle.dump([self.sim_data_machine, self.sim_data_human], self.sim_out, pickle.HIGHEST_PROTOCOL)
-        print('Output pickled and dumped.')
+        # pickle.dump([self.sim_data_machine, self.sim_data_human], self.sim_out, pickle.HIGHEST_PROTOCOL)
+        # print('Output pickled and dumped.')
 
 
 if __name__ == "__main__":

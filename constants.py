@@ -20,7 +20,7 @@ class CONSTANTS:
 
     # OPTIMIZATION
     ACTION_TIMESTEPS = 100  # 5 seconds
-    ACTION_TURNANGLE = 30  # degrees
+    ACTION_TURNANGLE = 0  # degrees
     ACTION_NUMPOINTS = 100
 
     T_PAST = 10
@@ -32,6 +32,9 @@ class CONSTANTS:
 
     LEARNING_RATE = 0.5
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
+
+    EXPTHETA = 5.
+    EXPCOLLISION = 4.
 
     class PARAMETERSET_1:
 
@@ -80,10 +83,18 @@ class CONSTANTS:
         HUMAN_INITIAL_POSITION = np.array([0, 2.3])
 
         # INTENTS
-        HUMAN_INTENT = np.array([1000000, VEHICLE_MAX_SPEED*0.3*100, -90])
-        MACHINE_INTENT = np.array([2000000000, VEHICLE_MAX_SPEED*0.3*100, 0])
-        HUMAN_INTENT_BY_MACHINE = np.array([1, VEHICLE_MAX_SPEED*0.3*100, -90])
-        MACHINE_INTENT_BY_HUMAN = np.array([1, VEHICLE_MAX_SPEED*0.3*100, 0])
+        # HUMAN_INTENT = np.array([1000, VEHICLE_MAX_SPEED*0.3*100, -90])
+        # MACHINE_INTENT = np.array([2000000000, VEHICLE_MAX_SPEED*0.3*100, 0])
+        # HUMAN_INTENT_BY_MACHINE = np.array([1, VEHICLE_MAX_SPEED*0.3*100, -90])
+        # MACHINE_INTENT_BY_HUMAN = np.array([1, VEHICLE_MAX_SPEED*0.3*100, 0])
+        HUMAN_INTENT = np.array([1])
+        MACHINE_INTENT = np.array([2000])
+        HUMAN_INTENT_BY_MACHINE = np.array([1])
+        MACHINE_INTENT_BY_HUMAN = np.array([1])
+
+        # COMMON TRAJECTORY
+        COMMON_THETA_MACHINE = np.array([VEHICLE_MAX_SPEED*0.1*100.,0])
+        COMMON_THETA_HUMAN = np.array([VEHICLE_MAX_SPEED*0.1*100,-90])
 
         # VEHICLE ORIENTATIONS
         HUMAN_ORIENTATION = -90

@@ -37,24 +37,23 @@ class Sim_Draw():
         sim_data_machine, sim_data_human = sim_data
 
         # Define characteristics of current frame
-        human_state = sim_data_human.machine_state[frame] # get this from human
-        human_predicted_theta = sim_data_machine.human_predicted_theta[frame]
-        human_previous_action_set = sim_data_machine.human_predicted_action_set[frame]
+        human_state = sim_data_human.machine_states_set[frame] # get this from human
+        human_predicted_theta = sim_data_machine.human_predicted_theta_set[frame]
+        human_previous_action_set = sim_data_machine.human_predicted_actions_set[frame]
 
-        machine_state = sim_data_machine.machine_state[frame]
-        machine_theta = sim_data_machine.machine_theta[frame]
-        machine_predicted_theta = sim_data_machine.machine_predicted_theta[frame]
-        machine_previous_action_set = sim_data_machine.machine_action_set[frame]
-        machine_previous_predicted_action_set = sim_data_machine.machine_predicted_action_set[frame]
+        machine_state = sim_data_machine.machine_states_set[frame]
+        machine_theta = sim_data_machine.machine_theta_set[frame]
+        # machine_predicted_theta = sim_data_machine.machine_predicted_theta[frame]
+        machine_previous_action_set = sim_data_machine.machine_planed_actions_set[frame]
+        machine_previous_predicted_action_set = sim_data_machine.machine_expected_actions_set[frame]
 
-        machine_predicted_theta_by_human = sim_data_human.human_predicted_theta[frame]
-        machine_previous_action_set_by_human = sim_data_human.human_predicted_action_set[frame]
+        machine_predicted_theta_by_human = sim_data_human.human_predicted_theta_set[frame]
+        machine_previous_action_set_by_human = sim_data_human.human_predicted_actions_set[frame]
 
-        human_theta = sim_data_human.machine_theta[frame]
-        human_predicted_theta_by_human = sim_data_human.machine_predicted_theta[frame]
-        human_previous_action_set_by_human = sim_data_human.machine_action_set[frame]
-        human_previous_predicted_action_set_by_human = sim_data_human.machine_predicted_action_set[frame]
-
+        human_theta = sim_data_human.machine_theta_set[frame]
+        # human_predicted_theta_by_human = sim_data_human.machine_predicted_theta[frame]
+        human_previous_action_set_by_human = sim_data_human.machine_actions_set[frame]
+        human_previous_predicted_action_set_by_human = sim_data_human.machine_expected_actions_set[frame]
 
         # Draw the current frame
 
@@ -99,25 +98,25 @@ class Sim_Draw():
         pg.draw.lines(self.screen, MAGENTA, False, machine_predicted_state_pixels, 4)
 
         # Draw machine intent
-        x = machine_theta[1] * np.cos(np.deg2rad(machine_theta[2]))
-        y = machine_theta[1] * np.sin(np.deg2rad(machine_theta[2]))
-        pos = self.c2p(np.array(machine_state) + [x, y])
-        pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
-        pg.draw.circle(self.screen, GREEN, pos, 6)
+        # x = machine_theta[1] * np.cos(np.deg2rad(machine_theta[2]))
+        # y = machine_theta[1] * np.sin(np.deg2rad(machine_theta[2]))
+        # pos = self.c2p(np.array(machine_state) + [x, y])
+        # pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
+        # pg.draw.circle(self.screen, GREEN, pos, 6)
 
         # Draw predicted human intent
-        x = human_predicted_theta[1] * np.cos(np.deg2rad(human_predicted_theta[2]))
-        y = human_predicted_theta[1] * np.sin(np.deg2rad(human_predicted_theta[2]))
-        pos = self.c2p(np.array(human_state) + [x, y])
-        pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
-        pg.draw.circle(self.screen, TEAL, pos, 6)
+        # x = human_predicted_theta[1] * np.cos(np.deg2rad(human_predicted_theta[2]))
+        # y = human_predicted_theta[1] * np.sin(np.deg2rad(human_predicted_theta[2]))
+        # pos = self.c2p(np.array(human_state) + [x, y])
+        # pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
+        # pg.draw.circle(self.screen, TEAL, pos, 6)
 
         # Draw predicted human's prediction of machine's intent
-        x = machine_predicted_theta[1] * np.cos(np.deg2rad(machine_predicted_theta[2]))
-        y = machine_predicted_theta[1] * np.sin(np.deg2rad(machine_predicted_theta[2]))
-        pos = self.c2p(np.array(machine_state) + [x, y])
-        pg.draw.circle(self.screen, (0, 0, 0), pos, 5)
-        pg.draw.circle(self.screen, MAGENTA, pos, 4)
+        # x = machine_predicted_theta[1] * np.cos(np.deg2rad(machine_predicted_theta[2]))
+        # y = machine_predicted_theta[1] * np.sin(np.deg2rad(machine_predicted_theta[2]))
+        # pos = self.c2p(np.array(machine_state) + [x, y])
+        # pg.draw.circle(self.screen, (0, 0, 0), pos, 5)
+        # pg.draw.circle(self.screen, MAGENTA, pos, 4)
 
         # Annotations
         font = pg.font.SysFont("Arial", 15)
@@ -127,20 +126,23 @@ class Sim_Draw():
         label = font.render("Machine State: (%5.4f , %5.4f)" % (machine_state[0], machine_state[1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 30))
 
-        label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_theta[0], machine_theta[1], machine_theta[2]), 1, (0, 0, 0))
+        # label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_theta[0], machine_theta[1], machine_theta[2]), 1, (0, 0, 0))
+        label = font.render("Machine Theta: (%5.4f)" % (machine_theta[0]), 1, (0, 0, 0))
         self.screen.blit(label, (30, 60))
         pg.draw.circle(self.screen, BLACK, (15, 70), 5)
         pg.draw.circle(self.screen, GREEN, (15, 70), 4)
 
-        label = font.render("P Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta[0], human_predicted_theta[1], human_predicted_theta[2]), 1, (0, 0, 0))
+        # label = font.render("P Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta[0], human_predicted_theta[1], human_predicted_theta[2]), 1, (0, 0, 0))
+        label = font.render("P Human Theta: (%5.4f)" % (human_predicted_theta[0]), 1, (0, 0, 0))
         self.screen.blit(label, (30, 80))
         pg.draw.circle(self.screen, BLACK, (15, 90), 5)
         pg.draw.circle(self.screen, (0, 255, 255), (15, 90), 4)
 
-        label = font.render("PP Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta[0], machine_predicted_theta[1], machine_predicted_theta[2]), 1, (0, 0, 0))
-        self.screen.blit(label, (30, 100))
-        pg.draw.circle(self.screen, BLACK, (15, 110), 5)
-        pg.draw.circle(self.screen, MAGENTA, (15, 110), 4)
+        # label = font.render("PP Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta[0], machine_predicted_theta[1], machine_predicted_theta[2]), 1, (0, 0, 0))
+        # label = font.render("PP Machine Theta: (%5.4f)" % (machine_predicted_theta[0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (30, 100))
+        # pg.draw.circle(self.screen, BLACK, (15, 110), 5)
+        # pg.draw.circle(self.screen, MAGENTA, (15, 110), 4)
 
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
         self.screen.blit(label, (10, 130))
@@ -156,22 +158,25 @@ class Sim_Draw():
 
         # draw from human's perspective
         gap = 400
-        label = font.render("Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_theta[0], human_theta[1], human_theta[2]), 1, (0, 0, 0))
+        # label = font.render("Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_theta[0], human_theta[1], human_theta[2]), 1, (0, 0, 0))
+        label = font.render("Human Theta: (%5.4f)" % (human_theta[0]), 1, (0, 0, 0))
         self.screen.blit(label, (30+gap, 60))
         pg.draw.circle(self.screen, BLACK, (15+gap, 70), 5)
         pg.draw.circle(self.screen, GREEN, (15+gap, 70), 4)
 
-        label = font.render("P Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta_by_human[0], machine_predicted_theta_by_human[1],
-                                                                      machine_predicted_theta_by_human[2]), 1, (0, 0, 0))
+        # label = font.render("P Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta_by_human[0], machine_predicted_theta_by_human[1],
+        #                                                               machine_predicted_theta_by_human[2]), 1, (0, 0, 0))
+        label = font.render("P Machine Theta: (%5.4f)" % (machine_predicted_theta_by_human[0]), 1, (0, 0, 0))
         self.screen.blit(label, (30+gap, 80))
         pg.draw.circle(self.screen, BLACK, (15+gap, 90), 5)
         pg.draw.circle(self.screen, (0, 255, 255), (15+gap, 90), 4)
 
-        label = font.render("PP Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta_by_human[0], human_predicted_theta_by_human[1],
-                                                                         human_predicted_theta_by_human[2]), 1, (0, 0, 0))
-        self.screen.blit(label, (30+gap, 100))
-        pg.draw.circle(self.screen, BLACK, (15+gap, 110), 5)
-        pg.draw.circle(self.screen, MAGENTA, (15+gap, 110), 4)
+        # label = font.render("PP Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta_by_human[0], human_predicted_theta_by_human[1],
+        #                                                                  human_predicted_theta_by_human[2]), 1, (0, 0, 0))
+        # label = font.render("PP Human Theta: (%5.4f)" % (human_predicted_theta_by_human[0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (30+gap, 100))
+        # pg.draw.circle(self.screen, BLACK, (15+gap, 110), 5)
+        # pg.draw.circle(self.screen, MAGENTA, (15+gap, 110), 4)
 
         pg.display.flip()
 

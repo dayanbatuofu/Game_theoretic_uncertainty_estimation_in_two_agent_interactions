@@ -114,8 +114,8 @@ class Collision_Box():
 
 
         ## Max implementation
-        my_pos[np.where(np.abs(my_pos)<1e-12)] = 0
-        other_pos[np.where(np.abs(other_pos)<1e-12)] = 0
+        # my_pos[np.where(np.abs(my_pos)<1e-12)] = 0
+        # other_pos[np.where(np.abs(other_pos)<1e-12)] = 0
         distance = np.sum((my_pos - other_pos)**2, axis=1)
 
         # return np.array(1 / (1 + np.exp(-distance + C.CAR_LENGTH*2))) # try sigmoid
