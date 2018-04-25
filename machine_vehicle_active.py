@@ -1,4 +1,4 @@
-#this is the reactive vehicle
+#this is the active vehicle for intersection
 
 from constants import CONSTANTS as C
 from constants import MATRICES as M
@@ -50,17 +50,6 @@ class MachineVehicle:
         self.human_actions_set = []
         self.human_orientation = ot_orientation
 
-        self.scripted_state = None #TODO: need to update this
-        if script is not None:
-            input_file = open(script)
-            self.scripted_state = []
-            for line in input_file:
-                line = line.split()  # to deal with blank
-                if line:  # lines (ie skip them)
-                    line = tuple([float(i) for i in line])
-                    self.scripted_state.append(line)
-            self.machine_states = [self.scripted_state[0]]
-
     def get_state(self, delay):
         return self.machine_states_set[-1*delay]
 
@@ -91,19 +80,14 @@ class MachineVehicle:
         self.machine_expected_actions  = machine_expected_actions
 
         # Update self state
-        if self.scripted_state is not None: #if action scripted
-            self.machine_states_set.append(self.scripted_state[frame+1]) # get the NEXT state
-            machine_actions = np.subtract(self.machine_states_set[-1], self.machine_states_set[-2])
-            self.machine_actions_set.append(machine_actions)
-        else:
-            self.machine_states_set.append(np.add(self.machine_states_set[-1], (machine_actions[0][0], machine_actions[0][1])))
-            self.machine_actions_set.append(machine_actions[0])
-            self.machine_planed_actions_set.append(machine_actions)
-
-        # # Update human state
-        # last_human_state = self.human_states[-1]
-        # self.human_states.append(human_state)
-        # self.human_actions.append(np.array(human_state)-np.array(last_human_state))
+        # if self.scripted_state is not None: #if action scripted
+        #     self.machine_states_set.append(self.scripted_state[frame+1]) # get the NEXT state
+        #     machine_actions = np.subtract(self.machine_states_set[-1], self.machine_states_set[-2])
+        #     self.machine_actions_set.append(machine_actions)
+        # else:
+        self.machine_states_set.append(np.add(self.machine_states_set[-1], (machine_actions[0][0], machine_actions[0][1])))
+        self.machine_actions_set.append(machine_actions[0])
+        self.machine_planed_actions_set.append(machine_actions)
 
     def get_actions(self):
 
@@ -216,32 +200,11 @@ class MachineVehicle:
         guess_other = np.hstack((np.expand_dims(trials, axis=1),
                     np.ones((trials.size,1)) * self.human_orientation))
 
-        # while np.abs(loss_value-loss_value_old) > C.LOSS_THRESHOLD and iter_count < 10:
-        #     loss_value_old = loss_value
-        #     iter_count += 1
-
-        # Estimate human actions
-        predicted_trajectory_other, loss_value = self.multi_search(np.append(guess_other, [trajectory_other], axis=0),
-                                                         bounds_other, cons_other, s_self,
-                                                    s_other, predicted_trajectory_self, theta_other, box_self,
-                                                    box_other, orientation_self, orientation_other, 1 - self.who)
-
-            # # Estimate human's estimated machine actions
-            # predicted_trajectory_self, _ = self.multi_search(np.append(guess_set, [predicted_trajectory_self], axis=0),
-            #                                                  bounds_self,
-            #                                              cons_self, s_other, s_self, trajectory_other,
-            #                                              self.machine_predicted_theta, box_other, box_self,
-            #                                                  orientation_other, orientation_self, self.who)
-
         # Estimate machine actions
-        trajectory_self, _ = self.multi_search(np.append(guess_set, [trajectory_self], axis=0), bounds_self,
-                                     cons_self, s_other, s_self, predicted_trajectory_other,
-                                     theta_self, box_other, box_self, orientation_other, orientation_self,
-                                        self.who)
-        if self.who == 1:
-            trajectory_self = [trajectory_self[0]-0.2,0.]
-
-        # trajectory_self = predicted_trajectory_self
+        trajectory_self, predicted_trajectory_other = self.multi_search(guess_set, bounds_self,
+                                                                        cons_self, s_other, s_self, theta_self,
+                                                                        box_other, box_self,
+                                                                        orientation_other, orientation_self, self.who)
 
         # Interpolate for output
         actions_self = self.interpolate_from_trajectory(trajectory_self, s_self, orientation_self)
@@ -250,12 +213,13 @@ class MachineVehicle:
 
         return trajectory_self, predicted_trajectory_other, actions_self, predicted_actions_other, predicted_actions_self
 
-    def multi_search(self, guess_set, bounds, cons, s_o, s_s, traj_o, theta_s, box_o, box_s, orientation_o,
+    def multi_search(self, guess_set, bounds, cons, s_o, s_s, theta_s, box_o, box_s, orientation_o,
                      orientation_s, who):
 
         """ run multiple searches with different initial guesses """
 
         trajectory_set = np.empty((0,2)) #TODO: need to generalize
+        predicted_trajectory_other_set = np.empty((0,2))
         loss_value_set = []
 
         for guess in guess_set:
@@ -265,81 +229,45 @@ class MachineVehicle:
             #                                                      box_s, orientation_o, orientation_s, who),
             #                                                )
 
-            fun = self.loss_func(guess, s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o,
-                                 box_s, orientation_o, orientation_s, who)
+            fun, predicted_trajectory_other = self.loss_func(guess, s_o, s_s, theta_s,
+                                                             self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o,
+                                                             box_s, orientation_o, orientation_s, who)
 
             # if np.isfinite(optimization_results.fun) and not np.isnan(optimization_results.fun) \
             #         and optimization_results.success:
             # trajectory_set = np.append(trajectory_set, [optimization_results.x], axis=0)
             # loss_value_set = np.append(loss_value_set, optimization_results.fun)
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
+            predicted_trajectory_other_set = np.append(predicted_trajectory_other_set, [predicted_trajectory_other],
+                                                       axis=0)
             loss_value_set = np.append(loss_value_set, fun)
 
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
+        predicted_trajectory_other = predicted_trajectory_other_set[np.where(loss_value_set ==
+                                                                             np.min(loss_value_set))[0][0]]
 
+        return trajectory, predicted_trajectory_other
 
-# optimization_results = scipy.optimize.minimize(self.loss_func, guess, bounds=bounds, constraints=cons,
-#                                                args=(s_o, s_s, traj_o, theta_s,
-#                                                      self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o,
-#                                                      box_s, orientation_o, orientation_s, who),
-#                                                )
-#
-# print(optimization_results)
-#
-# print([cons[0]['fun'](guess),cons[1]['fun'](guess)])
-
-
-
-        # self.loss_func((0,0), s_o, s_s, traj_o, theta_s, self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, box_o, box_s, orientation_o, orientation_s)
-        # s_other = s_o
-        # s_self = s_s
-        # trajectory_other = traj_o
-        # theta_self = theta_s
-        # theta_max = self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS
-        # box_other = box_o
-        # box_self = box_s
-        # orientation_other = orientation_o
-        # orientation_self = orientation_s
-        # actions_self    = self.interpolate_from_trajectory(trajectory, s_self, orientation_self)
-        # actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
-        #
-        # # Define state loss
-        # # state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
-        # #                                                            s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
-        #
-        # s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-        # s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-        # D = box_self.get_collision_distance(s_self_predict, s_other_predict, box_other)+1e-12
-        # gap = 1.2 #TODO: generalize this
-        # for i in range(s_self_predict.shape[0]):
-        #     if who == 1:
-        #         if s_self_predict[i,0]<=-gap or s_self_predict[i,0]>=gap or s_other_predict[i,1]>=gap or s_other_predict[i,1]<=-gap:
-        #             D[i] = np.inf
-        #     elif who == 0:
-        #         if s_self_predict[i,1]<=-gap or s_self_predict[i,1]>=gap or s_other_predict[i,0]>=gap or s_other_predict[i,0]<=-gap:
-        #             D[i] = np.inf
-        #
-        # sigD = 1000. / (1 + np.exp(10.*(-D + C.CAR_LENGTH**2*5)))+0.01
-        #
-        # # Define action loss
-        # if who == 1:
-        #     intent_loss = theta_self[0] / (1 + np.exp(s_self_predict[-1][0] - 0.4))
-        # else:
-        #     intent_loss = theta_self[0] / (1 + np.exp(s_self_predict[-1][1] - 0.4))
-
-        return trajectory, np.min(loss_value_set)
-
-    def loss_func(self, trajectory, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self,
+    def loss_func(self, trajectory, s_other, s_self, theta_self, theta_max, box_other, box_self,
                   orientation_other, orientation_self, who):
 
-        """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
+        ##############################################################################################
+        # predict how others perceive your action
+        trials = np.arange(5,-1.1,-0.1)
+        # guess_set = np.hstack((np.ones((trials.size,1)) * self.human_predicted_theta[0], np.expand_dims(trials, axis=1),
+        #                        np.ones((trials.size,1)) * self.machine_orientation))
+        guess_set = np.hstack((np.expand_dims(trials, axis=1),
+                               np.ones((trials.size,1)) * orientation_other))
+        action_self = self.interpolate_from_trajectory(trajectory, s_self, orientation_self)[0]
+        intent_optimization_results = self.multi_search_intent(guess_set, [], [], orientation_other,
+                                                               s_other, s_self, action_self, 1-who)
+        alpha_me_by_other, r, rho = intent_optimization_results
+
+        expected_trajectory_other_by_me = [r, rho] # I expect you to understand that I expect you to do this
+        ##############################################################################################
 
         actions_self    = self.interpolate_from_trajectory(trajectory, s_self, orientation_self)
-        actions_other   = self.interpolate_from_trajectory(trajectory_other, s_other, orientation_other)
-
-        # Define state loss
-        # state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),
-        #                                                            s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other), box_other)+1e-12)
+        actions_other   = self.interpolate_from_trajectory(expected_trajectory_other_by_me, s_other, orientation_other)
 
         s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
         s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
@@ -353,12 +281,8 @@ class MachineVehicle:
                 if s_self_predict[i,1]<=-gap+1e-12 or s_self_predict[i,1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
                     D[i] = np.inf
 
-
         collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
 
-        # Define action loss
-        # intended_trajectory = self.interpolate_from_trajectory(theta_self[1:3], s_self, orientation_self)
-        # intent_loss = np.square(np.linalg.norm(actions_self - intended_trajectory, axis=1))
         if who == 1:
             intent_loss = theta_self[0] * np.exp(C.EXPTHETA * (- s_self_predict[-1][0] + 0.4))
         else:
@@ -367,7 +291,7 @@ class MachineVehicle:
         # return np.linalg.norm(np.reciprocal(sigD)) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
         loss = collision_loss + intent_loss
 
-        return loss # Return weighted sum
+        return loss, expected_trajectory_other_by_me # Return weighted sum
 
     def get_human_predicted_intent(self, who):
         """ predict the aggressiveness of the agent and what the agent expect me to do """
@@ -405,14 +329,16 @@ class MachineVehicle:
         guess_set = np.hstack((np.expand_dims(trials, axis=1),
                                np.ones((trials.size,1)) * self.machine_orientation))
 
-        intent_optimization_results = self.multi_search_intent(guess_set, intent_bounds, cons, who)
+        intent_optimization_results = self.multi_search_intent(guess_set, intent_bounds, cons,
+                                                               self.machine_orientation, self.machine_states_set[-1],
+                                                               self.human_states_set[-1], self.human_actions_set[-1], who)
         alpha_other, r, rho = intent_optimization_results
 
         # what the agent expected me to do
         expected_trajectory = [r, rho] # scale the radius
         return alpha_other, expected_trajectory
 
-    def multi_search_intent(self, guess_set, intent_bounds, cons, who):
+    def multi_search_intent(self, guess_set, intent_bounds, cons, orientation_s, state_s, state_o, action_o, who):
 
         """ run multiple searches with different initial guesses """
 
@@ -423,7 +349,7 @@ class MachineVehicle:
             # optimization_results = scipy.optimize.minimize(self.intent_loss_func, guess,
             #                                           bounds=intent_bounds, constraints=cons, args=(
             #                                           self.machine_orientation, self.human_predicted_theta[0], 1 - who))
-            fun, alpha = self.intent_loss_func(guess, self.machine_orientation, self.human_predicted_theta[0], 1 - who)
+            fun, alpha = self.intent_loss_func(guess, orientation_s, state_s, state_o, action_o, who)
 
             # if np.isfinite(optimization_results.fun) and not np.isnan(optimization_results.fun):
             trajectory_set = np.vstack((trajectory_set, np.array([alpha, guess[0], guess[1]])))
@@ -432,26 +358,28 @@ class MachineVehicle:
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
         return trajectory
 
-    def intent_loss_func(self, intent, orientation, alpha0, who):
+    def intent_loss_func(self, intent, orientation_self, state_self, state_other, action_other, who_self):
+        who = 1-who_self
+
         # alpha = intent[0] #aggressiveness of the agent
         trajectory = intent #what I was expected to do
 
         # what I could have done and been
-        s_other = np.array(self.machine_states_set[-1])
-        nodes = np.array([[s_other[0], s_other[0] + trajectory[0]*np.cos(np.deg2rad(orientation))/2, s_other[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
-                  [s_other[1], s_other[1] + trajectory[0]*np.sin(np.deg2rad(orientation))/2, s_other[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
+        s_other = np.array(state_self)
+        nodes = np.array([[s_other[0], s_other[0] + trajectory[0]*np.cos(np.deg2rad(orientation_self))/2, s_other[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
+                  [s_other[1], s_other[1] + trajectory[0]*np.sin(np.deg2rad(orientation_self))/2, s_other[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
         curve = bezier.Curve(nodes, degree=2)
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_TIMESTEPS + 1)))
         a_other = np.diff(positions, n=1, axis=0)
         s_other_traj = np.array(s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, a_other))
 
         # actions and states of the agent
-        s_self = np.array(self.human_states_set[-1])
-        a_self = np.array(C.ACTION_TIMESTEPS * [self.human_actions_set[-1]])#project current agent actions to future
+        s_self = np.array(state_other) #self.human_states_set[-1]
+        a_self = np.array(C.ACTION_TIMESTEPS * [action_other])#project current agent actions to future
         s_self_traj = np.array(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, a_self))
 
         # I expect the agent to be this much aggressive
-        theta_self = self.human_predicted_theta
+        # theta_self = self.human_predicted_theta
 
         # calculate the gradient of the control objective
         A = M.LOWER_TRIANGULAR_MATRIX

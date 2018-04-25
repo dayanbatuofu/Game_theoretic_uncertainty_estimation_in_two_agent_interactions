@@ -20,7 +20,7 @@ class CONSTANTS:
 
     # OPTIMIZATION
     ACTION_TIMESTEPS = 100  # 5 seconds
-    ACTION_TURNANGLE = 0  # degrees
+    ACTION_TURNANGLE = 0  # degrees #TODO: not sure why slsqp does not work with larger angles
     ACTION_NUMPOINTS = 100
 
     T_PAST = 10
@@ -33,8 +33,8 @@ class CONSTANTS:
     LEARNING_RATE = 0.5
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
-    EXPTHETA = 5.
-    EXPCOLLISION = 4.
+    EXPTHETA = 1.
+    EXPCOLLISION = 5.
 
     class PARAMETERSET_1:
 
@@ -87,8 +87,8 @@ class CONSTANTS:
         # MACHINE_INTENT = np.array([2000000000, VEHICLE_MAX_SPEED*0.3*100, 0])
         # HUMAN_INTENT_BY_MACHINE = np.array([1, VEHICLE_MAX_SPEED*0.3*100, -90])
         # MACHINE_INTENT_BY_HUMAN = np.array([1, VEHICLE_MAX_SPEED*0.3*100, 0])
-        HUMAN_INTENT = np.array([1])
-        MACHINE_INTENT = np.array([2000])
+        HUMAN_INTENT = np.array([2000])
+        MACHINE_INTENT = np.array([1])
         HUMAN_INTENT_BY_MACHINE = np.array([1])
         MACHINE_INTENT_BY_HUMAN = np.array([1])
 

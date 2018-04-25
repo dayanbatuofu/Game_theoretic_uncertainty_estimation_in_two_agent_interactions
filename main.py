@@ -1,6 +1,7 @@
 from constants import CONSTANTS as C
 from human_vehicle import HumanVehicle
-from machine_vehicle_intersection import MachineVehicle
+from machine_vehicle_intersection import MachineVehicle as reactive_vehicle
+from machine_vehicle_passive_aggressive import MachineVehicle as passive_aggressive_vehicle
 from collision_box import Collision_Box
 from sim_draw import Sim_Draw
 from sim_data import Sim_Data
@@ -40,14 +41,14 @@ class Main():
         # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
         # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
         self.script_human = 'human_state_files/intersection/human_stop_go.txt'
-        self.human_vehicle = MachineVehicle(self.P, machine_collision_box, human_collision_box,
+        self.human_vehicle = reactive_vehicle(self.P, machine_collision_box, human_collision_box,
                                               self.P.HUMAN_INITIAL_POSITION,
                                               self.P.MACHINE_INTENT_BY_HUMAN, self.P.HUMAN_INTENT_BY_MACHINE,
                                               self.P.HUMAN_INTENT,
                                               self.P.MACHINE_ORIENTATION,
                                               self.P.HUMAN_ORIENTATION, 0, None)
 
-        self.machine_vehicle = MachineVehicle(self.P, human_collision_box, machine_collision_box,
+        self.machine_vehicle = passive_aggressive_vehicle(self.P, human_collision_box, machine_collision_box,
                                               self.P.MACHINE_INITIAL_POSITION,
                                               self.P.HUMAN_INTENT_BY_MACHINE, self.P.MACHINE_INTENT_BY_HUMAN,
                                               self.P.MACHINE_INTENT,
