@@ -1,23 +1,29 @@
 from constants import CONSTANTS as C
-from human_vehicle import HumanVehicle
-from machine_vehicle_intersection import MachineVehicle as reactive_vehicle
-from machine_vehicle_passive_aggressive import MachineVehicle as passive_aggressive_vehicle
+from track_vehicle import TrackVehicle
+from autonomous_vehicle import AutonomousVehicle
 from collision_box import Collision_Box
 from sim_draw import Sim_Draw
 from sim_data import Sim_Data
 import pickle
 import numpy as np
 import pygame as pg
+import datetime
 
 class Main():
 
     def __init__(self):
 
+        # Setup
         self.duration = 600
-
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
-        self.sim_draw = Sim_Draw(self.P, "assets/")
+
+
+
+        self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
+
+
+
 
         # Time handling
         self.clock = pg.time.Clock()
@@ -26,37 +32,21 @@ class Main():
         self.paused = False
         self.end = False
         self.frame = 0
+        self.car_num_display = 0
 
         # Sim output
-        self.sim_data_machine = Sim_Data()
-        self.sim_data_human = Sim_Data()
-        self.sim_out = open("sim_outputs/output_intersection_passive_aggressive.pkl", "wb")
+        self.sim_data = Sim_Data()
+        self.sim_out = open("sim_outputs/output_%s.pkl" % datetime.datetime.now(), "wb")
 
-        # Create Vehicles
-        human_collision_box = Collision_Box(self.sim_draw.human_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
-                                            self.sim_draw.human_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
-        machine_collision_box = Collision_Box(self.sim_draw.machine_image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
-                                              self.sim_draw.machine_image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
-
-        # self.human_vehicle = HumanVehicle('human_state_files/intersection/human_stop_go.txt')
-        # self.human_vehicle = HumanVehicle('human_state_files/lane_change/human_change_lane.txt')
-        self.script_human = 'human_state_files/intersection/human_stop_go.txt'
-        self.human_vehicle = reactive_vehicle(self.P, machine_collision_box, human_collision_box,
-                                              self.P.HUMAN_INITIAL_POSITION,
-                                              self.P.MACHINE_INTENT_BY_HUMAN, self.P.HUMAN_INTENT_BY_MACHINE,
-                                              self.P.HUMAN_INTENT,
-                                              self.P.MACHINE_ORIENTATION,
-                                              self.P.HUMAN_ORIENTATION, 0, None)
-
-        self.machine_vehicle = passive_aggressive_vehicle(self.P, human_collision_box, machine_collision_box,
-                                              self.P.MACHINE_INITIAL_POSITION,
-                                              self.P.HUMAN_INTENT_BY_MACHINE, self.P.MACHINE_INTENT_BY_HUMAN,
-                                              self.P.MACHINE_INTENT,
-                                              self.P.HUMAN_ORIENTATION,
-                                              self.P.MACHINE_ORIENTATION, 1, None)
-        #initialize others' states
-        # self.human_vehicle.human_states.append(self.machine_vehicle.machine_states[0])
-        # self.machine_vehicle.human_states.append(self.human_vehicle.machine_states[0])
+        # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
+        self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
+                                       car_parameters_self=self.P.CAR_1,
+                                       car_parameters_other=self.P.CAR_2,
+                                       loss_style='aggressive')
+        self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
+                                       car_parameters_self=self.P.CAR_2,
+                                       car_parameters_other=self.P.CAR_1,
+                                       loss_style='aggressive')
 
         # Go
         self.trial()
@@ -67,37 +57,32 @@ class Main():
 
             # Update model here
             if not self.paused:
-                self.machine_vehicle.update(self.human_vehicle, self.frame)
-                self.human_vehicle.update(self.machine_vehicle, self.frame)
+                self.car_1.update(self.car_2, self.frame)
+                self.car_2.update(self.car_1, self.frame)
                 # self.machine_vehicle.update(self.human_vehicle, self.frame)
 
                 # Update data
 
-                self.sim_data_machine.append(self.machine_vehicle.machine_states_set,
-                                     self.machine_vehicle.machine_actions_set,
-                                     self.machine_vehicle.machine_theta,
-                                     self.machine_vehicle.human_predicted_theta,
-                                     self.machine_vehicle.machine_expected_actions,
-                                     self.machine_vehicle.machine_trajectory,
-                                     self.machine_vehicle.machine_planed_actions_set,
-                                     self.machine_vehicle.human_predicted_trajectory,
-                                     self.machine_vehicle.human_predicted_actions)
 
-                self.sim_data_human.append(self.human_vehicle.machine_states_set,
-                                     self.human_vehicle.machine_actions_set,
-                                     self.human_vehicle.machine_theta, #this "human" is the machine
-                                     self.human_vehicle.human_predicted_theta,
-                                     self.human_vehicle.machine_expected_actions, #machine here is the human
-                                     self.human_vehicle.machine_trajectory,
-                                     self.human_vehicle.machine_planed_actions_set,
-                                     self.human_vehicle.human_predicted_trajectory,
-                                     self.human_vehicle.human_predicted_actions)
+                self.sim_data.append_car1(states=self.car_1.,
+                                          actions=self.car_1.,
+                                          theta=self.car_1.,
+                                          predicted_theta_of_other=self.car_1.,
+                                          prediction_of_actions_of_other=self.car_1.,
+                                          prediction_of_others_prediction_of_my_actions=self.car_1.)
+
+                self.sim_data.append_car2(states=self.car_2.,
+                                          actions=self.car_2.,
+                                          theta=self.car_2.,
+                                          predicted_theta_of_other=self.car_2.,
+                                          prediction_of_actions_of_other=self.car_2.,
+                                          prediction_of_others_prediction_of_my_actions=self.car_2.)
 
             if self.frame >= self.duration:
                 break
 
             # Draw frame
-            self.sim_draw.draw_frame([self.sim_data_machine, self.sim_data_human], self.frame)
+            self.sim_draw.draw_frame(self.sim_data, self.frame, self.car_num_display)
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -111,6 +96,9 @@ class Main():
                     if event.key == pg.K_q:
                         pg.quit()
                         self.running = False
+
+                    if event.key == pg.K_d:
+                        self.car_num_display = ~self.car_num_display
 
             # Keep fps
             self.clock.tick(self.fps)

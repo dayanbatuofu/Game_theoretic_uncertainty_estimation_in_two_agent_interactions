@@ -3,6 +3,7 @@ import numpy as np
 class CONSTANTS:
 
     # DISPLAY
+    ASSET_LOCATION = "assets/"
     FPS = 10
     AXES_SHOW = 0.5
     COORDINATE_SCALE = 150
@@ -42,20 +43,6 @@ class CONSTANTS:
         SCREEN_WIDTH = 4
         SCREEN_HEIGHT = 5
 
-        # SPEED
-        VEHICLE_MAX_SPEED = 0.1
-
-        # INITIAL CONDITIONS
-        MACHINE_INITIAL_POSITION = np.array([-1, 0])
-
-        # INTENTS
-        HUMAN_INTENT = np.array([10., VEHICLE_MAX_SPEED*0.75*100, -7.7])
-        MACHINE_INTENT = np.array([10, VEHICLE_MAX_SPEED*100, 0.])
-
-        # VEHICLE ORIENTATIONS
-        HUMAN_ORIENTATION = 0
-        MACHINE_ORIENTATION = 0
-
         # BOUNDS
         BOUND_HUMAN_X = None
         BOUND_HUMAN_Y = np.array([-0.5, 1.5])
@@ -66,39 +53,31 @@ class CONSTANTS:
         # COLLISION BOXES
         COLLISION_BOXES = np.array([(-np.inf, np.inf, -0.5, 0.5), (-np.inf, np.inf, 0.5, 1.5)])  # List of separate collision boxes (-x, x, -y, y)
 
-        # LOSS WEIGHT
-        Y_CLEARANCE_WEIGHT = 0.3
+        VEHICLE_MAX_SPEED = 0.1
+
+        # Left Car
+        CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
+                              INITIAL_POSITION=np.array([-1, -1]),
+                              BOUND_X=None,
+                              BOUND_Y=np.array([-0.5, 1.5]),
+                              INTENT=np.array([1]),
+                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
+                              ORIENTATION=0)
+
+        # Right Car
+        CAR_2 = CarParameters(SPRITE="white_car_sized.png",
+                              INITIAL_POSITION=np.array([0, 0]),
+                              BOUND_X=None,
+                              BOUND_Y=np.array([-0.5, 1.5]),
+                              INTENT=np.array([2000]),
+                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
+                              ORIENTATION=0)
 
     class PARAMETERSET_2:
 
         # DISPLAY
         SCREEN_WIDTH = 5
         SCREEN_HEIGHT = 5
-
-        # SPEED
-        VEHICLE_MAX_SPEED = 0.05
-
-        # INITIAL CONDITIONS
-        MACHINE_INITIAL_POSITION = np.array([-2.3, 0])
-        HUMAN_INITIAL_POSITION = np.array([0, 2.3])
-
-        # INTENTS
-        # HUMAN_INTENT = np.array([1000, VEHICLE_MAX_SPEED*0.3*100, -90])
-        # MACHINE_INTENT = np.array([2000000000, VEHICLE_MAX_SPEED*0.3*100, 0])
-        # HUMAN_INTENT_BY_MACHINE = np.array([1, VEHICLE_MAX_SPEED*0.3*100, -90])
-        # MACHINE_INTENT_BY_HUMAN = np.array([1, VEHICLE_MAX_SPEED*0.3*100, 0])
-        HUMAN_INTENT = np.array([2000])
-        MACHINE_INTENT = np.array([1])
-        HUMAN_INTENT_BY_MACHINE = np.array([1])
-        MACHINE_INTENT_BY_HUMAN = np.array([1])
-
-        # COMMON TRAJECTORY
-        COMMON_THETA_MACHINE = np.array([VEHICLE_MAX_SPEED*0.1*100.,0])
-        COMMON_THETA_HUMAN = np.array([VEHICLE_MAX_SPEED*0.1*100,-90])
-
-        # VEHICLE ORIENTATIONS
-        HUMAN_ORIENTATION = -90
-        MACHINE_ORIENTATION = 0
 
         # BOUNDS
         BOUND_HUMAN_X = np.array([-0.4, 0.4])
@@ -110,8 +89,35 @@ class CONSTANTS:
         # COLLISION BOXES
         COLLISION_BOXES = np.array([(-0.4, 0.4, -0.4, 0.4)])  # List of separate collision boxes (-x, x, -y, y)
 
-        # LOSS WEIGHT
-        Y_CLEARANCE_WEIGHT = 1
+        VEHICLE_MAX_SPEED = 0.05
+
+        # Left Car
+        CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
+                              INITIAL_POSITION=np.array([-2.3, 0]),
+                              BOUND_X=None,
+                              BOUND_Y=np.array([-0.4, 0.4]),
+                              INTENT=np.array([1]),
+                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
+                              ORIENTATION=0)
+
+        # Right Car
+        CAR_2 = CarParameters(SPRITE="white_car_sized.png",
+                              INITIAL_POSITION=np.array([0, 2.3]),
+                              BOUND_X=np.array([-0.4, 0.4]),
+                              BOUND_Y=None,
+                              INTENT=np.array([2000]),
+                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., -90]),
+                              ORIENTATION=-90)
+
+class CarParameters:
+
+    def __init__(self, SPRITE, INITIAL_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION):
+
+        self.SPRITE = SPRITE
+        self.INITIAL_POSITION = INITIAL_POSITION
+        self.INTENT = INTENT
+        self.COMMON_THETA = COMMON_THETA
+        self.ORIENTATION = ORIENTATION
 
 class MATRICES:
 

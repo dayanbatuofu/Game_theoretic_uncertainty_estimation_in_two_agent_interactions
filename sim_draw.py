@@ -33,110 +33,95 @@ class Sim_Draw():
         self.coordinates_image = pg.image.load(asset_loc + "coordinates.png")
         self.origin = np.array([0, 0])
 
-    def draw_frame(self, sim_data, frame):
-        sim_data_machine, sim_data_human = sim_data
+    def draw_frame(self, sim_data, car_num_display, frame):
 
-        # Define characteristics of current frame
-        human_state = sim_data_human.machine_states_set[frame] # get this from human
-        human_predicted_theta = sim_data_machine.human_predicted_theta_set[frame]
-        human_previous_action_set = sim_data_machine.human_predicted_actions_set[frame]
-
-        machine_state = sim_data_machine.machine_states_set[frame]
-        machine_theta = sim_data_machine.machine_theta_set[frame]
-        # machine_predicted_theta = sim_data_machine.machine_predicted_theta[frame]
-        machine_previous_action_set = sim_data_machine.machine_planed_actions_set[frame]
-        machine_previous_predicted_action_set = sim_data_machine.machine_expected_actions_set[frame]
-
-        machine_predicted_theta_by_human = sim_data_human.human_predicted_theta_set[frame]
-        machine_previous_action_set_by_human = sim_data_human.human_predicted_actions_set[frame]
-
-        human_theta = sim_data_human.machine_theta_set[frame]
-        # human_predicted_theta_by_human = sim_data_human.machine_predicted_theta[frame]
-        human_previous_action_set_by_human = sim_data_human.machine_actions_set[frame]
-        human_previous_predicted_action_set_by_human = sim_data_human.machine_expected_actions_set[frame]
 
         # Draw the current frame
-
         self.screen.fill((255, 255, 255))
 
-        self.origin = machine_state
+        self.origin = sim_data.car1_states[frame]
 
         # Draw Axis Lines
         self.draw_axes()
 
         # Draw Images
-        human_pos_pixels = self.c2p(human_state)
-        human_car_size = self.human_image.get_size()
-        self.screen.blit(self.human_image, (human_pos_pixels[0] - human_car_size[0] / 2, human_pos_pixels[1] - human_car_size[1] / 2))
+        pixel_pos_car_1 = self.c2p(sim_data.car1_states[frame])
+        size_car_1 = self.machine_image.get_size()
+        self.screen.blit(self.machine_image, (pixel_pos_car_1[0] - size_car_1[0] / 2, pixel_pos_car_1[1] - size_car_1[1] / 2))
 
-        machine_pos_pixels = self.c2p(machine_state)
-        machine_car_size = self.machine_image.get_size()
-        self.screen.blit(self.machine_image, (machine_pos_pixels[0] - machine_car_size[0] / 2, machine_pos_pixels[1] - machine_car_size[1] / 2))
+        pixel_pos_car_2 = self.c2p(sim_data.car2_states[frame])
+        size_car_2 = self.human_image.get_size()
+        self.screen.blit(self.human_image, (pixel_pos_car_2[0] - size_car_2[0] / 2, pixel_pos_car_2[1] - size_car_2[1] / 2))
 
         coordinates_size = self.coordinates_image.get_size()
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE - coordinates_size[1] - 10 / 2))
 
-        # Draw machine decided state
-        machine_predicted_state_pixels = []
-        for i in range(len(machine_previous_action_set)):
-            machine_predicted_state = machine_state + np.sum(machine_previous_action_set[:i + 1], axis=0)
-            machine_predicted_state_pixels.append(self.c2p(machine_predicted_state))
-        pg.draw.lines(self.screen, GREEN, False, machine_predicted_state_pixels, 6)
+        if not car_num_display:  # If Car 1
 
-        # Draw human predicted state
-        human_predicted_state_pixels = []
-        for i in range(len(human_previous_action_set)):
-            human_predicted_state = human_state + np.sum(human_previous_action_set[:i + 1], axis=0)
-            human_predicted_state_pixels.append(self.c2p(human_predicted_state))
-        pg.draw.lines(self.screen, TEAL, False, human_predicted_state_pixels, 6)
+            # Draw state
+            state_range = []
+            for i in range(len(sim_data.car1_actions)):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_actions[:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, GREEN, False, state_range, 6)
 
-        # Draw machine predicted state
-        machine_predicted_state_pixels = []
-        for i in range(len(machine_previous_predicted_action_set)):
-            machine_predicted_state = machine_state + np.sum(machine_previous_predicted_action_set[:i + 1], axis=0)
-            machine_predicted_state_pixels.append(self.c2p(machine_predicted_state))
-        pg.draw.lines(self.screen, MAGENTA, False, machine_predicted_state_pixels, 4)
+            # Draw predicted state of other
+            state_range = []
+            for i in range(len(sim_data.car1_prediction_of_actions_of_other)):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car1_prediction_of_actions_of_other[:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, TEAL, False, state_range, 6)
 
-        # Draw machine intent
-        # x = machine_theta[1] * np.cos(np.deg2rad(machine_theta[2]))
-        # y = machine_theta[1] * np.sin(np.deg2rad(machine_theta[2]))
-        # pos = self.c2p(np.array(machine_state) + [x, y])
-        # pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
-        # pg.draw.circle(self.screen, GREEN, pos, 6)
+            # Draw prediction of prediction state of self
+            state_range = []
+            for i in range(len(sim_data.car1_prediction_of_others_prediction_of_my_actions)):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_prediction_of_others_prediction_of_my_actions[:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, MAGENTA, False, state_range, 4)
 
-        # Draw predicted human intent
-        # x = human_predicted_theta[1] * np.cos(np.deg2rad(human_predicted_theta[2]))
-        # y = human_predicted_theta[1] * np.sin(np.deg2rad(human_predicted_theta[2]))
-        # pos = self.c2p(np.array(human_state) + [x, y])
-        # pg.draw.circle(self.screen, (0, 0, 0), pos, 7)
-        # pg.draw.circle(self.screen, TEAL, pos, 6)
+        else:  # If Car 2
 
-        # Draw predicted human's prediction of machine's intent
-        # x = machine_predicted_theta[1] * np.cos(np.deg2rad(machine_predicted_theta[2]))
-        # y = machine_predicted_theta[1] * np.sin(np.deg2rad(machine_predicted_theta[2]))
-        # pos = self.c2p(np.array(machine_state) + [x, y])
-        # pg.draw.circle(self.screen, (0, 0, 0), pos, 5)
-        # pg.draw.circle(self.screen, MAGENTA, pos, 4)
+            # Draw state
+            state_range = []
+            for i in range(len(sim_data.car2_actions)):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_actions[:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, GREEN, False, state_range, 6)
+
+            # Draw predicted state of other
+            state_range = []
+            for i in range(len(sim_data.car2_prediction_of_actions_of_other)):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car2_prediction_of_actions_of_other[:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, TEAL, False, state_range, 6)
+
+            # Draw prediction of prediction state of self
+            state_range = []
+            for i in range(len(sim_data.car2_prediction_of_others_prediction_of_my_actions)):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_prediction_of_others_prediction_of_my_actions[:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, MAGENTA, False, state_range, 4)
+
 
         # Annotations
         font = pg.font.SysFont("Arial", 15)
-        label = font.render("Human State: (%5.4f , %5.4f)" % (human_state[0], human_state[1]), 1, (0, 0, 0))
+        label = font.render("Car 1: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 10))
 
-        label = font.render("Machine State: (%5.4f , %5.4f)" % (machine_state[0], machine_state[1]), 1, (0, 0, 0))
+        label = font.render("Car 2: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 30))
 
-        # label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_theta[0], machine_theta[1], machine_theta[2]), 1, (0, 0, 0))
-        label = font.render("Machine Theta: (%5.4f)" % (machine_theta[0]), 1, (0, 0, 0))
-        self.screen.blit(label, (30, 60))
-        pg.draw.circle(self.screen, BLACK, (15, 70), 5)
-        pg.draw.circle(self.screen, GREEN, (15, 70), 4)
-
-        # label = font.render("P Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta[0], human_predicted_theta[1], human_predicted_theta[2]), 1, (0, 0, 0))
-        label = font.render("P Human Theta: (%5.4f)" % (human_predicted_theta[0]), 1, (0, 0, 0))
-        self.screen.blit(label, (30, 80))
-        pg.draw.circle(self.screen, BLACK, (15, 90), 5)
-        pg.draw.circle(self.screen, (0, 255, 255), (15, 90), 4)
+        # # label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_theta[0], machine_theta[1], machine_theta[2]), 1, (0, 0, 0))
+        # label = font.render("Machine Theta: (%5.4f)" % (machine_theta[0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (30, 60))
+        # pg.draw.circle(self.screen, BLACK, (15, 70), 5)
+        # pg.draw.circle(self.screen, GREEN, (15, 70), 4)
+        #
+        # # label = font.render("P Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta[0], human_predicted_theta[1], human_predicted_theta[2]), 1, (0, 0, 0))
+        # label = font.render("P Human Theta: (%5.4f)" % (human_predicted_theta[0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (30, 80))
+        # pg.draw.circle(self.screen, BLACK, (15, 90), 5)
+        # pg.draw.circle(self.screen, (0, 255, 255), (15, 90), 4)
 
         # label = font.render("PP Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta[0], machine_predicted_theta[1], machine_predicted_theta[2]), 1, (0, 0, 0))
         # label = font.render("PP Machine Theta: (%5.4f)" % (machine_predicted_theta[0]), 1, (0, 0, 0))
@@ -147,36 +132,14 @@ class Sim_Draw():
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
         self.screen.blit(label, (10, 130))
 
-        label = font.render("Machine Action: (%5.4f, %5.4f)" % (machine_previous_action_set[0][0], machine_previous_action_set[0][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 160))
-
-        label = font.render("P Human Action: (%5.4f, %5.4f)" % (human_previous_action_set[0][0], human_previous_action_set[0][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 180))
-
-        label = font.render("PP Machine Action: (%5.4f, %5.4f)" % (machine_previous_predicted_action_set[0][0], machine_previous_predicted_action_set[0][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 200))
-
-        # draw from human's perspective
-        gap = 400
-        # label = font.render("Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_theta[0], human_theta[1], human_theta[2]), 1, (0, 0, 0))
-        label = font.render("Human Theta: (%5.4f)" % (human_theta[0]), 1, (0, 0, 0))
-        self.screen.blit(label, (30+gap, 60))
-        pg.draw.circle(self.screen, BLACK, (15+gap, 70), 5)
-        pg.draw.circle(self.screen, GREEN, (15+gap, 70), 4)
-
-        # label = font.render("P Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_predicted_theta_by_human[0], machine_predicted_theta_by_human[1],
-        #                                                               machine_predicted_theta_by_human[2]), 1, (0, 0, 0))
-        label = font.render("P Machine Theta: (%5.4f)" % (machine_predicted_theta_by_human[0]), 1, (0, 0, 0))
-        self.screen.blit(label, (30+gap, 80))
-        pg.draw.circle(self.screen, BLACK, (15+gap, 90), 5)
-        pg.draw.circle(self.screen, (0, 255, 255), (15+gap, 90), 4)
-
-        # label = font.render("PP Human Theta: (%5.4f, %5.4f, %5.4f)" % (human_predicted_theta_by_human[0], human_predicted_theta_by_human[1],
-        #                                                                  human_predicted_theta_by_human[2]), 1, (0, 0, 0))
-        # label = font.render("PP Human Theta: (%5.4f)" % (human_predicted_theta_by_human[0]), 1, (0, 0, 0))
-        # self.screen.blit(label, (30+gap, 100))
-        # pg.draw.circle(self.screen, BLACK, (15+gap, 110), 5)
-        # pg.draw.circle(self.screen, MAGENTA, (15+gap, 110), 4)
+        # label = font.render("Machine Action: (%5.4f, %5.4f)" % (machine_previous_action_set[0][0], machine_previous_action_set[0][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (10, 160))
+        #
+        # label = font.render("P Human Action: (%5.4f, %5.4f)" % (human_previous_action_set[0][0], human_previous_action_set[0][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (10, 180))
+        #
+        # label = font.render("PP Machine Action: (%5.4f, %5.4f)" % (machine_previous_predicted_action_set[0][0], machine_previous_predicted_action_set[0][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (10, 200))
 
         pg.display.flip()
 

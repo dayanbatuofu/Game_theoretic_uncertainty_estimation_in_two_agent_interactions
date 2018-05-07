@@ -4,31 +4,34 @@ class Sim_Data():
 
     def __init__(self):
 
-        self.machine_states_set = [] #actual states
-        self.machine_trajectory_set = [] #actual trajectory (control variables)
-        self.machine_actions_set = []#actual actions (converted from trajectory)
+        self.car1_states = [] #actual states
+        self.car1_actions = []#actual actions (converted from trajectory)
+        self.car1_theta = [] #this is constant for now
+        self.car1_predicted_theta_of_other = [] #my prediction of the agents theta
+        self.car1_prediction_of_actions_of_other = []  # converted from above
+        self.car1_prediction_of_others_prediction_of_my_actions = []
 
-        self.machine_theta_set = [] #this is constant for now
+        self.car2_states = []  # actual states
+        self.car2_actions = []  # actual actions (converted from trajectory)
+        self.car2_theta = []  # this is constant for now
+        self.car2_predicted_theta_of_other = []  # my prediction of the agents theta
+        self.car2_prediction_of_actions_of_other = []  # converted from above
+        self.car2_prediction_of_others_prediction_of_my_actions = []
 
-        self.human_predicted_theta_set = [] #my prediction of the agents theta
-        self.machine_expected_actions_set = [] #my prediction of the agent's expectation of my actions
-        self.machine_planed_actions_set = [] #my current plan of actions
+    def append_car1(self, states, actions, theta, predicted_theta_of_other, prediction_of_actions_of_other, prediction_of_others_prediction_of_my_actions):
 
-        self.human_predicted_trajectory_set = [] #my prediction of the agent's trajectory
-        self.human_predicted_actions_set = [] #converted from above
+        self.car1_states = states
+        self.car1_actions = actions
+        self.car1_theta.append(theta)
+        self.car1_predicted_theta_of_other.append(predicted_theta_of_other)
+        self.car1_prediction_of_actions_of_other.append(prediction_of_actions_of_other)
+        self.car1_prediction_of_others_prediction_of_my_actions.append(prediction_of_others_prediction_of_my_actions)
 
-    def append(self, machine_states_set, machine_actions_set, machine_theta, human_predicted_theta, machine_expected_actions,
-               machine_trajectory, machine_planed_actions_set, human_predicted_trajectory, human_predicted_actions):
+    def append_car2(self, states, actions, theta, predicted_theta_of_other, prediction_of_actions_of_other, prediction_of_others_prediction_of_my_actions):
 
-        self.machine_states_set = machine_states_set
-        self.machine_trajectory_set.append(machine_trajectory)
-        self.machine_actions_set = machine_actions_set
-        self.machine_planed_actions_set = machine_planed_actions_set
-
-        self.machine_theta_set.append(machine_theta)
-
-        self.human_predicted_theta_set.append(human_predicted_theta)
-        self.machine_expected_actions_set.append(machine_expected_actions)
-
-        self.human_predicted_trajectory_set.append(human_predicted_trajectory)
-        self.human_predicted_actions_set.append(human_predicted_actions)
+        self.car2_states = states
+        self.car2_actions = actions
+        self.car2_theta.append(theta)
+        self.car2_predicted_theta_of_other.append(predicted_theta_of_other)
+        self.car2_prediction_of_actions_of_other.append(prediction_of_actions_of_other)
+        self.car2_prediction_of_others_prediction_of_my_actions.append(prediction_of_others_prediction_of_my_actions)

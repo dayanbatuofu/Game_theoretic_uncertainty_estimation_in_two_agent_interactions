@@ -1,6 +1,5 @@
-from constants import CONSTANTS as C
 
-class HumanVehicle:
+class TrackVehicle:
 
     '''
     States:
