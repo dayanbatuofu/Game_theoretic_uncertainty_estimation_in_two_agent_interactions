@@ -70,7 +70,7 @@ class AutonomousVehicle:
         self.actions_set_o = np.array(other.actions_set_s) #get other's actions
 
         if len(self.states_o) > 1 and len(self.states_s) > 1: # human will not repeat this
-            theta_human, machine_expected_trajectory = self.get_human_predicted_intent() #"self" inside prediction is human (who=0)
+            theta_human, machine_expected_trajectory = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
             self.predicted_theta_of_other = [theta_human]
             self.machine_expected_trajectory = machine_expected_trajectory
 
@@ -209,7 +209,7 @@ class AutonomousVehicle:
 
         return trajectory, predicted_trajectory_other
 
-    def get_human_predicted_intent(self):
+    def get_predicted_intent_of_other(self):
         """ predict the aggressiveness of the agent and what the agent expect me to do """
 
         cons = []
