@@ -18,12 +18,7 @@ class Main():
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
 
-
-
         self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
-
-
-
 
         # Time handling
         self.clock = pg.time.Clock()
@@ -62,21 +57,17 @@ class Main():
                 # self.machine_vehicle.update(self.human_vehicle, self.frame)
 
                 # Update data
+                self.sim_data.append_car1(states=self.car_1.states_s,
+                                          actions=self.car_1.actions_set_s,
+                                          predicted_theta_of_other=self.car_1.predicted_theta_of_other,
+                                          prediction_of_actions_of_other=self.car_1.predicted_actions_of_other,
+                                          prediction_of_others_prediction_of_my_actions=self.car_1.prediction_of_others_prediction_of_my_actions)
 
-
-                self.sim_data.append_car1(states=self.car_1.,
-                                          actions=self.car_1.,
-                                          theta=self.car_1.,
-                                          predicted_theta_of_other=self.car_1.,
-                                          prediction_of_actions_of_other=self.car_1.,
-                                          prediction_of_others_prediction_of_my_actions=self.car_1.)
-
-                self.sim_data.append_car2(states=self.car_2.,
-                                          actions=self.car_2.,
-                                          theta=self.car_2.,
-                                          predicted_theta_of_other=self.car_2.,
-                                          prediction_of_actions_of_other=self.car_2.,
-                                          prediction_of_others_prediction_of_my_actions=self.car_2.)
+                self.sim_data.append_car2(states=self.car_2.states_s,
+                                          actions=self.car_2.actions_set_s,
+                                          predicted_theta_of_other=self.car_2.predicted_theta_of_other,
+                                          prediction_of_actions_of_other=self.car_2.predicted_actions_of_other,
+                                          prediction_of_others_prediction_of_my_actions=self.car_2.prediction_of_others_prediction_of_my_actions)
 
             if self.frame >= self.duration:
                 break

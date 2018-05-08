@@ -18,11 +18,10 @@ class Sim_Data():
         self.car2_prediction_of_actions_of_other = []  # converted from above
         self.car2_prediction_of_others_prediction_of_my_actions = []
 
-    def append_car1(self, states, actions, theta, predicted_theta_of_other, prediction_of_actions_of_other, prediction_of_others_prediction_of_my_actions):
+    def append_car1(self, states, actions, predicted_theta_of_other, prediction_of_actions_of_other, prediction_of_others_prediction_of_my_actions):
 
         self.car1_states = states
-        self.car1_actions = actions
-        self.car1_theta.append(theta)
+        self.car1_actions.append(actions)
         self.car1_predicted_theta_of_other.append(predicted_theta_of_other)
         self.car1_prediction_of_actions_of_other.append(prediction_of_actions_of_other)
         self.car1_prediction_of_others_prediction_of_my_actions.append(prediction_of_others_prediction_of_my_actions)
@@ -30,8 +29,7 @@ class Sim_Data():
     def append_car2(self, states, actions, theta, predicted_theta_of_other, prediction_of_actions_of_other, prediction_of_others_prediction_of_my_actions):
 
         self.car2_states = states
-        self.car2_actions = actions
-        self.car2_theta.append(theta)
+        self.car2_actions.append(actions)
         self.car2_predicted_theta_of_other.append(predicted_theta_of_other)
         self.car2_prediction_of_actions_of_other.append(prediction_of_actions_of_other)
         self.car2_prediction_of_others_prediction_of_my_actions.append(prediction_of_others_prediction_of_my_actions)

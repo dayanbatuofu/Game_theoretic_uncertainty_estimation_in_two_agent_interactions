@@ -5,7 +5,8 @@ import math
 import os
 
 BLACK       = (  0,  0,  0)
-GREY        = (200,200,200)
+DARK_GREY   = (  0,  0,  0)
+LIGHT_GREY  = (200,200,200)
 MAGENTA     = (255,  0,255)
 TEAL        = (  0,255,255)
 GREEN       = (  0,255,  0)
@@ -13,7 +14,8 @@ GREEN       = (  0,255,  0)
 class Sim_Draw():
 
     BLACK = (0, 0, 0)
-    GREY = (200, 200, 200)
+    DARK_GREY = (0, 0, 0)
+    LIGHT_GREY = (200, 200, 200)
     MAGENTA = (255, 0, 255)
     TEAL = (0, 255, 255)
     GREEN = (0, 255, 0)
@@ -63,21 +65,21 @@ class Sim_Draw():
             for i in range(len(sim_data.car1_actions)):
                 state = sim_data.car1_states[frame] + np.sum(sim_data.car1_actions[:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, GREEN, False, state_range, 6)
+            pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
             # Draw predicted state of other
             state_range = []
             for i in range(len(sim_data.car1_prediction_of_actions_of_other)):
                 state = sim_data.car2_states[frame] + np.sum(sim_data.car1_prediction_of_actions_of_other[:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, TEAL, False, state_range, 6)
+            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 6)
 
             # Draw prediction of prediction state of self
             state_range = []
             for i in range(len(sim_data.car1_prediction_of_others_prediction_of_my_actions)):
                 state = sim_data.car1_states[frame] + np.sum(sim_data.car1_prediction_of_others_prediction_of_my_actions[:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, MAGENTA, False, state_range, 4)
+            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
 
         else:  # If Car 2
 
@@ -86,21 +88,21 @@ class Sim_Draw():
             for i in range(len(sim_data.car2_actions)):
                 state = sim_data.car2_states[frame] + np.sum(sim_data.car2_actions[:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, GREEN, False, state_range, 6)
+            pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
             # Draw predicted state of other
             state_range = []
             for i in range(len(sim_data.car2_prediction_of_actions_of_other)):
                 state = sim_data.car1_states[frame] + np.sum(sim_data.car2_prediction_of_actions_of_other[:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, TEAL, False, state_range, 6)
+            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 6)
 
             # Draw prediction of prediction state of self
             state_range = []
             for i in range(len(sim_data.car2_prediction_of_others_prediction_of_my_actions)):
                 state = sim_data.car2_states[frame] + np.sum(sim_data.car2_prediction_of_others_prediction_of_my_actions[:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, MAGENTA, False, state_range, 4)
+            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
 
 
         # Annotations
@@ -163,7 +165,7 @@ class Sim_Draw():
 
         # Vertical
         for i in range(num_vaxes):
-            pg.draw.line(self.screen, GREY, (offset_x + i * spacing, 0),
+            pg.draw.line(self.screen, LIGHT_GREY, (offset_x + i * spacing, 0),
                          (offset_x + i * spacing, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 1)
             # label = (distance_x + 1 + i) * C.AXES_SHOW - rel_screen_width/2
             # text = font.render("%3.2f" % label, 1, GREY)
@@ -171,7 +173,7 @@ class Sim_Draw():
 
         # Horizontal
         for i in range(num_haxes):
-            pg.draw.line(self.screen, GREY, (0, offset_y + i * spacing),
+            pg.draw.line(self.screen, LIGHT_GREY, (0, offset_y + i * spacing),
                          (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, offset_y + i * spacing), 1)
             # label = (distance_y + 1 + i) * C.AXES_SHOW - rel_screen_height/2
             # text = font.render("%3.2f" % label, 1, GREY)

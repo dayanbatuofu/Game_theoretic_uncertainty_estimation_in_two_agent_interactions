@@ -58,6 +58,7 @@ class CONSTANTS:
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
                               INITIAL_POSITION=np.array([-1, -1]),
+                              DESIRED_POSITION=np.array([3, 1]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
                               INTENT=np.array([1]),
@@ -67,6 +68,7 @@ class CONSTANTS:
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
                               INITIAL_POSITION=np.array([0, 0]),
+                              DESIRED_POSITION=np.array([3, 0]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
                               INTENT=np.array([2000]),
@@ -94,6 +96,7 @@ class CONSTANTS:
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
                               INITIAL_POSITION=np.array([-2.3, 0]),
+                              DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
                               INTENT=np.array([1]),
@@ -103,6 +106,7 @@ class CONSTANTS:
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
                               INITIAL_POSITION=np.array([0, 2.3]),
+                              DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
                               INTENT=np.array([2000]),
@@ -111,10 +115,11 @@ class CONSTANTS:
 
 class CarParameters:
 
-    def __init__(self, SPRITE, INITIAL_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION):
+    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION):
 
         self.SPRITE = SPRITE
         self.INITIAL_POSITION = INITIAL_POSITION
+        self.DESIRED_POSITION = DESIRED_POSITION
         self.INTENT = INTENT
         self.COMMON_THETA = COMMON_THETA
         self.ORIENTATION = ORIENTATION

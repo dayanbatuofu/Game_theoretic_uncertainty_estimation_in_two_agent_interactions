@@ -39,29 +39,24 @@ class AutonomousVehicle:
                                              self.image_o.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
 
 
-
+        # Initialize my space
         self.states_s = []
         self.intent_s = self.P_CAR_S.INTENT
         self.actions_set_s = []
         self.trajectory_s = []
         self.planed_actions_set_s = []
 
+        # Initialize others space
+        self.states_o = []
+        self.actions_set_o = []
+
+        # Initialize prediction_variables
+        self.predicted_theta_of_other = self.P_CAR_O.INTENT
         self.predicted_trajectory_of_other = []
         self.predicted_actions_of_other    = []
         self.prediction_of_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
 
 
-        # GET RID OF ME PLEASE
-        # Initialize predicted human predicted machine space
-        # if who == 1:
-        #     self.P_CAR_S.COMMON_THETA = self.P.COMMON_THETA_MACHINE
-        # else:
-        #     self.P_CAR_S.COMMON_THETA = self.P.COMMON_THETA_HUMAN
-
-        # Initialize human space
-        self.states_o = []
-        self.predicted_theta_of_other = ot_intent
-        self.actions_set_o = []
 
     def get_state(self, delay):
         return self.states_s[-1 * delay]
@@ -75,7 +70,7 @@ class AutonomousVehicle:
         self.actions_set_o = np.array(other.actions_set_s) #get other's actions
 
         if len(self.states_o) > 1 and len(self.states_s) > 1: # human will not repeat this
-            theta_human, machine_expected_trajectory = self.get_human_predicted_intent(self.who) #"self" inside prediction is human (who=0)
+            theta_human, machine_expected_trajectory = self.get_human_predicted_intent() #"self" inside prediction is human (who=0)
             self.predicted_theta_of_other = [theta_human]
             self.machine_expected_trajectory = machine_expected_trajectory
 
@@ -115,27 +110,7 @@ class AutonomousVehicle:
         box_other = self.other_collision_box
         box_self = self.my_collision_box
 
-        # Initialize actions
-        # initial_trajectory_self = (np.linalg.norm(a0_self[-1]), np.arctan2(a0_self[-1, 0], a0_self[-1, 1]))
-        # initial_predicted_trajectory_self = (np.linalg.norm(a0_predicted_self[-1]), np.arctan2(a0_predicted_self[-1, 0], a0_predicted_self[-1, 1]))
-        # initial_trajectory_other = theta_other[1:3]
         initial_expected_trajectory_self = self.P_CAR_S.COMMON_THETA
-
-        # if identifier == 0:  # If human is calling
-        #     defcon_other_x = self.P.BOUND_MACHINE_X
-        #     defcon_other_y = self.P.BOUND_MACHINE_Y
-        #     orientation_other = self.P.MACHINE_ORIENTATION
-        #     bounds_other = [(0 * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
-        #                     (-C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION,
-        #                      C.ACTION_TURNANGLE + self.P.MACHINE_ORIENTATION)]  # Angle
-        #     defcon_self_x = self.P.BOUND_HUMAN_X
-        #     defcon_self_y = self.P.BOUND_HUMAN_Y
-        #     orientation_self = self.P.HUMAN_ORIENTATION
-        #     bounds_self = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
-        #                    (-C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION,
-        #                     C.ACTION_TURNANGLE + self.P.HUMAN_ORIENTATION)]  # Angle
-
-
 
         bounds_self = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                        (-C.ACTION_TURNANGLE + self.P_CAR_S.ORIENTATION,
@@ -206,12 +181,6 @@ class AutonomousVehicle:
     def multi_search(self, guess_set, bounds, cons, theta_s, box_o, box_s, orientation_o,
                      orientation_s):
 
-        state_s = self.states_s[-1]
-        state_o = self.states_o[-1]
-
-        theta_s = self.intent_s
-        theta_o = self.predicted_theta_of_other
-
 
         """ run multiple searches with different initial guesses """
 
@@ -221,12 +190,13 @@ class AutonomousVehicle:
 
         for guess in guess_set:
 
-            fun, predicted_trajectory_other = self.loss.loss(guess, state_o, state_s, theta_s,
-                                                             self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS,
-                                                             self.collision_box_o,
-                                                             self.collision_box_s,
-                                                             self.P_CAR_O.ORIENTATION,
-                                                             self.P_CAR_S.ORIENTATION, who)
+            fun, predicted_trajectory_other = self.loss.loss(guess, self)
+                                                            # self.states_o[-1], self.states_s[-1], self.intent_s,
+                                                            #  self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS,
+                                                            #  self.collision_box_o,
+                                                            #  self.collision_box_s,
+                                                            #  self.P_CAR_O.ORIENTATION,
+                                                            #  self.P_CAR_S.ORIENTATION)
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
             predicted_trajectory_other_set = np.append(predicted_trajectory_other_set, [predicted_trajectory_other],
@@ -239,7 +209,7 @@ class AutonomousVehicle:
 
         return trajectory, predicted_trajectory_other
 
-    def get_human_predicted_intent(self, who):
+    def get_human_predicted_intent(self):
         """ predict the aggressiveness of the agent and what the agent expect me to do """
 
         cons = []
@@ -295,7 +265,7 @@ class AutonomousVehicle:
             # optimization_results = scipy.optimize.minimize(self.intent_loss_func, guess,
             #                                           bounds=intent_bounds, constraints=cons, args=(
             #                                           self.machine_orientation, self.human_predicted_theta[0], 1 - who))
-            fun, alpha = self.intent_loss_func(guess, orientation_s, state_s, state_o, action_o, who)
+            fun, alpha = self.intent_loss_func(intent=guess)
 
             # if np.isfinite(optimization_results.fun) and not np.isnan(optimization_results.fun):
             trajectory_set = np.vstack((trajectory_set, np.array([alpha, guess[0], guess[1]])))
@@ -305,6 +275,7 @@ class AutonomousVehicle:
         return trajectory
 
     def intent_loss_func(self, intent, orientation_self, state_self, state_other, action_other, who_self):
+
         who = 1-who_self
 
         # alpha = intent[0] #aggressiveness of the agent
@@ -312,7 +283,7 @@ class AutonomousVehicle:
 
         # what I could have done and been
         s_other = np.array(state_self)
-        nodes = np.array([[s_other[0], s_other[0] + trajectory[0]*np.cos(np.deg2rad(orientation_self))/2, s_other[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
+        nodes = np.array([[s_other[0], s_other[0] + trajectory[0]*np.cos(np.deg2rad(self.P_CAR_S.ORIENTATION))/2, s_other[0] + trajectory[0]*np.cos(np.deg2rad(trajectory[1]))],
                   [s_other[1], s_other[1] + trajectory[0]*np.sin(np.deg2rad(orientation_self))/2, s_other[1] + trajectory[0]*np.sin(np.deg2rad(trajectory[1]))]])
         curve = bezier.Curve(nodes, degree=2)
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_TIMESTEPS + 1)))
