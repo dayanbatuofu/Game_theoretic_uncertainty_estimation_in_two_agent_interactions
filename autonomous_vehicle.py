@@ -212,6 +212,8 @@ class AutonomousVehicle:
     def get_predicted_intent_of_other(self):
         """ predict the aggressiveness of the agent and what the agent expect me to do """
 
+        who = (self.P_CAR_S.BOUND_X is None) + 0.0
+
         cons = []
         if who == 1: # machine looking at human
             if self.P.BOUND_HUMAN_X is not None: #intersection
@@ -274,9 +276,12 @@ class AutonomousVehicle:
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
         return trajectory
 
-    def intent_loss_func(self, intent, orientation_self, state_self, state_other, action_other, who_self):
-
-        who = 1-who_self
+    def intent_loss_func(self, intent):
+        orientation_self = self.P_CAR_S.ORIENTATION
+        state_self = self.states_s[-1]
+        state_other = self.states_o[-1]
+        action_other = self.actions_set_o[-1]
+        who = 1 - (self.P_CAR_S.BOUND_X is None)
 
         # alpha = intent[0] #aggressiveness of the agent
         trajectory = intent #what I was expected to do

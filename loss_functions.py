@@ -125,7 +125,6 @@ class LossFunctions:
 
         return loss, expected_trajectory_of_other  # Return weighted sum
 
-
     def multi_search_intent(self, autonomous_vehicle, guess_set, action_self):
 
         """ run multiple searches with different initial guesses """
@@ -152,8 +151,9 @@ class LossFunctions:
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
         return trajectory
 
-    def intent_loss_func(self, trajectory, orientation_other, collision_box_self, collision_box_other, state_self, state_other, action_other):
-
+    def intent_loss_func(self, trajectory, autonomous_vehicle, orientation_other, collision_box_self,
+                         collision_box_other, state_self, state_other, action_other):
+        who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
 
         action_self = np.diff(self.interpolate_from_trajectory(trajectory, state_other, orientation_other), n=1, axis=0)
         trajectory_self = np.array(state_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, action_self))
@@ -197,8 +197,7 @@ class LossFunctions:
         #         w[np.all([trajectory_other[:,0]>=-1e-12, w[:,0] >= -1e-12], axis=0),0] = 0 #TODO: these two lines are hard coded for lane changing
         w = -w
 
-        #calculate best alpha for the enumeration of trajectory
-
+        gap = 1.05
         if who == 1:
             l = np.array([- C.EXPTHETA * np.exp(C.EXPTHETA*(-trajectory_other[-1][0] + 0.4)), 0.])
             # don't take into account the time steps where one car has already passed

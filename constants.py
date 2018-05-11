@@ -1,5 +1,16 @@
 import numpy as np
 
+class CarParameters:
+
+    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION):
+
+        self.SPRITE = SPRITE
+        self.INITIAL_POSITION = INITIAL_POSITION
+        self.DESIRED_POSITION = DESIRED_POSITION
+        self.INTENT = INTENT
+        self.COMMON_THETA = COMMON_THETA
+        self.ORIENTATION = ORIENTATION
+
 class CONSTANTS:
 
     # DISPLAY
@@ -112,17 +123,6 @@ class CONSTANTS:
                               INTENT=np.array([2000]),
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., -90]),
                               ORIENTATION=-90)
-
-class CarParameters:
-
-    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION):
-
-        self.SPRITE = SPRITE
-        self.INITIAL_POSITION = INITIAL_POSITION
-        self.DESIRED_POSITION = DESIRED_POSITION
-        self.INTENT = INTENT
-        self.COMMON_THETA = COMMON_THETA
-        self.ORIENTATION = ORIENTATION
 
 class MATRICES:
 
