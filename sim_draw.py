@@ -208,7 +208,6 @@ class Sim_Draw():
             pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
             pg.draw.line(self.screen, BLACK, (bounds[1], 0), (bounds[1], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
 
-
     def c2p(self, coordinates):
         x = C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH / 2)
         y = C.COORDINATE_SCALE * (-coordinates[0] + self.origin[0] + self.P.SCREEN_HEIGHT / 2)

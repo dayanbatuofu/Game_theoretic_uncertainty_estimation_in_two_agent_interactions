@@ -49,7 +49,7 @@ class Collision_Box():
         #         collision_loss.append(np.sum(np.exp(C.EXPCOLLISION * (-distance + C.CAR_LENGTH ** 2 * 1.5))))
         other_pos[np.where(np.abs(other_pos)<1e-12)] = 0
         distance = np.sum((my_pos - other_pos)**2, axis=1)
-        collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-distance + C.CAR_LENGTH ** 2 * 1.5)))
+        # collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-distance + C.CAR_LENGTH ** 2 * 1.5)))
         return np.array(distance)
         # return np.array(collision_loss)
 

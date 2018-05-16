@@ -30,7 +30,7 @@ class LossFunctions:
             raise ValueError('incorrect loss function characterization specified.')
 
     def aggressive_loss(self, trajectory, autonomous_vehicle):
-
+        who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
         state_s = autonomous_vehicle.states_s[-1]
         state_o = autonomous_vehicle.states_o[-1]
 
@@ -53,18 +53,26 @@ class LossFunctions:
         s_other_predict = state_o + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
         s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
 
-        collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
+        D = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)+1e-12
+        gap = 1.05 #TODO: generalize this
+        for i in range(s_self_predict.shape[0]):
+            if who == 1:
+                if s_self_predict[i,0]<=-gap+1e-12 or s_self_predict[i,0]>=gap-1e-12 or s_other_predict[i,1]>=gap-1e-12 or s_other_predict[i,1]<=-gap+1e-12:
+                    D[i] = np.inf
+            elif who == 0:
+                if s_self_predict[i,1]<=-gap+1e-12 or s_self_predict[i,1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
+                    D[i] = np.inf
+        collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
+        # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
         intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
 
         loss = collision_loss + intent_loss
-
         return loss, expected_trajectory_of_other  # Return weighted sum
 
     def reactive_loss(self, trajectory, autonomous_vehicle):
-
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
-
+        who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
         state_s = autonomous_vehicle.states_s[-1]
         state_o = autonomous_vehicle.states_o[-1]
 
@@ -77,8 +85,17 @@ class LossFunctions:
 
         s_other_predict = state_o + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
         s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-
-        collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
+        D = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)+1e-12
+        gap = 1.05 #TODO: generalize this
+        for i in range(s_self_predict.shape[0]):
+            if who == 1:
+                if s_self_predict[i,0]<=-gap+1e-12 or s_self_predict[i,0]>=gap-1e-12 or s_other_predict[i,1]>=gap-1e-12 or s_other_predict[i,1]<=-gap+1e-12:
+                    D[i] = np.inf
+            elif who == 0:
+                if s_self_predict[i,1]<=-gap+1e-12 or s_self_predict[i,1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
+                    D[i] = np.inf
+        collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
+        # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
         intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
 
@@ -88,7 +105,7 @@ class LossFunctions:
         return loss  # Return weighted sum
 
     def passive_aggressive_loss(self, trajectory, autonomous_vehicle):
-
+        who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
         state_s = autonomous_vehicle.states_s[-1]
         state_o = autonomous_vehicle.states_o[-1]
 
@@ -113,8 +130,17 @@ class LossFunctions:
 
         s_other_predict = state_o + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
         s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-
-        collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
+        D = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)+1e-12
+        gap = 1.05 #TODO: generalize this
+        for i in range(s_self_predict.shape[0]):
+            if who == 1:
+                if s_self_predict[i,0]<=-gap+1e-12 or s_self_predict[i,0]>=gap-1e-12 or s_other_predict[i,1]>=gap-1e-12 or s_other_predict[i,1]<=-gap+1e-12:
+                    D[i] = np.inf
+            elif who == 0:
+                if s_self_predict[i,1]<=-gap+1e-12 or s_self_predict[i,1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
+                    D[i] = np.inf
+        collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
+        # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
         intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
 
@@ -122,7 +148,6 @@ class LossFunctions:
         gracefulness_loss = (trajectory[0] - autonomous_vehicle.P_CAR_S.COMMON_THETA[0]) ** 2
 
         loss = collision_loss + intent_loss + gracefulness_loss
-
         return loss, expected_trajectory_of_other  # Return weighted sum
 
     def multi_search_intent(self, autonomous_vehicle, guess_set, action_self):
