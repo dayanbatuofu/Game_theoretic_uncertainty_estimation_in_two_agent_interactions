@@ -25,11 +25,11 @@ class AutonomousVehicle:
         self.P_CAR_O = car_parameters_other
         self.loss = LossFunctions(loss_style)
 
-        self.image_s = pg.transform.rotate(pg.transform.scale(pg.image.load(self.P.ASSET_LOCATION + self.P_CAR_S.SPRITE),
+        self.image_s = pg.transform.rotate(pg.transform.scale(pg.image.load(C.ASSET_LOCATION + self.P_CAR_S.SPRITE),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
                                                                    int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P_CAR_S.ORIENTATION)
 
-        self.image_o = pg.transform.rotate(pg.transform.scale(pg.image.load(self.P.ASSET_LOCATION + self.P_CAR_O.SPRITE),
+        self.image_o = pg.transform.rotate(pg.transform.scale(pg.image.load(C.ASSET_LOCATION + self.P_CAR_O.SPRITE),
                                                                  (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P_CAR_O.ORIENTATION)
 
@@ -38,16 +38,15 @@ class AutonomousVehicle:
         self.collision_box_o = Collision_Box(self.image_o.get_width() / C.COORDINATE_SCALE / C.ZOOM,
                                              self.image_o.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
 
-
         # Initialize my space
-        self.states_s = []
+        self.states_s = [self.P_CAR_S.INITIAL_POSITION]
         self.intent_s = self.P_CAR_S.INTENT
         self.actions_set_s = []
         self.trajectory_s = []
         self.planed_actions_set_s = []
 
         # Initialize others space
-        self.states_o = []
+        self.states_o = [self.P_CAR_O.INITIAL_POSITION]
         self.actions_set_o = []
 
         # Initialize prediction_variables
@@ -55,8 +54,6 @@ class AutonomousVehicle:
         self.predicted_trajectory_of_other = []
         self.predicted_actions_of_other    = []
         self.prediction_of_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
-
-
 
     def get_state(self, delay):
         return self.states_s[-1 * delay]
@@ -101,14 +98,14 @@ class AutonomousVehicle:
                                         np.arctan2(a0_other[-1, 1], a0_other[-1, 0])*180./np.pi]
             initial_trajectory_self = self.trajectory_s
         else:
-            initial_trajectory_other = self.P.COMMON_THETA_HUMAN
-            initial_trajectory_self = self.P.COMMON_THETA_MACHINE
+            initial_trajectory_other = self.P_CAR_O.COMMON_THETA
+            initial_trajectory_self = self.P_CAR_S.COMMON_THETA
 
 
         theta_other = self.predicted_theta_of_other
         theta_self = self.intent_s
-        box_other = self.other_collision_box
-        box_self = self.my_collision_box
+        box_other = self.P.COLLISION_BOXES
+        box_self = self.P.COLLISION_BOXES
 
         initial_expected_trajectory_self = self.P_CAR_S.COMMON_THETA
 
@@ -183,7 +180,6 @@ class AutonomousVehicle:
 
 
         """ run multiple searches with different initial guesses """
-
         trajectory_set = np.empty((0,2)) #TODO: need to generalize
         predicted_trajectory_other_set = np.empty((0,2))
         loss_value_set = []

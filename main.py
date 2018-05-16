@@ -17,9 +17,6 @@ class Main():
         self.duration = 600
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
-
-        self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
-
         # Time handling
         self.clock = pg.time.Clock()
         self.fps = C.FPS
@@ -31,7 +28,8 @@ class Main():
 
         # Sim output
         self.sim_data = Sim_Data()
-        self.sim_out = open("sim_outputs/output_%s.pkl" % datetime.datetime.now(), "wb")
+        # self.sim_out = open("./sim_outputs/output_%s.pkl" % datetime.datetime.now(), "wb")
+        self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
         # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
@@ -42,6 +40,7 @@ class Main():
                                        car_parameters_self=self.P.CAR_2,
                                        car_parameters_other=self.P.CAR_1,
                                        loss_style='aggressive')
+        self.sim_draw = Sim_Draw(self.P, self.car_1, self.car_2, C.ASSET_LOCATION)
 
         # Go
         self.trial()

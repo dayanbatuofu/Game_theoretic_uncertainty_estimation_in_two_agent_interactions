@@ -20,23 +20,24 @@ class Sim_Draw():
     TEAL = (0, 255, 255)
     GREEN = (0, 255, 0)
 
-    def __init__(self, parameters, asset_loc):
+    def __init__(self, parameters, car1, car2, asset_loc):
 
         self.P = parameters
 
         pg.init()
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
+        self.car1 = car1
+        self.car2 = car2
         self.car2_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "red_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), -self.P.HUMAN_ORIENTATION)
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), -self.car2.P_CAR_S.ORIENTATION)
         self.car1_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "blue_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P.MACHINE_ORIENTATION)
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.car1.P_CAR_S.ORIENTATION)
         self.coordinates_image = pg.image.load(asset_loc + "coordinates.png")
         self.origin = np.array([0, 0])
 
     def draw_frame(self, sim_data, car_num_display, frame):
-
 
         # Draw the current frame
         self.screen.fill((255, 255, 255))
@@ -48,12 +49,12 @@ class Sim_Draw():
 
         # Draw Images
         pixel_pos_car_1 = self.c2p(sim_data.car1_states[frame])
-        size_car_1 = self.machine_image.get_size()
-        self.screen.blit(self.machine_image, (pixel_pos_car_1[0] - size_car_1[0] / 2, pixel_pos_car_1[1] - size_car_1[1] / 2))
+        size_car_1 = self.car1_image.get_size()
+        self.screen.blit(self.car1_image, (pixel_pos_car_1[0] - size_car_1[0] / 2, pixel_pos_car_1[1] - size_car_1[1] / 2))
 
         pixel_pos_car_2 = self.c2p(sim_data.car2_states[frame])
-        size_car_2 = self.human_image.get_size()
-        self.screen.blit(self.human_image, (pixel_pos_car_2[0] - size_car_2[0] / 2, pixel_pos_car_2[1] - size_car_2[1] / 2))
+        size_car_2 = self.car2_image.get_size()
+        self.screen.blit(self.car2_image, (pixel_pos_car_2[0] - size_car_2[0] / 2, pixel_pos_car_2[1] - size_car_2[1] / 2))
 
         coordinates_size = self.coordinates_image.get_size()
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE - coordinates_size[1] - 10 / 2))
@@ -82,7 +83,6 @@ class Sim_Draw():
             pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
 
         else:  # If Car 2
-
             # Draw state
             state_range = []
             for i in range(len(sim_data.car2_actions)):

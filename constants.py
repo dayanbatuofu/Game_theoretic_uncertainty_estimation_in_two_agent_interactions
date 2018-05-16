@@ -10,6 +10,8 @@ class CarParameters:
         self.INTENT = INTENT
         self.COMMON_THETA = COMMON_THETA
         self.ORIENTATION = ORIENTATION
+        self.BOUND_X = BOUND_X
+        self.BOUND_Y = BOUND_Y
 
 class CONSTANTS:
 
@@ -67,7 +69,7 @@ class CONSTANTS:
         VEHICLE_MAX_SPEED = 0.1
 
         # Left Car
-        CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
+        CAR_1 = CarParameters(SPRITE="blue_car_sized.png",
                               INITIAL_POSITION=np.array([-1, -1]),
                               DESIRED_POSITION=np.array([3, 1]),  # Maybe change to be further down the road?
                               BOUND_X=None,
@@ -77,7 +79,7 @@ class CONSTANTS:
                               ORIENTATION=0)
 
         # Right Car
-        CAR_2 = CarParameters(SPRITE="white_car_sized.png",
+        CAR_2 = CarParameters(SPRITE="red_car_sized.png",
                               INITIAL_POSITION=np.array([0, 0]),
                               DESIRED_POSITION=np.array([3, 0]),  # Maybe change to be further down the road?
                               BOUND_X=None,
@@ -105,7 +107,7 @@ class CONSTANTS:
         VEHICLE_MAX_SPEED = 0.05
 
         # Left Car
-        CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
+        CAR_1 = CarParameters(SPRITE="blue_car_sized.png",
                               INITIAL_POSITION=np.array([-2.3, 0]),
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
@@ -115,7 +117,7 @@ class CONSTANTS:
                               ORIENTATION=0)
 
         # Right Car
-        CAR_2 = CarParameters(SPRITE="white_car_sized.png",
+        CAR_2 = CarParameters(SPRITE="red_car_sized.png",
                               INITIAL_POSITION=np.array([0, 2.3]),
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),

@@ -18,13 +18,13 @@ class LossFunctions:
     def loss(self, guess, autonomous_vehicle):
 
         if self.characterization is "aggressive":
-            self.aggressive_loss(guess, autonomous_vehicle)
+            return self.aggressive_loss(guess, autonomous_vehicle)
 
         elif self.characterization is "reactive":
-            self.reactive_loss(autonomous_vehicle)
+            return self.reactive_loss(autonomous_vehicle)
 
         elif self.characterization is "passive_aggressive":
-            self.passive_aggressive_loss(autonomous_vehicle)
+            return self.passive_aggressive_loss(autonomous_vehicle)
 
         else:
             raise ValueError('incorrect loss function characterization specified.')
@@ -137,11 +137,12 @@ class LossFunctions:
             #                                           bounds=intent_bounds, constraints=cons, args=(
             #                                           self.machine_orientation, self.human_predicted_theta[0], 1 - who))
             fun, alpha = self.intent_loss_func(trajectory=guess,
+                                               autonomous_vehicle=autonomous_vehicle,
                                                orientation_other=autonomous_vehicle.P_CAR_O.ORIENTATION,
                                                collision_box_self=autonomous_vehicle.collision_box_s,
                                                collision_box_other=autonomous_vehicle.collision_box_o,
-                                               state_self=self.states_s[-1],
-                                               state_other=self.states_o[-1],
+                                               state_self=autonomous_vehicle.states_s[-1],
+                                               state_other=autonomous_vehicle.states_o[-1],
                                                action_other=action_self)
 
             # if np.isfinite(optimization_results.fun) and not np.isnan(optimization_results.fun):
@@ -155,7 +156,7 @@ class LossFunctions:
                          collision_box_other, state_self, state_other, action_other):
         who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
 
-        action_self = np.diff(self.interpolate_from_trajectory(trajectory, state_other, orientation_other), n=1, axis=0)
+        action_self = self.interpolate_from_trajectory(trajectory, state_other, orientation_other)
         trajectory_self = np.array(state_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, action_self))
 
         # actions and states of the agent
