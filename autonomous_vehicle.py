@@ -43,7 +43,7 @@ class AutonomousVehicle:
         self.intent_s = self.P_CAR_S.INTENT
         self.actions_set_s = []
         self.trajectory_s = []
-        self.planed_actions_set_s = []
+        self.planned_actions_set_s = []
 
         # Initialize others space
         self.states_o = [self.P_CAR_O.INITIAL_POSITION]
@@ -85,7 +85,7 @@ class AutonomousVehicle:
         # else:
         self.states_s.append(np.add(self.states_s[-1], (machine_actions[0][0], machine_actions[0][1])))
         self.actions_set_s.append(machine_actions[0])
-        self.planed_actions_set_s.append(machine_actions)
+        self.planned_actions_set_s = machine_actions
 
     def get_actions(self):
 
@@ -241,10 +241,10 @@ class AutonomousVehicle:
         # guess_set = np.hstack((np.ones((trials.size,1)) * self.human_predicted_theta[0], np.expand_dims(trials, axis=1),
         #                        np.ones((trials.size,1)) * self.machine_orientation))
         guess_set = np.hstack((np.expand_dims(trials, axis=1),
-                               np.ones((trials.size,1)) * self.machine_orientation))
+                               np.ones((trials.size,1)) * self.P_CAR_S.ORIENTATION))
 
         intent_optimization_results = self.multi_search_intent(guess_set, intent_bounds, cons,
-                                                               self.machine_orientation, self.states_s[-1],
+                                                               self.P_CAR_S.ORIENTATION, self.states_s[-1],
                                                                self.states_o[-1], self.actions_set_o[-1], who)
         alpha_other, r, rho = intent_optimization_results
 

@@ -5,7 +5,7 @@ import math
 import os
 
 BLACK       = (  0,  0,  0)
-DARK_GREY   = (  0,  0,  0)
+DARK_GREY   = (100,100,100)
 LIGHT_GREY  = (200,200,200)
 MAGENTA     = (255,  0,255)
 TEAL        = (  0,255,255)
@@ -28,10 +28,10 @@ class Sim_Draw():
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
         self.car1 = car1
         self.car2 = car2
-        self.car2_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "red_car_sized.png"),
+        self.car2_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "white_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
                                                                    int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), -self.car2.P_CAR_S.ORIENTATION)
-        self.car1_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "blue_car_sized.png"),
+        self.car1_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "grey_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
                                                                    int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.car1.P_CAR_S.ORIENTATION)
         self.coordinates_image = pg.image.load(asset_loc + "coordinates.png")
@@ -63,44 +63,44 @@ class Sim_Draw():
 
             # Draw state
             state_range = []
-            for i in range(len(sim_data.car1_actions)):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_actions[:i + 1], axis=0)
+            for i in range(len(sim_data.car1_planned_action_sets[frame])):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_planned_action_sets[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
             # Draw predicted state of other
             state_range = []
-            for i in range(len(sim_data.car1_prediction_of_actions_of_other)):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car1_prediction_of_actions_of_other[:i + 1], axis=0)
+            for i in range(len(sim_data.car1_prediction_of_actions_of_other[frame])):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car1_prediction_of_actions_of_other[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, DARK_GREY, False, state_range, 6)
 
             # Draw prediction of prediction state of self
             state_range = []
-            for i in range(len(sim_data.car1_prediction_of_others_prediction_of_my_actions)):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_prediction_of_others_prediction_of_my_actions[:i + 1], axis=0)
+            for i in range(len(sim_data.car1_prediction_of_others_prediction_of_my_actions[frame])):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_prediction_of_others_prediction_of_my_actions[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
 
         else:  # If Car 2
             # Draw state
             state_range = []
-            for i in range(len(sim_data.car2_actions)):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_actions[:i + 1], axis=0)
+            for i in range(len(sim_data.car2_planned_action_sets[frame])):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_planned_action_sets[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
             # Draw predicted state of other
             state_range = []
-            for i in range(len(sim_data.car2_prediction_of_actions_of_other)):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car2_prediction_of_actions_of_other[:i + 1], axis=0)
+            for i in range(len(sim_data.car2_prediction_of_actions_of_other[frame])):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car2_prediction_of_actions_of_other[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, DARK_GREY, False, state_range, 6)
 
             # Draw prediction of prediction state of self
             state_range = []
-            for i in range(len(sim_data.car2_prediction_of_others_prediction_of_my_actions)):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_prediction_of_others_prediction_of_my_actions[:i + 1], axis=0)
+            for i in range(len(sim_data.car2_prediction_of_others_prediction_of_my_actions[frame])):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_prediction_of_others_prediction_of_my_actions[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
 

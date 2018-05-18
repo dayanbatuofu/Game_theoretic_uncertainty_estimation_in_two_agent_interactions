@@ -58,12 +58,14 @@ class Main():
                 # Update data
                 self.sim_data.append_car1(states=self.car_1.states_s,
                                           actions=self.car_1.actions_set_s,
+                                          action_sets=self.car_1.planned_actions_set_s,
                                           predicted_theta_of_other=self.car_1.predicted_theta_of_other,
                                           prediction_of_actions_of_other=self.car_1.predicted_actions_of_other,
                                           prediction_of_others_prediction_of_my_actions=self.car_1.prediction_of_others_prediction_of_my_actions)
 
                 self.sim_data.append_car2(states=self.car_2.states_s,
                                           actions=self.car_2.actions_set_s,
+                                          action_sets=self.car_2.planned_actions_set_s,
                                           predicted_theta_of_other=self.car_2.predicted_theta_of_other,
                                           prediction_of_actions_of_other=self.car_2.predicted_actions_of_other,
                                           prediction_of_others_prediction_of_my_actions=self.car_2.prediction_of_others_prediction_of_my_actions)
@@ -72,7 +74,7 @@ class Main():
                 break
 
             # Draw frame
-            self.sim_draw.draw_frame(self.sim_data, self.frame, self.car_num_display)
+            self.sim_draw.draw_frame(self.sim_data, self.car_num_display, self.frame)
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
