@@ -28,19 +28,19 @@ class Main():
 
         # Sim output
         self.sim_data = Sim_Data()
-        # self.sim_out = open("./sim_outputs/output_%s.pkl" % datetime.datetime.now(), "wb")
-        self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
+        self.sim_out = open("./sim_outputs/output_%s.pkl" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), "wb")
+        # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
         # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
                                        car_parameters_other=self.P.CAR_2,
-                                       loss_style='aggressive')
+                                       loss_style='passive_aggressive')
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
                                        car_parameters_other=self.P.CAR_1,
                                        loss_style='aggressive')
-        self.sim_draw = Sim_Draw(self.P, self.car_1, self.car_2, C.ASSET_LOCATION)
+        self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
 
         # Go
         self.trial()
@@ -98,8 +98,9 @@ class Main():
             if not self.paused:
                 self.frame += 1
 
-        # pickle.dump([self.sim_data_machine, self.sim_data_human], self.sim_out, pickle.HIGHEST_PROTOCOL)
-        # print('Output pickled and dumped.')
+        pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
+        input("Simulation ended.")
+        print('Output pickled and dumped.')
 
 
 if __name__ == "__main__":

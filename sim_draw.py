@@ -20,20 +20,19 @@ class Sim_Draw():
     TEAL = (0, 255, 255)
     GREEN = (0, 255, 0)
 
-    def __init__(self, parameters, car1, car2, asset_loc):
+    def __init__(self, parameters, asset_loc):
 
         self.P = parameters
 
         pg.init()
         self.screen = pg.display.set_mode((self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
-        self.car1 = car1
-        self.car2 = car2
+
         self.car2_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "white_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), -self.car2.P_CAR_S.ORIENTATION)
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), -self.P.CAR_2.ORIENTATION)
         self.car1_image = pg.transform.rotate(pg.transform.scale(pg.image.load(asset_loc + "grey_car_sized.png"),
                                                                   (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.car1.P_CAR_S.ORIENTATION)
+                                                                   int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))), self.P.CAR_1.ORIENTATION)
         self.coordinates_image = pg.image.load(asset_loc + "coordinates.png")
         self.origin = np.array([0, 0])
 
@@ -107,11 +106,14 @@ class Sim_Draw():
 
         # Annotations
         font = pg.font.SysFont("Arial", 15)
-        label = font.render("Car 1: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
+        label = font.render("Car 1: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 10))
 
-        label = font.render("Car 2: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
+        label = font.render("Car 2: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
         self.screen.blit(label, (10, 30))
+
+        label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 50))
 
         # # label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_theta[0], machine_theta[1], machine_theta[2]), 1, (0, 0, 0))
         # label = font.render("Machine Theta: (%5.4f)" % (machine_theta[0]), 1, (0, 0, 0))
@@ -130,9 +132,6 @@ class Sim_Draw():
         # self.screen.blit(label, (30, 100))
         # pg.draw.circle(self.screen, BLACK, (15, 110), 5)
         # pg.draw.circle(self.screen, MAGENTA, (15, 110), 4)
-
-        label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 130))
 
         # label = font.render("Machine Action: (%5.4f, %5.4f)" % (machine_previous_action_set[0][0], machine_previous_action_set[0][1]), 1, (0, 0, 0))
         # self.screen.blit(label, (10, 160))

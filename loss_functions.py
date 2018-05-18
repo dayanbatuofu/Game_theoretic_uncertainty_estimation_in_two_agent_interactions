@@ -21,10 +21,10 @@ class LossFunctions:
             return self.aggressive_loss(guess, autonomous_vehicle)
 
         elif self.characterization is "reactive":
-            return self.reactive_loss(autonomous_vehicle)
+            return self.reactive_loss(guess, autonomous_vehicle)
 
         elif self.characterization is "passive_aggressive":
-            return self.passive_aggressive_loss(autonomous_vehicle)
+            return self.passive_aggressive_loss(guess, autonomous_vehicle)
 
         else:
             raise ValueError('incorrect loss function characterization specified.')
@@ -118,7 +118,7 @@ class LossFunctions:
 
         action_self = self.interpolate_from_trajectory(trajectory, state_s, autonomous_vehicle.P_CAR_S.ORIENTATION)[0]
 
-        intent_optimization_results = self.multi_search_intent(guess_set, [], [], autonomous_vehicle.P_CAR_O.ORIENTATION, state_o, state_s, action_self)
+        intent_optimization_results = self.multi_search_intent(autonomous_vehicle, guess_set, action_self)
         alpha_me_by_other, r, rho = intent_optimization_results
 
         expected_trajectory_of_other = [r, rho]  # I expect you to understand that I expect you to do this
