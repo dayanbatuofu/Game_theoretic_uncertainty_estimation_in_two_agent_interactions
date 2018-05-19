@@ -51,7 +51,7 @@ class AutonomousVehicle:
 
         # Initialize prediction_variables
         self.predicted_theta_of_other = self.P_CAR_O.INTENT
-        #self.predicted_trajectory_of_other = []
+        self.predicted_trajectory_of_other = []
         self.predicted_actions_of_other    = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
         self.prediction_of_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
 
@@ -72,20 +72,20 @@ class AutonomousVehicle:
             self.machine_expected_trajectory = machine_expected_trajectory
 
         ########## Calculate machine actions here ###########
-        [machine_actions, human_predicted_actions, prediction_of_others_prediction_of_my_actions] = self.get_actions()
+        [actions_self, predicted_actions_of_other, prediction_of_others_prediction_of_my_actions] = self.get_actions()
 
-        self.predicted_actions_of_other    = human_predicted_actions
+        self.predicted_actions_of_other    = predicted_actions_of_other
         self.prediction_of_others_prediction_of_my_actions  = prediction_of_others_prediction_of_my_actions
 
         # Update self state
         # if self.scripted_state is not None: #if action scripted
         #     self.machine_states_set.append(self.scripted_state[frame+1]) # get the NEXT state
-        #     machine_actions = np.subtract(self.machine_states_set[-1], self.machine_states_set[-2])
-        #     self.machine_actions_set.append(machine_actions)
+        #     actions_self = np.subtract(self.machine_states_set[-1], self.machine_states_set[-2])
+        #     self.machine_actions_set.append(actions_self)
         # else:
-        self.states_s.append(np.add(self.states_s[-1], (machine_actions[0][0], machine_actions[0][1])))
-        self.actions_set_s.append(machine_actions[0])
-        self.planned_actions_set_s = machine_actions
+        self.states_s.append(np.add(self.states_s[-1], (actions_self[0][0], actions_self[0][1])))
+        self.actions_set_s.append(actions_self[0])
+        self.planned_actions_set_s = actions_self
 
     def get_actions(self):
 
@@ -170,7 +170,12 @@ class AutonomousVehicle:
 
         # Interpolate for output
         actions_self = self.interpolate_from_trajectory(trajectory_self, self.states_s[-1], self.P_CAR_S.ORIENTATION)
-        predicted_actions_other = self.interpolate_from_trajectory(predicted_trajectory_other, self.states_o[-1], self.P_CAR_O.ORIENTATION)
+
+        if predicted_trajectory_other is None:
+            predicted_actions_other = self.predicted_actions_of_other
+        else:
+            predicted_actions_other = self.interpolate_from_trajectory(predicted_trajectory_other, self.states_o[-1], self.P_CAR_O.ORIENTATION)
+
         predicted_actions_self = self.interpolate_from_trajectory(predicted_trajectory_self, self.states_s[-1], self.P_CAR_S.ORIENTATION)
 
         return actions_self, predicted_actions_other, predicted_actions_self
@@ -187,21 +192,20 @@ class AutonomousVehicle:
         for guess in guess_set:
 
             fun, predicted_trajectory_other = self.loss.loss(guess, self)
-                                                            # self.states_o[-1], self.states_s[-1], self.intent_s,
-                                                            #  self.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS,
-                                                            #  self.collision_box_o,
-                                                            #  self.collision_box_s,
-                                                            #  self.P_CAR_O.ORIENTATION,
-                                                            #  self.P_CAR_S.ORIENTATION)
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
-            predicted_trajectory_other_set = np.append(predicted_trajectory_other_set, [predicted_trajectory_other],
-                                                       axis=0)
+
+            if predicted_trajectory_other is not None:
+                predicted_trajectory_other_set = np.append(predicted_trajectory_other_set, [predicted_trajectory_other], axis=0)
+
             loss_value_set = np.append(loss_value_set, fun)
 
         trajectory = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
-        predicted_trajectory_other = predicted_trajectory_other_set[np.where(loss_value_set ==
-                                                                             np.min(loss_value_set))[0][0]]
+
+        if len(predicted_trajectory_other_set) == 0:
+            predicted_trajectory_other = None
+        else:
+            predicted_trajectory_other = predicted_trajectory_other_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
 
         return trajectory, predicted_trajectory_other
 

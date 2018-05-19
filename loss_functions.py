@@ -102,7 +102,7 @@ class LossFunctions:
         # return np.linalg.norm(np.reciprocal(sigD)) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
         loss = collision_loss + intent_loss
 
-        return loss  # Return weighted sum
+        return loss, None  # Return weighted sum
 
     def passive_aggressive_loss(self, trajectory, autonomous_vehicle):
         who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
