@@ -104,8 +104,8 @@ class AutonomousVehicle:
 
         theta_other = self.predicted_theta_of_other
         theta_self = self.intent_s
-        box_other = self.P.COLLISION_BOXES
-        box_self = self.P.COLLISION_BOXES
+        box_other = self.collision_box_o
+        box_self = self.collision_box_s
 
         initial_expected_trajectory_self = self.P_CAR_S.COMMON_THETA
 
@@ -159,14 +159,16 @@ class AutonomousVehicle:
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
 
         trials = np.arange(5, -1.1, -0.1)
-        guess_set = np.hstack((np.expand_dims(trials, axis=1), np.ones((trials.size,1)) * self.P_CAR_S.ORIENTATION))
-        guess_other = np.hstack((np.expand_dims(trials, axis=1), np.ones((trials.size,1)) * self.P_CAR_O.ORIENTATION))
+        guess_set = np.hstack((np.expand_dims(trials, axis=1), np.ones((trials.size, 1)) * self.P_CAR_S.ORIENTATION))
+        guess_other = np.hstack((np.expand_dims(trials, axis=1), np.ones((trials.size, 1)) * self.P_CAR_O.ORIENTATION))
 
-        # Estimate machine actions
-        trajectory_self, predicted_trajectory_other = self.multi_search(guess_set, bounds_self,
-                                                                        cons_self, theta_self,
-                                                                        box_other, box_self,
-                                                                        self.P_CAR_O.ORIENTATION, self.P_CAR_S.ORIENTATION)
+        if self.loss.characterization is 'reactive':
+            trajectory_self, predicted_trajectory_other = self.loss.loss(guess_set, self, guess_other=guess_other)
+        else:
+            trajectory_self, predicted_trajectory_other = self.multi_search(guess_set, bounds_self,
+                                                                            cons_self, theta_self,
+                                                                            box_other, box_self,
+                                                                            self.P_CAR_O.ORIENTATION, self.P_CAR_S.ORIENTATION)
 
         # Interpolate for output
         actions_self = self.interpolate_from_trajectory(trajectory_self, self.states_s[-1], self.P_CAR_S.ORIENTATION)
