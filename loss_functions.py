@@ -77,7 +77,7 @@ class LossFunctions:
         state_o = autonomous_vehicle.states_o[-1]
 
         actions_self = self.interpolate_from_trajectory(trajectory, state_s, autonomous_vehicle.P_CAR_S.ORIENTATION)
-        actions_other = self.interpolate_from_trajectory(trajectory_other, state_o, autonomous_vehicle.P_CAR_O.ORIENTATION)
+        actions_other = autonomous_vehicle.predicted_actions_of_other
 
         # Define state loss
         # state_loss = np.reciprocal(box_self.get_collision_distance(s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self),

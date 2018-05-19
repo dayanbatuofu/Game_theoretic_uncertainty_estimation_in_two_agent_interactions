@@ -51,8 +51,8 @@ class AutonomousVehicle:
 
         # Initialize prediction_variables
         self.predicted_theta_of_other = self.P_CAR_O.INTENT
-        self.predicted_trajectory_of_other = []
-        self.predicted_actions_of_other    = []
+        #self.predicted_trajectory_of_other = []
+        self.predicted_actions_of_other    = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
         self.prediction_of_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
 
     def get_state(self, delay):
