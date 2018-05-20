@@ -50,32 +50,37 @@ class AutonomousVehicle:
         self.actions_set_o = []
 
         # Initialize prediction_variables
-        self.predicted_theta_of_other = self.P_CAR_O.INTENT
-        self.predicted_trajectory_of_other = []
+        self.predicted_theta_of_other = self.P_CAR_S.INTENT  # consider others as equally aggressive
+        self.predicted_trajectory_of_other = self.P_CAR_O.COMMON_THETA
         self.predicted_actions_of_other    = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
         self.prediction_of_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.prediction_of_others_prediction_of_my_trajectory = self.P_CAR_S.COMMON_THETA
 
     def get_state(self, delay):
         return self.states_s[-1 * delay]
 
     def update(self, other, frame):
-
+        who = (self.P_CAR_S.BOUND_X is None) + 0.0
         """ Function ran on every frame of simulation"""
 
         ########## Update human characteristics here ########
-        self.states_o = np.array(other.states_s) #get other's states
-        self.actions_set_o = np.array(other.actions_set_s) #get other's actions
+        if who == 1: # 1 moves first
+            self.states_o = np.array(other.states_s) #get other's states
+            self.actions_set_o = np.array(other.actions_set_s) #get other's actions
+        elif who == 0:
+            self.states_o = np.array(other.states_s[:-1]) #get other's states
+            self.actions_set_o = np.array(other.actions_set_s[:-1]) #get other's actions
 
         if len(self.states_o) > 1 and len(self.states_s) > 1:
-            theta_human, prediction_of_others_prediction_of_my_actions = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
+            theta_human, prediction_of_others_prediction_of_my_trajectory = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
             self.predicted_theta_of_other = [theta_human]
-            self.prediction_of_others_prediction_of_my_actions = prediction_of_others_prediction_of_my_actions
+            self.prediction_of_others_prediction_of_my_trajectory = prediction_of_others_prediction_of_my_trajectory
 
         ########## Calculate machine actions here ###########
         [actions_self, predicted_actions_of_other, prediction_of_others_prediction_of_my_actions] = self.get_actions()
 
         self.predicted_actions_of_other = predicted_actions_of_other
-        # self.prediction_of_others_prediction_of_my_actions  = prediction_of_others_prediction_of_my_actions
+        self.prediction_of_others_prediction_of_my_actions  = prediction_of_others_prediction_of_my_actions
 
         # Update self state
         # if self.scripted_state is not None: #if action scripted
@@ -101,13 +106,12 @@ class AutonomousVehicle:
             initial_trajectory_other = self.P_CAR_O.COMMON_THETA
             initial_trajectory_self = self.P_CAR_S.COMMON_THETA
 
-
         theta_other = self.predicted_theta_of_other
         theta_self = self.intent_s
         box_other = self.collision_box_o
         box_self = self.collision_box_s
 
-        initial_expected_trajectory_self = self.P_CAR_S.COMMON_THETA
+        initial_expected_trajectory_self = self.prediction_of_others_prediction_of_my_trajectory
 
         bounds_self = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                        (-C.ACTION_TURNANGLE + self.P_CAR_S.ORIENTATION,
@@ -153,7 +157,7 @@ class AutonomousVehicle:
 
         trajectory_other = initial_trajectory_other
         trajectory_self = initial_trajectory_self
-        predicted_trajectory_self = self.P_CAR_S.COMMON_THETA
+        predicted_trajectory_self = initial_expected_trajectory_self
 
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
 
@@ -191,7 +195,7 @@ class AutonomousVehicle:
 
         for guess in guess_set:
 
-            fun, predicted_trajectory_other = self.loss.loss(guess, self)
+            fun, predicted_trajectory_other = self.loss.loss(guess, self, [])
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
 

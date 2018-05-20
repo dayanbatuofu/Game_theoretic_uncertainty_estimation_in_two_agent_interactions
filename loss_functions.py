@@ -74,16 +74,16 @@ class LossFunctions:
         who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
 
         """ run multiple searches with different initial guesses """
-        predicted_trajectory_self = autonomous_vehicle.machine_expected_trajectory
-        initial_trajectory_other = autonomous_vehicle.predicted_theta_of_other
+        predicted_trajectory_self = autonomous_vehicle.prediction_of_others_prediction_of_my_trajectory
+        theta_other = autonomous_vehicle.predicted_theta_of_other
 
         # FOR OTHER
         trajectory_set = np.empty((0, 2))  # TODO: need to generalize
         loss_value_set = []
-        for guess in guess_self:
+        for guess in guess_other:
 
             loss = self.reactive_loss(guess, autonomous_vehicle.states_s[-1], autonomous_vehicle.states_o[-1],
-                                      predicted_trajectory_self, initial_trajectory_other,
+                                      predicted_trajectory_self, theta_other,
                                       autonomous_vehicle.collision_box_s,
                                       autonomous_vehicle.collision_box_o, autonomous_vehicle.P_CAR_S.ORIENTATION,
                                       autonomous_vehicle.P_CAR_O.ORIENTATION, 1-who)
@@ -96,7 +96,7 @@ class LossFunctions:
         # FOR SELF
         trajectory_set = np.empty((0, 2))  # TODO: need to generalize
         loss_value_set = []
-        for guess in guess_other:
+        for guess in guess_self:
 
             loss = self.reactive_loss(guess, autonomous_vehicle.states_o[-1], autonomous_vehicle.states_s[-1],
                                       trajectory_other, autonomous_vehicle.P_CAR_S.INTENT,
@@ -121,7 +121,7 @@ class LossFunctions:
 
         s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
         s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-        D = box_self.get_collision_distance(s_self_predict, s_other_predict, box_other)+1e-12
+        D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
         gap = 1.05 #TODO: generalize this
         for i in range(s_self_predict.shape[0]):
             if who == 1:
