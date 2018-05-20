@@ -66,16 +66,16 @@ class AutonomousVehicle:
         self.states_o = np.array(other.states_s) #get other's states
         self.actions_set_o = np.array(other.actions_set_s) #get other's actions
 
-        if len(self.states_o) > 1 and len(self.states_s) > 1: # human will not repeat this
-            theta_human, machine_expected_trajectory = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
+        if len(self.states_o) > 1 and len(self.states_s) > 1:
+            theta_human, prediction_of_others_prediction_of_my_actions = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
             self.predicted_theta_of_other = [theta_human]
-            self.machine_expected_trajectory = machine_expected_trajectory
+            self.prediction_of_others_prediction_of_my_actions = prediction_of_others_prediction_of_my_actions
 
         ########## Calculate machine actions here ###########
         [actions_self, predicted_actions_of_other, prediction_of_others_prediction_of_my_actions] = self.get_actions()
 
-        self.predicted_actions_of_other    = predicted_actions_of_other
-        self.prediction_of_others_prediction_of_my_actions  = prediction_of_others_prediction_of_my_actions
+        self.predicted_actions_of_other = predicted_actions_of_other
+        # self.prediction_of_others_prediction_of_my_actions  = prediction_of_others_prediction_of_my_actions
 
         # Update self state
         # if self.scripted_state is not None: #if action scripted
@@ -116,7 +116,6 @@ class AutonomousVehicle:
         bounds_other = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                        (-C.ACTION_TURNANGLE + self.P_CAR_O.ORIENTATION,
                         C.ACTION_TURNANGLE + self.P_CAR_O.ORIENTATION)]  # Angle
-
 
         A = np.zeros((C.ACTION_TIMESTEPS, C.ACTION_TIMESTEPS))
         A[np.tril_indices(C.ACTION_TIMESTEPS, 0)] = 1
@@ -184,7 +183,6 @@ class AutonomousVehicle:
 
     def multi_search(self, guess_set, bounds, cons, theta_s, box_o, box_s, orientation_o,
                      orientation_s):
-
 
         """ run multiple searches with different initial guesses """
         trajectory_set = np.empty((0,2)) #TODO: need to generalize

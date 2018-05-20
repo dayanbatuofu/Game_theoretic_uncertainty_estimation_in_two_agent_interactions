@@ -39,7 +39,7 @@ class Main():
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
                                        car_parameters_other=self.P.CAR_1,
-                                       loss_style='aggressive')
+                                       loss_style='reactive')
         self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
 
         # Go
