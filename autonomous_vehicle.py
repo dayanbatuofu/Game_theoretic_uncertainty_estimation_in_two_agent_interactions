@@ -48,6 +48,7 @@ class AutonomousVehicle:
         # Initialize others space
         self.states_o = [self.P_CAR_O.INITIAL_POSITION]
         self.actions_set_o = []
+        self.other_car = []
 
         # Initialize prediction_variables
         self.predicted_theta_of_other = self.P_CAR_S.INTENT  # consider others as equally aggressive

@@ -41,7 +41,7 @@ class LossFunctions:
 
         action_self = self.interpolate_from_trajectory(trajectory, state_s, autonomous_vehicle.P_CAR_S.ORIENTATION)[0]
 
-        intent_optimization_results = self.multi_search_intent(autonomous_vehicle, guess_set, action_self)
+        intent_optimization_results = self.multi_search_intent(autonomous_vehicle.other_car, guess_set, action_self)
         alpha_me_by_other, r, rho = intent_optimization_results
 
         expected_trajectory_of_other = [r, rho]  # I expect you to understand that I expect you to do this
@@ -65,7 +65,10 @@ class LossFunctions:
         collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
         # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
-        intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
+        if who == 1:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[0] - s_self_predict[-1][0]))
+        elif who == 0:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] - s_self_predict[-1][1]))
 
         loss = collision_loss + intent_loss
         return loss, expected_trajectory_of_other  # Return weighted sum
@@ -156,7 +159,7 @@ class LossFunctions:
 
         action_self = self.interpolate_from_trajectory(trajectory, state_s, autonomous_vehicle.P_CAR_S.ORIENTATION)[0]
 
-        intent_optimization_results = self.multi_search_intent(autonomous_vehicle, guess_set, action_self)
+        intent_optimization_results = self.multi_search_intent(autonomous_vehicle.other_car, guess_set, action_self)
         alpha_me_by_other, r, rho = intent_optimization_results
 
         expected_trajectory_of_other = [r, rho]  # I expect you to understand that I expect you to do this
@@ -180,15 +183,18 @@ class LossFunctions:
         collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
         # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
-        intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
+        if who == 1:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[0] - s_self_predict[-1][0]))
+        elif who == 0:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] - s_self_predict[-1][1]))
 
         # return np.linalg.norm(np.reciprocal(sigD)) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
-        gracefulness_loss = (trajectory[0] - autonomous_vehicle.P_CAR_S.COMMON_THETA[0]) ** 2
+        gracefulness_loss = (trajectory[0] - self.) ** 2
 
         loss = collision_loss + intent_loss + gracefulness_loss
         return loss, expected_trajectory_of_other  # Return weighted sum
 
-    def multi_search_intent(self, autonomous_vehicle, guess_set, action_self):
+    def multi_search_intent(self, autonomous_vehicle, guess_set, action_other):
 
         """ run multiple searches with different initial guesses """
 
@@ -206,7 +212,7 @@ class LossFunctions:
                                                collision_box_other=autonomous_vehicle.collision_box_o,
                                                state_self=autonomous_vehicle.states_s[-1],
                                                state_other=autonomous_vehicle.states_o[-1],
-                                               action_other=action_self)
+                                               action_other=action_other)
 
             # if np.isfinite(optimization_results.fun) and not np.isnan(optimization_results.fun):
             trajectory_set = np.vstack((trajectory_set, np.array([alpha, guess[0], guess[1]])))
