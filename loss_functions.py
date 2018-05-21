@@ -67,8 +67,8 @@ class LossFunctions:
 
         if who == 1:
             intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[0] - s_self_predict[-1][0]))
-        elif who == 0:
-            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] - s_self_predict[-1][1]))
+        else:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (-autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] + s_self_predict[-1][1]))
 
         loss = collision_loss + intent_loss
         return loss, expected_trajectory_of_other  # Return weighted sum
@@ -185,11 +185,13 @@ class LossFunctions:
 
         if who == 1:
             intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[0] - s_self_predict[-1][0]))
-        elif who == 0:
-            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] - s_self_predict[-1][1]))
+        else:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (-autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] + s_self_predict[-1][1]))
 
         # return np.linalg.norm(np.reciprocal(sigD)) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
-        gracefulness_loss = (trajectory[0] - self.) ** 2
+
+        #TODO: gracefulness only takes into account the magnitude of trajectory
+        gracefulness_loss = (trajectory[0] - autonomous_vehicle.prediction_of_others_prediction_of_my_trajectory[0]) ** 2
 
         loss = collision_loss + intent_loss + gracefulness_loss
         return loss, expected_trajectory_of_other  # Return weighted sum
