@@ -122,7 +122,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=np.array([2]),
+                              INTENT=np.array([1]),
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., -90]),
                               ORIENTATION=-90)
 
