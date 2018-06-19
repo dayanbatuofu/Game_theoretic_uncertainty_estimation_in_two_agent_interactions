@@ -143,6 +143,7 @@ class Sim_Draw():
         # self.screen.blit(label, (10, 200))
 
         pg.display.flip()
+        pg.display.update()
 
 
     def draw_axes(self):
