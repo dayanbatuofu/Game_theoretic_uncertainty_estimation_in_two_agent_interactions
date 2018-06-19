@@ -41,7 +41,7 @@ class LossFunctions:
 
         action_self = self.interpolate_from_trajectory(trajectory, state_s, autonomous_vehicle.P_CAR_S.ORIENTATION)[0]
 
-        intent_optimization_results = self.multi_search_intent(autonomous_vehicle, guess_set, action_self)
+        intent_optimization_results = self.multi_search_intent(autonomous_vehicle.other_car, guess_set, action_self)
         alpha_me_by_other, r, rho = intent_optimization_results
 
         expected_trajectory_of_other = [r, rho]  # I expect you to understand that I expect you to do this
@@ -65,24 +65,31 @@ class LossFunctions:
         collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
         # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
-        intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
+        if who == 1:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[0] - s_self_predict[-1][0]))
+        else:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (-autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] + s_self_predict[-1][1]))
 
         loss = collision_loss + intent_loss
         return loss, expected_trajectory_of_other  # Return weighted sum
 
     def reactive_multisearch(self, guess_self, guess_other, autonomous_vehicle):
+        who = (autonomous_vehicle.P_CAR_S.BOUND_X is None) + 0.0
 
         """ run multiple searches with different initial guesses """
-        predicted_trajectory_self = ##???????????
-        initial_trajectory_other = ##???????????
+        predicted_trajectory_self = autonomous_vehicle.prediction_of_others_prediction_of_my_trajectory
+        theta_other = autonomous_vehicle.predicted_theta_of_other
 
         # FOR OTHER
         trajectory_set = np.empty((0, 2))  # TODO: need to generalize
         loss_value_set = []
-        for guess in guess_self:
+        for guess in guess_other:
 
-            loss = self.reactive_loss(guess, autonomous_vehicle.states_s[-1], autonomous_vehicle.states_o[-1], predicted_trajectory_self, initial_trajectory_other, autonomous_vehicle.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, autonomous_vehicle.collision_box_s,
-                                      autonomous_vehicle.collision_box_o, autonomous_vehicle.P_CAR_S.ORIENTATION, autonomous_vehicle.P_CAR_O.ORIENTATION, who=1)
+            loss = self.reactive_loss(guess, autonomous_vehicle.states_s[-1], autonomous_vehicle.states_o[-1],
+                                      predicted_trajectory_self, theta_other,
+                                      autonomous_vehicle.collision_box_s,
+                                      autonomous_vehicle.collision_box_o, autonomous_vehicle.P_CAR_S.ORIENTATION,
+                                      autonomous_vehicle.P_CAR_O.ORIENTATION, 1-who)
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
             loss_value_set = np.append(loss_value_set, loss)
@@ -92,10 +99,13 @@ class LossFunctions:
         # FOR SELF
         trajectory_set = np.empty((0, 2))  # TODO: need to generalize
         loss_value_set = []
-        for guess in guess_other:
+        for guess in guess_self:
 
-            loss = self.reactive_loss(guess, autonomous_vehicle.states_o[-1], autonomous_vehicle.states_s[-1], trajectory_other, predicted_trajectory_self, autonomous_vehicle.P.VEHICLE_MAX_SPEED * C.ACTION_TIMESTEPS, autonomous_vehicle.collision_box_o,
-                                      autonomous_vehicle.collision_box_s, autonomous_vehicle.P_CAR_O.ORIENTATION, autonomous_vehicle.P_CAR_S.ORIENTATION, who=0)
+            loss = self.reactive_loss(guess, autonomous_vehicle.states_o[-1], autonomous_vehicle.states_s[-1],
+                                      trajectory_other, autonomous_vehicle.P_CAR_S.INTENT,
+                                      autonomous_vehicle.collision_box_o,
+                                      autonomous_vehicle.collision_box_s, autonomous_vehicle.P_CAR_O.ORIENTATION,
+                                      autonomous_vehicle.P_CAR_S.ORIENTATION, who)
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
             loss_value_set = np.append(loss_value_set, loss)
@@ -104,7 +114,7 @@ class LossFunctions:
 
         return trajectory_self, trajectory_other
 
-    def reactive_loss(self, trajectory, s_other, s_self, trajectory_other, theta_self, theta_max, box_other, box_self,
+    def reactive_loss(self, trajectory, s_other, s_self, trajectory_other, theta_self, box_other, box_self,
                   orientation_other, orientation_self, who):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
@@ -114,7 +124,7 @@ class LossFunctions:
 
         s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
         s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-        D = box_self.get_collision_distance(s_self_predict, s_other_predict, box_other)+1e-12
+        D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
         gap = 1.05 #TODO: generalize this
         for i in range(s_self_predict.shape[0]):
             if who == 1:
@@ -123,7 +133,6 @@ class LossFunctions:
             elif who == 0:
                 if s_self_predict[i,1]<=-gap+1e-12 or s_self_predict[i,1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
                     D[i] = np.inf
-
 
         collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
 
@@ -150,7 +159,7 @@ class LossFunctions:
 
         action_self = self.interpolate_from_trajectory(trajectory, state_s, autonomous_vehicle.P_CAR_S.ORIENTATION)[0]
 
-        intent_optimization_results = self.multi_search_intent(autonomous_vehicle, guess_set, action_self)
+        intent_optimization_results = self.multi_search_intent(autonomous_vehicle.other_car, guess_set, action_self)
         alpha_me_by_other, r, rho = intent_optimization_results
 
         expected_trajectory_of_other = [r, rho]  # I expect you to understand that I expect you to do this
@@ -174,15 +183,20 @@ class LossFunctions:
         collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
         # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
-        intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * np.linalg.norm(autonomous_vehicle.P_CAR_S.DESIRED_POSITION - s_self_predict[-1]))
+        if who == 1:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (autonomous_vehicle.P_CAR_S.DESIRED_POSITION[0] - s_self_predict[-1][0]))
+        else:
+            intent_loss = autonomous_vehicle.intent_s[0] * np.exp(C.EXPTHETA * (-autonomous_vehicle.P_CAR_S.DESIRED_POSITION[1] + s_self_predict[-1][1]))
 
         # return np.linalg.norm(np.reciprocal(sigD)) + theta_self[0] * np.linalg.norm(intent_loss) # Return weighted sum
-        gracefulness_loss = (trajectory[0] - autonomous_vehicle.P_CAR_S.COMMON_THETA[0]) ** 2
+
+        #TODO: gracefulness only takes into account the magnitude of trajectory
+        gracefulness_loss = (trajectory[0] - autonomous_vehicle.prediction_of_others_prediction_of_my_trajectory[0]) ** 2
 
         loss = collision_loss + intent_loss + gracefulness_loss
         return loss, expected_trajectory_of_other  # Return weighted sum
 
-    def multi_search_intent(self, autonomous_vehicle, guess_set, action_self):
+    def multi_search_intent(self, autonomous_vehicle, guess_set, action_other):
 
         """ run multiple searches with different initial guesses """
 
@@ -200,7 +214,7 @@ class LossFunctions:
                                                collision_box_other=autonomous_vehicle.collision_box_o,
                                                state_self=autonomous_vehicle.states_s[-1],
                                                state_other=autonomous_vehicle.states_o[-1],
-                                               action_other=action_self)
+                                               action_other=action_other)
 
             # if np.isfinite(optimization_results.fun) and not np.isnan(optimization_results.fun):
             trajectory_set = np.vstack((trajectory_set, np.array([alpha, guess[0], guess[1]])))

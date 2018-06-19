@@ -48,33 +48,39 @@ class AutonomousVehicle:
         # Initialize others space
         self.states_o = [self.P_CAR_O.INITIAL_POSITION]
         self.actions_set_o = []
+        self.other_car = []
 
         # Initialize prediction_variables
-        self.predicted_theta_of_other = self.P_CAR_O.INTENT
-        self.predicted_trajectory_of_other = []
+        self.predicted_theta_of_other = self.P_CAR_S.INTENT  # consider others as equally aggressive
+        self.predicted_trajectory_of_other = self.P_CAR_O.COMMON_THETA
         self.predicted_actions_of_other    = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
         self.prediction_of_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
+        self.prediction_of_others_prediction_of_my_trajectory = self.P_CAR_S.COMMON_THETA
 
     def get_state(self, delay):
         return self.states_s[-1 * delay]
 
     def update(self, other, frame):
-
+        who = (self.P_CAR_S.BOUND_X is None) + 0.0
         """ Function ran on every frame of simulation"""
 
         ########## Update human characteristics here ########
-        self.states_o = np.array(other.states_s) #get other's states
-        self.actions_set_o = np.array(other.actions_set_s) #get other's actions
+        if who == 1: # 1 moves first
+            self.states_o = np.array(other.states_s) #get other's states
+            self.actions_set_o = np.array(other.actions_set_s) #get other's actions
+        elif who == 0:
+            self.states_o = np.array(other.states_s[:-1]) #get other's states
+            self.actions_set_o = np.array(other.actions_set_s[:-1]) #get other's actions
 
-        if len(self.states_o) > 1 and len(self.states_s) > 1: # human will not repeat this
-            theta_human, machine_expected_trajectory = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
+        if len(self.states_o) > 1 and len(self.states_s) > 1:
+            theta_human, prediction_of_others_prediction_of_my_trajectory = self.get_predicted_intent_of_other() #"self" inside prediction is human (who=0)
             self.predicted_theta_of_other = [theta_human]
-            self.machine_expected_trajectory = machine_expected_trajectory
+            self.prediction_of_others_prediction_of_my_trajectory = prediction_of_others_prediction_of_my_trajectory
 
         ########## Calculate machine actions here ###########
         [actions_self, predicted_actions_of_other, prediction_of_others_prediction_of_my_actions] = self.get_actions()
 
-        self.predicted_actions_of_other    = predicted_actions_of_other
+        self.predicted_actions_of_other = predicted_actions_of_other
         self.prediction_of_others_prediction_of_my_actions  = prediction_of_others_prediction_of_my_actions
 
         # Update self state
@@ -101,13 +107,12 @@ class AutonomousVehicle:
             initial_trajectory_other = self.P_CAR_O.COMMON_THETA
             initial_trajectory_self = self.P_CAR_S.COMMON_THETA
 
-
         theta_other = self.predicted_theta_of_other
         theta_self = self.intent_s
         box_other = self.collision_box_o
         box_self = self.collision_box_s
 
-        initial_expected_trajectory_self = self.P_CAR_S.COMMON_THETA
+        initial_expected_trajectory_self = self.prediction_of_others_prediction_of_my_trajectory
 
         bounds_self = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                        (-C.ACTION_TURNANGLE + self.P_CAR_S.ORIENTATION,
@@ -116,7 +121,6 @@ class AutonomousVehicle:
         bounds_other = [(-C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED, C.ACTION_TIMESTEPS * self.P.VEHICLE_MAX_SPEED),  # Radius
                        (-C.ACTION_TURNANGLE + self.P_CAR_O.ORIENTATION,
                         C.ACTION_TURNANGLE + self.P_CAR_O.ORIENTATION)]  # Angle
-
 
         A = np.zeros((C.ACTION_TIMESTEPS, C.ACTION_TIMESTEPS))
         A[np.tril_indices(C.ACTION_TIMESTEPS, 0)] = 1
@@ -154,7 +158,7 @@ class AutonomousVehicle:
 
         trajectory_other = initial_trajectory_other
         trajectory_self = initial_trajectory_self
-        predicted_trajectory_self = self.P_CAR_S.COMMON_THETA
+        predicted_trajectory_self = initial_expected_trajectory_self
 
         # guess_set = np.array([[0,0],[10,0]]) #TODO: need to generalize this
 
@@ -185,7 +189,6 @@ class AutonomousVehicle:
     def multi_search(self, guess_set, bounds, cons, theta_s, box_o, box_s, orientation_o,
                      orientation_s):
 
-
         """ run multiple searches with different initial guesses """
         trajectory_set = np.empty((0,2)) #TODO: need to generalize
         predicted_trajectory_other_set = np.empty((0,2))
@@ -193,7 +196,7 @@ class AutonomousVehicle:
 
         for guess in guess_set:
 
-            fun, predicted_trajectory_other = self.loss.loss(guess, self)
+            fun, predicted_trajectory_other = self.loss.loss(guess, self, [])
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
 

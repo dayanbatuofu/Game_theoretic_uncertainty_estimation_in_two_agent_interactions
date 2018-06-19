@@ -36,11 +36,14 @@ class Main():
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
                                        car_parameters_other=self.P.CAR_2,
-                                       loss_style='reactive')
+                                       loss_style='passive_aggressive')
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
                                        car_parameters_other=self.P.CAR_1,
-                                       loss_style='aggressive')
+                                       loss_style='reactive')
+        self.car_1.other_car = self.car_2
+        self.car_2.other_car = self.car_1
+
         self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
 
         self.capture = True if input("Capture video (y/n): ") else False
