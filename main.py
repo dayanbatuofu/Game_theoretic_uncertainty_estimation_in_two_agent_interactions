@@ -1,12 +1,11 @@
 from constants import CONSTANTS as C
-from track_vehicle import TrackVehicle
 from autonomous_vehicle import AutonomousVehicle
-from collision_box import Collision_Box
 from sim_draw import Sim_Draw
 from sim_data import Sim_Data
 import pickle
-import numpy as np
+import os
 import pygame as pg
+import pygame.camera as camera
 import datetime
 
 class Main():
@@ -27,8 +26,10 @@ class Main():
         self.car_num_display = 0
 
         # Sim output
+        output_name = "output_%s" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         self.sim_data = Sim_Data()
-        self.sim_out = open("./sim_outputs/output_%s.pkl" % datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"), "wb")
+        self.sim_out = open("./sim_outputs/%s.pkl" % output_name, "wb")
+
         # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
         # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
@@ -41,6 +42,14 @@ class Main():
                                        car_parameters_other=self.P.CAR_1,
                                        loss_style='aggressive')
         self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
+
+        self.capture = True if input("Capture video (y/n): ") else False
+        if self.capture:
+            self.output_dir = "./sim_outputs/%s" % output_name
+            os.makedirs(self.output_dir)
+            camera.init()
+            self.cam = camera.Camera("%s/%s" % (self.output_dir, output_name) , (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
+            self.cam.start()
 
         # Go
         self.trial()
@@ -76,6 +85,11 @@ class Main():
             # Draw frame
             self.sim_draw.draw_frame(self.sim_data, self.car_num_display, self.frame)
 
+            if self.capture:
+                filename = "%s/%04d.png" % (self.output_dir, self.frame)
+                image = self.cam.get_image()
+                pg.image.save(image, filename)
+
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
@@ -99,8 +113,11 @@ class Main():
                 self.frame += 1
 
         pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
-        input("Simulation ended.")
         print('Output pickled and dumped.')
+        if camera:
+            os.system("avconv -r 8 -f image2 -i Snaps/%%04d.png -y -qscale 0 -s %ix%i -aspect 4:3 result.avi" % (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE))
+            print("Simulation output saved to %s." % self.output_dir)
+        input("Simulation ended.")
 
 
 if __name__ == "__main__":
