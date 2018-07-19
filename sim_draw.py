@@ -5,17 +5,18 @@ import math
 import os
 
 BLACK       = (  0,  0,  0)
-DARK_GREY   = (100,100,100)
-LIGHT_GREY  = (200,200,200)
+DARK_GREY   = (100,100,200)
+LIGHT_GREY  = (200,100,100)
+LIGHT_LIGHT_GREY  = (230,230,230)
 MAGENTA     = (255,  0,255)
 TEAL        = (  0,255,255)
 GREEN       = (  0,255,  0)
 
 class Sim_Draw():
 
-    BLACK = (0, 0, 0)
-    DARK_GREY = (0, 0, 0)
-    LIGHT_GREY = (200, 200, 200)
+    # BLACK = (0, 0, 0)
+    # DARK_GREY = (0, 0, 0)
+    # LIGHT_GREY = (200, 200, 200)
     MAGENTA = (255, 0, 255)
     TEAL = (0, 255, 255)
     GREEN = (0, 255, 0)
@@ -60,6 +61,20 @@ class Sim_Draw():
 
         if not car_num_display:  # If Car 1
 
+            # Draw predicted state of other
+            state_range = []
+            for i in range(len(sim_data.car1_prediction_of_actions_of_other[frame])):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car1_prediction_of_actions_of_other[frame][:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 16)
+
+            # Draw prediction of prediction state of self
+            state_range = []
+            for i in range(len(sim_data.car1_prediction_of_others_prediction_of_my_actions[frame])):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_prediction_of_others_prediction_of_my_actions[frame][:i + 1], axis=0)
+                state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 16)
+
             # Draw state
             state_range = []
             for i in range(len(sim_data.car1_planned_action_sets[frame])):
@@ -67,21 +82,22 @@ class Sim_Draw():
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
+        else:  # If Car 2
+
             # Draw predicted state of other
             state_range = []
-            for i in range(len(sim_data.car1_prediction_of_actions_of_other[frame])):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car1_prediction_of_actions_of_other[frame][:i + 1], axis=0)
+            for i in range(len(sim_data.car2_prediction_of_actions_of_other[frame])):
+                state = sim_data.car1_states[frame] + np.sum(sim_data.car2_prediction_of_actions_of_other[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 6)
+            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 16)
 
             # Draw prediction of prediction state of self
             state_range = []
-            for i in range(len(sim_data.car1_prediction_of_others_prediction_of_my_actions[frame])):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_prediction_of_others_prediction_of_my_actions[frame][:i + 1], axis=0)
+            for i in range(len(sim_data.car2_prediction_of_others_prediction_of_my_actions[frame])):
+                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_prediction_of_others_prediction_of_my_actions[frame][:i + 1], axis=0)
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
+            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 16)
 
-        else:  # If Car 2
             # Draw state
             state_range = []
             for i in range(len(sim_data.car2_planned_action_sets[frame])):
@@ -89,31 +105,19 @@ class Sim_Draw():
                 state_range.append(self.c2p(state))
             pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
-            # Draw predicted state of other
-            state_range = []
-            for i in range(len(sim_data.car2_prediction_of_actions_of_other[frame])):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car2_prediction_of_actions_of_other[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 6)
-
-            # Draw prediction of prediction state of self
-            state_range = []
-            for i in range(len(sim_data.car2_prediction_of_others_prediction_of_my_actions[frame])):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_prediction_of_others_prediction_of_my_actions[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 4)
-
-
         # Annotations
-        font = pg.font.SysFont("Arial", 15)
-        label = font.render("Car 1: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 10))
+        font = pg.font.SysFont("Arial", 30)
+        label = font.render("Car 1 state: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 410))
 
-        label = font.render("Car 2: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 30))
+        label = font.render("Car 2 state: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 450))
+
+        label = font.render("Car 2 intent: %5.4f" % (sim_data.car1_predicted_theta_of_other[frame][0]), 1, (0, 0, 0))
+        self.screen.blit(label, (10, 490))
 
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
-        self.screen.blit(label, (10, 50))
+        self.screen.blit(label, (10, 10))
 
         # # label = font.render("Machine Theta: (%5.4f, %5.4f, %5.4f)" % (machine_theta[0], machine_theta[1], machine_theta[2]), 1, (0, 0, 0))
         # label = font.render("Machine Theta: (%5.4f)" % (machine_theta[0]), 1, (0, 0, 0))
@@ -145,7 +149,6 @@ class Sim_Draw():
         pg.display.flip()
         pg.display.update()
 
-
     def draw_axes(self):
         rel_coor_scale = C.COORDINATE_SCALE * C.ZOOM
         rel_screen_width = self.P.SCREEN_WIDTH / C.ZOOM
@@ -163,50 +166,54 @@ class Sim_Draw():
 
         font = pg.font.SysFont("Arial", 15)
 
-        # Vertical
-        for i in range(num_vaxes):
-            pg.draw.line(self.screen, LIGHT_GREY, (offset_x + i * spacing, 0),
-                         (offset_x + i * spacing, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 1)
-            # label = (distance_x + 1 + i) * C.AXES_SHOW - rel_screen_width/2
-            # text = font.render("%3.2f" % label, 1, GREY)
-            # self.screen.blit(text, (10 + offset_x + (i * spacing), 10))
-
-        # Horizontal
-        for i in range(num_haxes):
-            pg.draw.line(self.screen, LIGHT_GREY, (0, offset_y + i * spacing),
-                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, offset_y + i * spacing), 1)
-            # label = (distance_y + 1 + i) * C.AXES_SHOW - rel_screen_height/2
-            # text = font.render("%3.2f" % label, 1, GREY)
-            # self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
+        # # Vertical
+        # for i in range(num_vaxes):
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (offset_x + i * spacing, 0),
+        #                  (offset_x + i * spacing, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 1)
+        #     # label = (distance_x + 1 + i) * C.AXES_SHOW - rel_screen_width/2
+        #     # text = font.render("%3.2f" % label, 1, GREY)
+        #     # self.screen.blit(text, (10 + offset_x + (i * spacing), 10))
+        #
+        # # Horizontal
+        # for i in range(num_haxes):
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, offset_y + i * spacing),
+        #                  (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, offset_y + i * spacing), 1)
+        #     # label = (distance_y + 1 + i) * C.AXES_SHOW - rel_screen_height/2
+        #     # text = font.render("%3.2f" % label, 1, GREY)
+        #     # self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
 
         # Bounds
         if self.P.BOUND_HUMAN_X is not None:
             _bound1 = self.c2p((self.P.BOUND_HUMAN_X[0], 0))
             _bound2 = self.c2p((self.P.BOUND_HUMAN_X[1], 0))
             bounds = np.array([_bound1[1], _bound2[1]])
-            pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
-            pg.draw.line(self.screen, BLACK, (0, bounds[1]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[1]), 2)
+            # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
+                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
 
         if self.P.BOUND_HUMAN_Y is not None:
             _bound1 = self.c2p((0, self.P.BOUND_HUMAN_Y[0]))
             _bound2 = self.c2p((0, self.P.BOUND_HUMAN_Y[1]))
             bounds = np.array([_bound1[0], _bound2[0]])
-            pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
-            pg.draw.line(self.screen, BLACK, (bounds[1], 0), (bounds[1], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+            # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
+                         ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
 
         if self.P.BOUND_MACHINE_X is not None:
             _bound1 = self.c2p((self.P.BOUND_MACHINE_X[0], 0))
             _bound2 = self.c2p((self.P.BOUND_MACHINE_X[1], 0))
             bounds = np.array([_bound1[1], _bound2[1]])
-            pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
-            pg.draw.line(self.screen, BLACK, (0, bounds[1]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[1]), 2)
+            # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
+                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
 
         if self.P.BOUND_MACHINE_Y is not None:
             _bound1 = self.c2p((0, self.P.BOUND_MACHINE_Y[0]))
             _bound2 = self.c2p((0, self.P.BOUND_MACHINE_Y[1]))
             bounds = np.array([_bound1[0], _bound2[0]])
-            pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
-            pg.draw.line(self.screen, BLACK, (bounds[1], 0), (bounds[1], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+            # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
+                         ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
 
     def c2p(self, coordinates):
         x = C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH / 2)

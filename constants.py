@@ -24,7 +24,7 @@ class CONSTANTS:
     CAR_WIDTH = 0.66
     CAR_LENGTH = 1.33
 
-    ZOOM = 0.8
+    ZOOM = 0.4
 
 
     # POSITION BOUNDS
@@ -112,7 +112,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
-                              INTENT=np.array([1]),
+                              INTENT=np.array([2000]),
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
                               ORIENTATION=0)
 
@@ -122,7 +122,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=np.array([2]),
+                              INTENT=np.array([2000]),
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., -90]),
                               ORIENTATION=-90)
 

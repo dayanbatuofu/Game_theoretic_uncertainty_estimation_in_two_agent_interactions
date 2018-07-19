@@ -361,6 +361,10 @@ class AutonomousVehicle:
         w = w*np.expand_dims(decay, axis=1)
         l = l*np.expand_dims(decay, axis=1)
         alpha = np.max((- np.trace(np.dot(np.transpose(w),l))/(np.sum(l**2)+1e-12),0.1))
+
+        # if who == 0:
+        # alpha = 1.
+
         x = w + alpha * l
         L = np.sum(x**2)
         return L, alpha
