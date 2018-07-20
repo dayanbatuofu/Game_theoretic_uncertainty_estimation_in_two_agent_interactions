@@ -16,6 +16,7 @@ class CarParameters:
 class CONSTANTS:
 
     # DISPLAY
+    DRAW = True
     ASSET_LOCATION = "assets/"
     FPS = 10
     AXES_SHOW = 0.5
@@ -24,7 +25,7 @@ class CONSTANTS:
     CAR_WIDTH = 0.66
     CAR_LENGTH = 1.33
 
-    ZOOM = 0.4
+    ZOOM = 0.6
 
 
     # POSITION BOUNDS
@@ -37,7 +38,7 @@ class CONSTANTS:
     ACTION_TURNANGLE = 0  # degrees #TODO: not sure why slsqp does not work with larger angles
     ACTION_NUMPOINTS = 100
 
-    T_PAST = 10
+    TRACK_BACK = 10
 
     THETA_LIMITER_X = 0.01
     THETA_LIMITER_Y = 0.01
@@ -49,6 +50,8 @@ class CONSTANTS:
 
     EXPTHETA = 1.
     EXPCOLLISION = 5.
+
+    np.random.seed(0)
 
     class PARAMETERSET_1:
 
@@ -112,7 +115,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
-                              INTENT=np.array([2000]),
+                              INTENT=1,
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
                               ORIENTATION=0)
 
@@ -122,7 +125,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=np.array([2000]),
+                              INTENT=1e6,
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., -90]),
                               ORIENTATION=-90)
 
@@ -130,9 +133,9 @@ class MATRICES:
 
     LOWER_TRIANGULAR_MATRIX = np.zeros((CONSTANTS.ACTION_NUMPOINTS, CONSTANTS.ACTION_NUMPOINTS))
     LOWER_TRIANGULAR_MATRIX[np.tril_indices(CONSTANTS.ACTION_NUMPOINTS, 0)] = 1
-
-    LOWER_TRIANGULAR_SMALL = np.zeros((CONSTANTS.T_PAST, CONSTANTS.T_PAST))
-    LOWER_TRIANGULAR_SMALL[np.tril_indices(CONSTANTS.T_PAST, 0)] = 1
+    #
+    # LOWER_TRIANGULAR_SMALL = np.zeros((CONSTANTS.T_PAST, CONSTANTS.T_PAST))
+    # LOWER_TRIANGULAR_SMALL[np.tril_indices(CONSTANTS.T_PAST, 0)] = 1
 
 
 
