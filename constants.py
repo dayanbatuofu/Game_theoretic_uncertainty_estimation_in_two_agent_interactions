@@ -38,7 +38,7 @@ class CONSTANTS:
     ACTION_TURNANGLE = 0  # degrees #TODO: not sure why slsqp does not work with larger angles
     ACTION_NUMPOINTS = 100
 
-    TRACK_BACK = 10
+    TRACK_BACK = 1
 
     THETA_LIMITER_X = 0.01
     THETA_LIMITER_Y = 0.01
@@ -52,6 +52,8 @@ class CONSTANTS:
     EXPCOLLISION = 5.
 
     np.random.seed(0)
+    THETA_SET = np.array([1., 1e3])
+    TRAJECTORY_SET = np.array([5., 4., 3., 2., 1., 0., -1.])
 
     class PARAMETERSET_1:
 
@@ -116,7 +118,7 @@ class CONSTANTS:
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
                               INTENT=1,
-                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
+                              COMMON_THETA=np.array([1., 0]),
                               ORIENTATION=0)
 
         # Right Car
@@ -126,7 +128,7 @@ class CONSTANTS:
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
                               INTENT=1e6,
-                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., -90]),
+                              COMMON_THETA=np.array([1., -90]),
                               ORIENTATION=-90)
 
 class MATRICES:

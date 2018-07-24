@@ -12,6 +12,8 @@ class Sim_Data():
         self.car1_predicted_theta_self = []  # my prediction of the other's prediction of my theta
         self.car1_predicted_actions_other = []  # converted from above
         self.car1_predicted_others_prediction_of_my_actions = []
+        self.car1_wanted_trajectory_self = []
+        self.car1_gracefulness = []
 
         self.car2_states = []  # actual states
         self.car2_actions = []  # actual actions (converted from trajectory)
@@ -21,9 +23,11 @@ class Sim_Data():
         self.car2_predicted_theta_self = []  # my prediction of the other's prediction of my theta
         self.car2_predicted_actions_other = []  # converted from above
         self.car2_predicted_others_prediction_of_my_actions = []
+        self.car2_wanted_trajectory_self = []
 
     def append_car1(self, states, actions, action_sets, predicted_theta_other, predicted_theta_self,
-                    predicted_actions_other, predicted_others_prediction_of_my_actions):
+                    predicted_actions_other, predicted_others_prediction_of_my_actions, wanted_trajectory_self,
+                    social_gracefulness):
 
         self.car1_states = states
         self.car1_actions = actions
@@ -32,9 +36,11 @@ class Sim_Data():
         self.car1_predicted_theta_self.append(predicted_theta_self)
         self.car1_predicted_actions_other.append(predicted_actions_other)
         self.car1_predicted_others_prediction_of_my_actions.append(predicted_others_prediction_of_my_actions)
+        self.car1_wanted_trajectory_self.append(wanted_trajectory_self)
+        self.car1_gracefulness = social_gracefulness
 
     def append_car2(self, states, actions, action_sets, predicted_theta_other, predicted_theta_self,
-                    predicted_actions_other, predicted_others_prediction_of_my_actions):
+                    predicted_actions_other, predicted_others_prediction_of_my_actions, wanted_trajectory_self):
 
         self.car2_states = states
         self.car2_actions = actions
@@ -43,3 +49,4 @@ class Sim_Data():
         self.car2_predicted_theta_self.append(predicted_theta_self)
         self.car2_predicted_actions_other.append(predicted_actions_other)
         self.car2_predicted_others_prediction_of_my_actions.append(predicted_others_prediction_of_my_actions)
+        self.car2_wanted_trajectory_self.append(wanted_trajectory_self)

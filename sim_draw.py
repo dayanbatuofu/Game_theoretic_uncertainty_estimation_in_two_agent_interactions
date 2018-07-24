@@ -1,20 +1,23 @@
 from constants import CONSTANTS as C
 import pygame as pg
+import pygame.gfxdraw
 import numpy as np
 import math
 import os
 
 BLACK       = (  0,  0,  0)
-DARK_BLUE   = (100,100,200)
-DARK_RED  = (200,100,100)
-LIGHT_BLUE = (200,200,255)
-LIGHT_RED = (255,200,200)
-LIGHT_LIGHT_GREY  = (230,230,230)
+DARK_CAR1   = (50,50,50)
+DARK_CAR2  = (150,150,150)
+LIGHT_CAR1 = (50,50,50)
+LIGHT_CAR2 = (150,150,150)
+LIGHT_LIGHT_GREY  = (230, 230, 230)
+GREEN = (0, 0, 0)
+YELLOW = (232, 145, 26)
+
 DARK_GREY   = (100,100,100)
 LIGHT_GREY  = (200,200,200)
 MAGENTA     = (255,  0,255)
 TEAL        = (  0,255,255)
-GREEN       = (  0,255,  0)
 
 class Sim_Draw():
 
@@ -64,41 +67,105 @@ class Sim_Draw():
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE - coordinates_size[1] - 10 / 2))
 
         if not car_num_display:  # If Car 1
-
             # Draw predicted state of other
             state_range = []
-            for i in range(len(sim_data.car1_predicted_actions_other[frame])):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car1_predicted_actions_other[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, DARK_RED, False, state_range, 16)
-
-            # Draw prediction of prediction state of self
-            state_range = []
-            for i in range(len(sim_data.car2_predicted_others_prediction_of_my_actions[frame])):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_predicted_others_prediction_of_my_actions[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, LIGHT_BLUE, False, state_range, 32)
+            for t in range(len(sim_data.car1_predicted_actions_other[frame])):
+                state_range.append(self.c2p(
+                    np.sum(sim_data.car1_predicted_actions_other[frame][t], axis=0)*0.7+
+                    sim_data.car2_states[frame]))
+                # for i in range(len(sim_data.car1_predicted_actions_other[frame][t])):
+                #     state = sim_data.car2_states[frame] + \
+                #             np.sum(sim_data.car1_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
+                #     state_range.append(self.c2p(state))
+            state_range_unique, counts = np.unique(state_range, axis=0, return_counts=True)
+            for i in range(len(state_range_unique)):
+                # pg.draw.lines(self.screen, DARK_CAR1, False, [self.c2p(sim_data.car2_states[frame]), state_range_unique[i]], 12)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                               int(counts[i]/sum(counts)*24), DARK_CAR1)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                               int(counts[i]/sum(counts)*24)-4, LIGHT_LIGHT_GREY)
 
             # Draw prediction state of self
             state_range = []
-            for i in range(len(sim_data.car2_predicted_actions_other[frame])):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car2_predicted_actions_other[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, DARK_BLUE, False, state_range, 16)
+            for t in range(len(sim_data.car2_predicted_actions_other[frame])):
+                state_range.append(self.c2p(
+                    np.sum(sim_data.car2_predicted_actions_other[frame][t], axis=0)*0.7+
+                    sim_data.car1_states[frame]))
+                # for i in range(len(sim_data.car2_predicted_actions_other[frame][t])):
+                #     state = sim_data.car1_states[frame] + \
+                #             np.sum(sim_data.car2_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
+                #     state_range.append(self.c2p(state))
+            state_range_unique, counts = np.unique(state_range, axis=0, return_counts=True)
+            for i in range(len(state_range_unique)):
+                # pg.draw.lines(self.screen, DARK_CAR2, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 12)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                               int(counts[i]/sum(counts)*24), DARK_CAR2)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                               int(counts[i]/sum(counts)*24)-4, LIGHT_LIGHT_GREY)
+
+            # Draw prediction of prediction state of other
+            state_range = []
+            for t in range(len(sim_data.car2_predicted_others_prediction_of_my_actions[frame])):
+                # state_range = []
+                # for i in range(len(sim_data.car2_predicted_others_prediction_of_my_actions[frame][t])):
+                #     state = sim_data.car2_states[frame] + \
+                #             np.sum(sim_data.car2_predicted_others_prediction_of_my_actions[frame][t][:i+1], axis=0)*0.7
+                #     state_range.append(self.c2p(state))
+                state_range.append(self.c2p(
+                    np.sum(sim_data.car2_predicted_others_prediction_of_my_actions[frame][t], axis=0)*0.7+
+                    sim_data.car2_states[frame]))
+            state_range_unique, counts = np.unique(state_range, axis=0, return_counts=True)
+            for i in range(len(state_range_unique)):
+                # pg.draw.lines(self.screen, LIGHT_CAR2, False, [self.c2p(sim_data.car2_states[frame]), state_range_unique[i]], 8)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                                         int(counts[i]/sum(counts)*16), LIGHT_CAR2)
+
+            # Draw prediction of prediction state of self
+            state_range = []
+            for t in range(len(sim_data.car1_predicted_others_prediction_of_my_actions[frame])):
+                state_range.append(self.c2p(
+                    np.sum(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t], axis=0)*0.7+
+                    sim_data.car1_states[frame]))
+                # for i in range(len(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t])):
+                #     state = sim_data.car1_states[frame] + \
+                #             np.sum(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t][:i+1], axis=0)*0.7
+                #     state_range.append(self.c2p(state))
+            state_range_unique, counts = np.unique(state_range, axis=0, return_counts=True)
+            for i in range(len(state_range_unique)):
+                # pg.draw.lines(self.screen, LIGHT_CAR1, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 8)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                               int(counts[i]/sum(counts)*16), LIGHT_CAR1)
+
+            # Draw want others want me to do
+            state_range = []
+            for t in range(len(sim_data.car1_wanted_trajectory_self[frame])):
+                state_range.append(self.c2p(
+                    sim_data.car1_wanted_trajectory_self[frame][t]*0.7+sim_data.car1_states[frame]))
+                # for i in range(len(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t])):
+                #     state = sim_data.car1_states[frame] + \
+                #             np.sum(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t][:i+1], axis=0)*0.7
+                #     state_range.append(self.c2p(state))
+            state_range_unique, counts = np.unique(state_range, axis=0, return_counts=True)
+            for i in range(len(state_range_unique)):
+                # pg.draw.lines(self.screen, YELLOW, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 4)
+                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+                               int(counts[i]/sum(counts)*12), YELLOW)
 
             # Draw planned action of self
             state_range = []
             for i in range(len(sim_data.car1_planned_action_sets[frame])):
-                state = sim_data.car1_states[frame] + np.sum(sim_data.car1_planned_action_sets[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, BLACK, False, state_range, 6)
+                    state = sim_data.car1_states[frame] + \
+                            np.sum(sim_data.car1_planned_action_sets[frame][:i+1], axis=0)*0.7
+                    state_range.append(self.c2p(state))
+            pg.draw.lines(self.screen, GREEN, False, state_range, 4)
 
             # Draw planned action of other
             state_range = []
             for i in range(len(sim_data.car2_planned_action_sets[frame])):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_planned_action_sets[frame][:i + 1], axis=0)
+                state = sim_data.car2_states[frame] + \
+                        np.sum(sim_data.car2_planned_action_sets[frame][:i+1], axis=0)*0.7
                 state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, BLACK, False, state_range, 6)
+            pg.draw.lines(self.screen, GREEN, False, state_range, 4)
 
         else:  # If Car 2
 
@@ -125,17 +192,26 @@ class Sim_Draw():
 
         # Annotations
         font = pg.font.SysFont("Arial", 30)
-        label = font.render("Car 1 state: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (410, 360))
+        # label = font.render("Car 1 state: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (410, 360))
+        #
+        # label = font.render("Car 2 state: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (410, 400))
+        #
+        # label = font.render("Car 1 intent by 1: %5.4f" % (np.sum(sim_data.car1_predicted_theta_self[frame])), 1, (0, 0, 0))
+        # self.screen.blit(label, (410, 440))
+        #
+        # label = font.render("Car 2 intent by 1: %5.4f" % (np.sum(sim_data.car1_predicted_theta_other[frame])), 1, (0, 0, 0))
+        # self.screen.blit(label, (410, 480))
+        #
+        # label = font.render("Car 1 intent by 2: %5.4f" % (np.sum(sim_data.car2_predicted_theta_other[frame])), 1, (0, 0, 0))
+        # self.screen.blit(label, (410, 520))
+        #
+        # label = font.render("Car 2 intent by 2: %5.4f" % (np.sum(sim_data.car2_predicted_theta_self[frame])), 1, (0, 0, 0))
+        # self.screen.blit(label, (410, 560))
 
-        label = font.render("Car 2 state: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (410, 400))
-
-        label = font.render("Car 1 intent: %5.4f" % (sim_data.car1_predicted_theta_other[frame]), 1, (0, 0, 0))
-        self.screen.blit(label, (410, 440))
-
-        label = font.render("Car 2 intent: %5.4f" % (sim_data.car1_predicted_theta_self[frame]), 1, (0, 0, 0))
-        self.screen.blit(label, (410, 480))
+        label = font.render("Lack of Gracefulness: %5.0f" % (np.sum(sim_data.car1_gracefulness)), 1, (0, 0, 0))
+        self.screen.blit(label, (350, 10))
 
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
         self.screen.blit(label, (10, 10))

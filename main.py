@@ -50,15 +50,15 @@ class Main():
         if C.DRAW:
             self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
             pg.display.flip()
-            self.capture = True if input("Capture video (y/n): ") else False
-
-            output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            os.makedirs("./sim_outputs/%s" % output_name)
-            self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")
-
-            if self.capture:
-                self.output_dir = "./sim_outputs/%s/video/" % output_name
-                os.makedirs(self.output_dir)
+            # self.capture = True if input("Capture video (y/n): ") else False
+            #
+            # output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            # os.makedirs("./sim_outputs/%s" % output_name)
+            # self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")
+            #
+            # if self.capture:
+            #     self.output_dir = "./sim_outputs/%s/video/" % output_name
+            #     os.makedirs(self.output_dir)
 
         # Go
         self.trial()
@@ -81,7 +81,9 @@ class Main():
                                           predicted_theta_self=self.car_1.predicted_theta_self,
                                           predicted_actions_other=self.car_1.predicted_actions_other,
                                           predicted_others_prediction_of_my_actions=
-                                          self.car_1.predicted_others_prediction_of_my_actions)
+                                          self.car_1.predicted_others_prediction_of_my_actions,
+                                          wanted_trajectory_self=self.car_1.wanted_trajectory_self,
+                                          social_gracefulness=self.car_1.social_gracefulness)
 
                 self.sim_data.append_car2(states=self.car_2.states,
                                           actions=self.car_2.actions_set,
@@ -90,7 +92,8 @@ class Main():
                                           predicted_theta_self=self.car_2.predicted_theta_self,
                                           predicted_actions_other=self.car_2.predicted_actions_other,
                                           predicted_others_prediction_of_my_actions=
-                                          self.car_2.predicted_others_prediction_of_my_actions)
+                                          self.car_2.predicted_others_prediction_of_my_actions,
+                                          wanted_trajectory_self=self.car_2.wanted_trajectory_self)
 
             if self.frame >= self.duration:
                 break
@@ -99,8 +102,8 @@ class Main():
                 # Draw frame
                 self.sim_draw.draw_frame(self.sim_data, self.car_num_display, self.frame)
 
-                if self.capture:
-                    pg.image.save(self.sim_draw.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+                # if self.capture:
+                #     pg.image.save(self.sim_draw.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
 
                 for event in pg.event.get():
                     if event.type == pg.QUIT:
@@ -125,14 +128,14 @@ class Main():
                 self.frame += 1
 
         pg.quit()
-        pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
+        # pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
         print('Output pickled and dumped.')
-        if self.capture:
-            # Compile to video
-            os.system("ffmpeg -f image2 -framerate 5 -i %simg%%03d.jpeg %s/output_video.gif " % (self.output_dir, self.output_dir))
-            # Delete images
-            [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
-            print("Simulation video output saved to %s." % self.output_dir)
+        # if self.capture:
+        #     # Compile to video
+        #     os.system("ffmpeg -f image2 -framerate 5 -i %simg%%03d.jpeg %s/output_video.gif " % (self.output_dir, self.output_dir))
+        #     # Delete images
+        #     [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
+        #     print("Simulation video output saved to %s." % self.output_dir)
         print("Simulation ended.")
 
 
