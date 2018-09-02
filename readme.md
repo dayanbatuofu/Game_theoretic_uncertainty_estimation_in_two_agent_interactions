@@ -2,7 +2,14 @@
 
 Contributors: Steven Elliott, Yiwei Wang, Varun Jammula, Yi ren, Wenlong Zhang, Yezhou Yang
 
-## Overview
+## Table of Contents
+1. [Overview](#overview)
+2. [From Honks to Socially Adept Motions](#directions)
+3. [Constitutive model of socially adept decision making](#motionplanning)
+    1.  [The importance of empathy in intent decoding](#empathy)
+    2.  [The influence of driving strategy on interaction dynamics](#drivingstrategy)
+
+## Overview <a name="overview"></a>
 
 The past decade has witnessed rapid advancement of autonomous driving since [the DARPA urban 
 challenge](http://archive.darpa.mil/grandchallenge/). 
@@ -38,7 +45,7 @@ change along time. We hypothesize that being cognizant about unique social norms
 new environments will allow an AV to correctly model interactions, infer intents 
 of other agents, and derive socially adept motions (e.g., graceful and legible). 
 
-## From Honks to Socially Adept Motions
+## From Honks to Socially Adept Motions <a name="directions"></a>
  
 The objective of this project is to answer the following scientific questions 
 towards the learning of social norms in driving: 
@@ -62,7 +69,7 @@ through semantic reasoning and data-driven learning.
 This repo serves as the base for all codes, data, meta-data we create 
 during the investigation.
 
-## Constitutive model of socially adept decision making
+## Constitutive model of socially adept decision making <a name="motionplanning"></a>
 
 To answer the first question, we investigate a formalism of motion planning that enables 
 empathy and social awareness of an AV agent. Empathy is defined as the agent's ability 
@@ -79,10 +86,10 @@ that are more socially graceful than proactive ones.
 
 Details of the motion planning algorithms can be found in our [draft paper][maxpaper].
 
-### The significance of empathy in interactions
+### The importance of empathy in intent decoding <a name="empathy"></a>
 [to be updated]
 
-### The influence of driving strategy on interactions
+### The influence of driving strategy on interaction dynamics <a name="drivingstrategy"></a>
 In the following, we demonstrate interactions between two agents (M and H) in a simple 
 intersection scenario. Details of these interactions can be found in the [draft paper][maxpaper].
 
