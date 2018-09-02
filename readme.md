@@ -83,7 +83,9 @@ Details of the motion planning algorithms can be found in our [draft paper][maxp
 
 ### The influence of driving strategy on interactions
 In the following, we demonstrate interactions between two agents (M and H) in a simple 
-intersection scenario. The two agents are equipped with three 
+intersection scenario. Details of these interactions can be found in the [draft paper][maxpaper].
+
+The two agents are equipped with three 
 different driving strategies, namely, reactive, proactive, and socially-aware:
 
 * A *reactive* agent M plans based on the inferred distribution of future motions of the other agent H. 
@@ -96,11 +98,37 @@ cause M to brake abruptly when it realizes H's aggressiveness.
 * A *socially-aware* M is built upon the proactive model, with an additional goal of reducing 
 the lack of gracefulness.
 
-#### Non-aggressive reactive M vs. non-aggressive reactive H
+#### Case 1: Non-aggressive reactive M vs. Non-aggressive reactive H
 Both agents take exactly the same actions at every time step since they share the same settings.
 Both switch between fast and slow movements along time, since their observation of the other's slow (fast)
 movement lead to their reaction of a fast (slow) movement. 
 
-<img src="./sim_outputs/reactive_reactive_c0c0.gif" alt="Drawing" style="height: 300px;"/> 
+<img src="./sim_outputs/reactive_reactive_c0c0.gif" alt="Drawing" style="height: 200px;"/> 
+
+#### Case 2: Non-aggressive reactive M vs. Aggressive reactive H
+An aggressive H moves at the highest speed all time, forcing M to yield.
+
+<img src="./sim_outputs/reactive_reactive_c0c9.gif" alt="Drawing" style="height: 200px;"/>
+
+#### Case 3: Non-aggressive proactive M vs. Non-aggressive reactive H
+Proactive M moves at a high speed in order to make H believe that it is aggressive. See 
+
+<img src="./sim_outputs/proactive_reactive_c0c0.gif" alt="Drawing" style="height: 200px;"/> 
+
+#### Case 4: Non-aggressive proactive M vs. Aggressive reactive H
+M starts by pretending to be aggressive. However, as it approaches the intersection zone,
+it realizes that H is aggressive. Thus M stopped immediately and started to back off.
+
+<img src="./sim_outputs/proactive_reactive_c0c9.gif" alt="Drawing" style="height: 200px;"/>
+
+#### Case 5: Non-aggressive socially-aware M vs. Non-aggressive reactive H
+Socially-aware M moves in a way that gently force H to yield, leading to less "lack of gracefulness".
+
+<img src="./sim_outputs/social_reactive_c0c0.gif" alt="Drawing" style="height: 200px;"/> 
+
+#### Case 6: Non-aggressive socially-aware M vs. Aggressive reactive H
+When H is aggressive, a socially-aware M can avoid the emergency stop as it naturally allows H to pass first.
+
+<img src="./sim_outputs/proactive_reactive_c0c9.gif" alt="Drawing" style="height: 200px;"/>
 
 [maxpaper]: 
