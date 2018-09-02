@@ -101,8 +101,6 @@ Both agents take exactly the same actions at every time step since they share th
 Both switch between fast and slow movements along time, since their observation of the other's slow (fast)
 movement lead to their reaction of a fast (slow) movement. 
 
-<iframe width="420" height="315"
-                src="../sim_outputs/reactive_reactive_c0c0.mp4">
-</iframe>
+<img src="./sim_outputs/reactive_reactive_c0c0.gif" alt="Drawing" style="height: 300px;"/> 
 
 [maxpaper]: 
