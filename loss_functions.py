@@ -37,8 +37,7 @@ class LossFunctions:
 
         ##############################################################################################
         # predict how others perceive your action
-        action_self = s.interpolate_from_trajectory(trajectory)[:s.track_back]
-        theta_other, theta_self, trajectory_other_all, trajectory_self_all = self.multi_search_intent(action_self, s)
+        trajectory_other_all, inference_probability = self.multi_search_intent(trajectory, s)
         ##############################################################################################
 
         loss_all = []
@@ -68,7 +67,7 @@ class LossFunctions:
 
             loss_all.append(collision_loss + intent_loss)
 
-        return np.mean(loss_all)  # Return weighted sum
+        return sum(np.array(loss_all)*np.array(inference_probability)), trajectory_other_all, inference_probability # Return weighted sum
 
     def reactive_multisearch(self, guess_self, guess_other, s):
         who = s.who
@@ -98,7 +97,7 @@ class LossFunctions:
         loss_value_set = []
         for guess in guess_self:
 
-            loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.states[-1], s.states_o[-1], s)
+            loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability, s.states[-1], s.states_o[-1], s)
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
             loss_value_set = np.append(loss_value_set, loss)
@@ -107,11 +106,12 @@ class LossFunctions:
 
         return trajectory_self
 
-    def reactive_loss(self, theta_self, trajectory, trajectory_other, s_self, s_other, s):
+    def reactive_loss(self, theta_self, trajectory, trajectory_other, probability, s_self, s_other, s):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
-        loss = []
+        loss_all = 0
         for t_s in trajectory:
+            loss = []
             for t_o in trajectory_other:
                 o = s.other_car
                 box_self = s.collision_box
@@ -141,8 +141,9 @@ class LossFunctions:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.4))
 
                 loss.append(collision_loss + intent_loss)
+            loss_all += sum(np.array(loss)*np.array(probability))
 
-        return np.mean(loss) # Return weighted sum
+        return loss_all # Return weighted sum
 
     def passive_aggressive_loss(self, trajectory, s):
         who = s.who
@@ -152,12 +153,11 @@ class LossFunctions:
 
         ##############################################################################################
         # predict how others perceive your action
-        action_self = s.interpolate_from_trajectory(trajectory)[:s.track_back]
-        theta_other, theta_self, trajectory_other_all, trajectory_self_all = self.multi_search_intent(action_self, s)
+        trajectory_other_all, inference_probability = self.multi_search_intent(trajectory, s)
         ##############################################################################################
 
         loss_all = []
-        for trajectory_other  in trajectory_other_all:  # what other will do if I did trajectory
+        for trajectory_other in trajectory_other_all:  # what other will do if I did trajectory
             actions_self = s.interpolate_from_trajectory(trajectory)
             actions_other = o.interpolate_from_trajectory(trajectory_other)
 
@@ -185,77 +185,48 @@ class LossFunctions:
             for wanted_trajectory_self in s.wanted_trajectory_self:  # what other want me to do right now
                 gracefulness_loss.append((trajectory[0] - wanted_trajectory_self[0]) ** 2)
 
-            loss_all.append(collision_loss + intent_loss + 0.3*np.mean(gracefulness_loss))
+            loss_all.append(collision_loss + intent_loss + 0.1*sum(gracefulness_loss*s.inference_probability))
 
-        return np.mean(loss_all)  # Return weighted sum
+        return sum(np.array(loss_all)*np.array(inference_probability)), trajectory_other_all, inference_probability # Return weighted sum
 
     def multi_search_intent(self, trajectory, s):
         """ run multiple searches with different initial guesses """
         who = s.who
         trials_theta = C.THETA_SET
-        inference_set = [] #TODO: need to generalize
+        inference_set = []  # TODO: need to generalize
         loss_value_set = []
 
         for theta_self in trials_theta:
-            for k in range(len(s.predicted_theta_other)):
-                theta_other = s.predicted_theta_other[k]
-                trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self, theta_other, s, s.other_car)
+            for theta_other in trials_theta:
 
-                my_trajectory = [trajectory_self[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
-                other_trajectory = [trajectory_other[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
-                other_trajectory_conservative = \
-                                    [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]  #others move slow
-
-                if trajectory_self is not []:
-                    action_self = [self.interpolate_from_trajectory(my_trajectory[i])
-                                   for i in range(len(my_trajectory))]
-                    action_other = [self.interpolate_from_trajectory(other_trajectory[i])
-                                    for i in range(len(other_trajectory))]
-                    # fun_all = [
-                    #            np.linalg.norm(action_self[i][:s.track_back]-trajectory)
-                    #            +\
-                    #            np.linalg.norm(action_other[i][:s.track_back]-
-                    #                           s.predicted_actions_other[s.track_back:2*s.track_back])
-                    #            for i in range(len(trajectory_self))]
-                    # fun_all = np.round(fun_all, 6)
-                    # fun = min(fun_all)
-                    fun_self = [np.linalg.norm(action_self[i][:s.track_back]-trajectory)
-                                for i in range(len(action_self))]
-                    fun_other = [np.linalg.norm(action_other[i][:s.track_back]-
-                                                s.predicted_actions_other[k][s.track_back:2*s.track_back])
-                                for i in range(len(action_other))]
-                    fun = min(fun_self) + min(fun_other)
-
-                    trajectory_self = [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]]
-                    trajectory_other = [other_trajectory_conservative[i] for i in np.where(fun_self == np.min(fun_self))[0]]
-                    # my_loss_all = [my_loss_all[i] for i in np.where(fun_all == np.min(fun_all))[0]]
-                    #
-                    # trajectory_self = [trajectory_self[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
-                    # trajectory_other = [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
-                else:
-                    fun = 1e32
+                trajectory_other = self.best_trajectory(theta_self, theta_other, s, s.other_car, trajectory)
 
                 inference_set.append([theta_self,
                                       theta_other,
                                       trajectory_other,
-                                      trajectory_self])
-                loss_value_set.append(fun)
+                                      1./len(trajectory_other)])
 
-        candidate = np.where(loss_value_set == np.min(loss_value_set))[0]
-        # inference = inference_set[candidate[np.random.randint(len(candidate))]]
         theta_self_out = []
         theta_other_out = []
-        trajectory_self_out = []
         trajectory_other_out = []
-        for i in range(len(candidate)):
-            for j in range(len(inference_set[candidate[i]][2])):
-                for k in range(len(inference_set[candidate[i]][3])):
-                    theta_self_out.append(inference_set[candidate[i]][0])
-                    theta_other_out.append(inference_set[candidate[i]][1])
-                    trajectory_other_out.append(inference_set[candidate[i]][2][k])
-                    trajectory_self_out.append(inference_set[candidate[i]][3][j])
+        inference_probability_out = []
 
-        return theta_other_out, theta_self_out, trajectory_other_out, trajectory_self_out
+        for i in range(len(inference_set)):
+            for j in range(len(inference_set[i][2])):
+                theta_self_out.append(inference_set[i][0])
+                theta_other_out.append(inference_set[i][1])
+                trajectory_other_out.append(inference_set[i][2][j])
+                inference_probability_out.append(1./len(inference_set)*inference_set[i][3])
+
+        inference_probability_out = np.array(inference_probability_out)
+        # update inference probability accordingly
+        for i in range(len(trials_theta)):
+            id = np.where(theta_other_out == trials_theta[i])[0]
+            inference_probability_out[id] = inference_probability_out[id]/\
+                                             sum(inference_probability_out[id]) * s.theta_probability[i]
+        inference_probability_out = inference_probability_out/sum(inference_probability_out)
+
+        return trajectory_other_out, inference_probability_out
 
     def equilibrium(self, theta_self, theta_other, s, o):
         action_guess = C.TRAJECTORY_SET
@@ -293,10 +264,33 @@ class LossFunctions:
 
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
+    def best_trajectory(self, theta_self, theta_other, s, o, t):
+        action_guess = C.TRAJECTORY_SET
+        trials_trajectory_self = t
+        trials_trajectory_other = np.hstack((np.expand_dims(action_guess, axis=1),
+                               np.ones((action_guess.size,1)) * o.P_CAR.ORIENTATION))
+        loss_matrix = np.zeros((trials_trajectory_other.shape[0],2))
+        for j in range(trials_trajectory_other.shape[0]):
+            loss_matrix[j,:] = self.simulate_game([t],[trials_trajectory_other[j]],
+                                                    theta_self,theta_other,s,o)
+
+        # find equilibrium
+        my_loss_all = []
+        other_loss_all = []
+        eq_all = []
+        id_o = np.atleast_1d(np.argmin(loss_matrix[:,1]))
+
+        if id_o is not []:
+            trajectory_other = [trials_trajectory_other[id_o[i]] for i in range(len(id_o))]
+        else:
+            trajectory_other = []
+
+        return trajectory_other
+
     def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):
-        loss_s = self.reactive_loss(theta_self, trajectory_self, trajectory_other, s.states[-1],
+        loss_s = self.reactive_loss(theta_self, trajectory_self, trajectory_other, [1], s.states[-1],
                                          s.states_o[-1], s)
-        loss_o = self.reactive_loss(theta_other, trajectory_other, trajectory_self, s.states_o[-1],
+        loss_o = self.reactive_loss(theta_other, trajectory_other, trajectory_self, [1], s.states_o[-1],
                                          s.states[-1], o)
 
         return loss_s, loss_o

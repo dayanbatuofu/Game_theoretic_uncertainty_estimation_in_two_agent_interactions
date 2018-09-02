@@ -46,5 +46,5 @@ crashlytics-build.properties
 fabric.properties
 
 # Sim Outputs
-/sim_outputs/*
+#/sim_outputs/*
 
