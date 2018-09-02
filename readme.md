@@ -96,7 +96,13 @@ cause M to brake abruptly when it realizes H's aggressiveness.
 * A *socially-aware* M is built upon the proactive model, with an additional goal of reducing 
 the lack of gracefulness.
 
-#### Reactive M vs. reactive H
+#### Non-aggressive reactive M vs. non-aggressive reactive H
+Both agents take exactly the same actions at every time step since they share the same settings.
+Both switch between fast and slow movements along time, since their observation of the other's slow (fast)
+movement lead to their reaction of a fast (slow) movement. 
 
+<iframe width="420" height="315"
+                src="../sim_outputs/reactive_reactive_c0c0.mp4">
+</iframe>
 
 [maxpaper]: 
