@@ -113,22 +113,22 @@ class CONSTANTS:
 
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
-                              INITIAL_POSITION=np.array([-2.3, 0]),
+                              INITIAL_POSITION=np.array([-2.0, 0]),
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
                               INTENT=1,
-                              COMMON_THETA=np.array([1., 0]),
+                              COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
-                              INITIAL_POSITION=np.array([0, 2.3]),
+                              INITIAL_POSITION=np.array([0, 2.0]),
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1e6,
-                              COMMON_THETA=np.array([1., -90]),
+                              INTENT=1e9,
+                              COMMON_THETA=np.array([5., -90]),
                               ORIENTATION=-90)
 
 class MATRICES:
