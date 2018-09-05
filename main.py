@@ -1,17 +1,25 @@
-from constants import CONSTANTS as C
-from autonomous_vehicle import AutonomousVehicle
-from sim_draw import Sim_Draw
-from sim_data import Sim_Data
-import pickle
-import os
-import pygame as pg
 import datetime
+import os
+import pickle
+import time
+
+import cv2
+import pygame as pg
+
+from autonomous_vehicle import AutonomousVehicle
+from constants import CONSTANTS as C
+from controlled_vehicle import ControlledVehicle
+from sim_data import Sim_Data
+from sim_draw import Sim_Draw
+
+game_joystick = None
+
 
 class Main():
 
     def __init__(self):
 
-        # Setup
+        # Setupq
         self.duration = 600
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
 
@@ -23,77 +31,97 @@ class Main():
         self.end = False
         self.frame = 0
         self.car_num_display = 0
+        self.human_data = []
+        self.joystick = None
+        self.recordPerson = True
 
         # Sim output
+        #output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+        output_name = 'varun_a'
+        os.makedirs("./sim_outputs/%s" % output_name)
         self.sim_data = Sim_Data()
+        self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")
+        self.human_dataFile = open("./sim_outputs/%s/human_data.txt" % output_name, "wb")
+        self.robot_dataFile = open("./sim_outputs/%s/robot_data.txt" % output_name, "wb")
+        self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        self.out = cv2.VideoWriter("./sim_outputs/%s/recording.avi" % output_name, self.fourcc, 20.0, (640, 480))
 
         # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
         # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
-        self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
+        self.car_1 = ControlledVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
-                                       loss_style='passive_aggressive',
-                                       who=1)  #M
+                                       who=1)  # M
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
-                                       loss_style='reactive',
-                                       who=0)  #H
+                                       loss_style='aggressive',
+                                       who=0)  # H
 
         # Assign 'other' cars
         self.car_1.other_car = self.car_2
         self.car_2.other_car = self.car_1
-        self.car_1.states_o = self.car_2.states
         self.car_2.states_o = self.car_1.states
-        self.car_1.actions_set_o = self.car_2.actions_set
         self.car_2.actions_set_o = self.car_1.actions_set
 
-        if C.DRAW:
-            self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
-            pg.display.flip()
-            self.capture = True if input("Capture video (y/n): ") else False
+        # while not self.init_controller():
+        #     print 'Adjust controls'
 
-            output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            os.makedirs("./sim_outputs/%s" % output_name)
-            self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")
+        self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
 
-            if self.capture:
-                self.output_dir = "./sim_outputs/%s/video/" % output_name
-                os.makedirs(self.output_dir)
+        pg.display.flip()
+        self.capture = True  # if input("Capture video (y/n): ") else False
+        if self.capture:
+            self.output_dir = "./sim_outputs/%s/video/" % output_name
+            os.makedirs(self.output_dir)
 
+        if self.recordPerson:
+            self.cap = cv2.VideoCapture(0)
         # Go
+
+        self.human_data.append(0)
+        self.human_data.append(1)
+        self.human_data.append(1)
         self.trial()
 
     def trial(self):
 
         while self.running:
 
-            # Update model here
-            if not self.paused:
-                self.car_1.update(self.frame)
-                self.car_2.update(self.frame)
+            if self.recordPerson:
+                try:
+                    ret, frame = self.cap.read()
+                    if ret:
+                        # frame = cv2.flip(frame, 0)
+                        self.out.write(frame)
+                except Exception, e:
+                    print 'Exception: {}'.format(e)
 
-                # calculate gracefulness
-                grace = []
-                for wanted_trajectory_other in self.car_2.wanted_trajectory_other:
-                    wanted_actions_other = self.car_2.interpolate_from_trajectory(wanted_trajectory_other)
-                    grace.append((self.car_1.actions_set[-1][0] - wanted_actions_other[0][0]) ** 2)
-                self.car_1.social_gracefulness.append(sum(grace*self.car_2.inference_probability))
+            if game_joystick is not None:
+                axes = game_joystick.get_numaxes()
+
+                self.human_data = []
+                for i in range(axes):
+                    axis = game_joystick.get_axis(i)
+                    # print type(axis)
+                    # print("Axis {} value: {:>6.3f}".format(i, axis))
+                    if i == 0:
+                        self.human_data.append(round(axis, 3))
+                    elif i == 2:
+                        self.human_data.append(round(axis, 3))
+                    elif i == 3:
+                        self.human_data.append(round(axis, 3))
+                print 'human_data: {}'.format(self.human_data)
+
+            if not self.paused:
+                self.car_1.update(self.human_data)
+                self.car_2.update(self.frame)
+                # self.machine_vehicle.update(self.human_vehicle, self.frame)
 
                 # Update data
                 self.sim_data.append_car1(states=self.car_1.states,
                                           actions=self.car_1.actions_set,
-                                          action_sets=self.car_1.planned_actions_set,
-                                          predicted_theta_other=self.car_1.predicted_theta_other,
-                                          predicted_theta_self=self.car_1.predicted_theta_self,
-                                          predicted_actions_other=self.car_1.predicted_actions_other,
-                                          predicted_others_prediction_of_my_actions=
-                                          self.car_1.predicted_others_prediction_of_my_actions,
-                                          wanted_trajectory_self=self.car_1.wanted_trajectory_self,
-                                          wanted_trajectory_other=self.car_1.wanted_trajectory_other,
-                                          inference_probability=self.car_1.inference_probability,
-                                          inference_probability_proactive=self.car_1.inference_probability_proactive,
-                                          theta_probability=self.car_1.theta_probability,
-                                          social_gracefulness=self.car_1.social_gracefulness)
+                                          action_sets=self.car_1.planned_actions_set)
 
                 self.sim_data.append_car2(states=self.car_2.states,
                                           actions=self.car_2.actions_set,
@@ -102,75 +130,110 @@ class Main():
                                           predicted_theta_self=self.car_2.predicted_theta_self,
                                           predicted_actions_other=self.car_2.predicted_actions_other,
                                           predicted_others_prediction_of_my_actions=
-                                          self.car_2.predicted_others_prediction_of_my_actions,
-                                          wanted_trajectory_self=self.car_2.wanted_trajectory_self,
-                                          wanted_trajectory_other=self.car_2.wanted_trajectory_other,
-                                          inference_probability=self.car_2.inference_probability,
-                                          inference_probability_proactive=self.car_2.inference_probability_proactive,
-                                          theta_probability=self.car_2.theta_probability,)
+                                          self.car_2.predicted_others_prediction_of_my_actions)
 
             if self.frame >= self.duration:
                 break
 
-            if C.DRAW:
-                # Draw frame
-                self.sim_draw.draw_frame(self.sim_data, self.car_num_display, self.frame)
+            sz = len(self.car_1.states)
+            sz1 = len(self.car_2.states)
+            ts = time.time()
+            self.human_dataFile.write(str(self.car_1.states[sz - 1][0]) + ", " + str(self.car_1.states[sz - 1][1]) + ", " + str(ts) + "\n")
+            self.robot_dataFile.write(str(self.car_2.states[sz1 - 1][0]) + ", " + str(self.car_2.states[sz1 - 1][1]) + ", " + str(ts) + "\n")
 
-                if self.capture:
-                    pg.image.save(self.sim_draw.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+            # Draw frame
+            self.sim_draw.draw_frame(self.sim_data, self.car_num_display, self.frame)
 
-                for event in pg.event.get():
-                    if event.type == pg.QUIT:
+            if self.capture:
+                pg.image.save(self.sim_draw.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    self.running = False
+
+                elif event.type == pg.KEYDOWN:
+                    if event.key == pg.K_p:
+                        self.paused = not self.paused
+
+                    if event.key == pg.K_q:
                         pg.quit()
                         self.running = False
 
-                    elif event.type == pg.KEYDOWN:
-                        if event.key == pg.K_p:
-                            self.paused = not self.paused
+                    if event.key == pg.K_d:
+                        self.car_num_display = ~self.car_num_display
 
-                        if event.key == pg.K_q:
-                            pg.quit()
-                            self.running = False
-
-                        if event.key == pg.K_d:
-                            self.car_num_display = ~self.car_num_display
-
-                # Keep fps
-                self.clock.tick(self.fps)
+            # Keep fps
+            self.clock.tick(self.fps)
 
             if not self.paused:
                 self.frame += 1
 
         pg.quit()
-        # pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
+
+        self.human_dataFile.close()
+        self.robot_dataFile.close()
+        if self.recordPerson:
+            self.cap.release()
+            self.out.release()
+            cv2.destroyAllWindows()
+
         print('Output pickled and dumped.')
         if self.capture:
             # Compile to video
-            os.system("ffmpeg -f image2 -framerate 1 -i %simg%%03d.jpeg %s/output_video.mp4 " % (self.output_dir, self.output_dir))
-            # img_list = [self.output_dir+"img"+str(i).zfill(3)+".jpeg" for i in range(self.frame)]
-            # import imageio
-            # images = []
-            # for filename in img_list:
-            #     images.append(imageio.imread(filename))
-            # imageio.mimsave(self.output_dir+'movie.gif', images)
-
+            os.system("ffmpeg -f image2 -framerate 5 -i %simg%%03d.jpeg %s/output_video.gif " % (
+            self.output_dir, self.output_dir))
             # Delete images
             [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
             print("Simulation video output saved to %s." % self.output_dir)
         print("Simulation ended.")
 
-        import matplotlib.pyplot as plt
-        import numpy as np
-        car_1_theta = np.empty((0,2))
-        car_2_theta = np.empty((0,2))
-        for t in range(self.frame):
-            car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t],axis=0),axis=0)
-            car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t],axis=0),axis=0)
-        plt.subplot(2, 1, 1)
-        plt.plot(range(1,self.frame+1), car_1_theta[:,0], range(1,self.frame+1), car_1_theta[:,1])
-        plt.subplot(2, 1, 2)
-        plt.plot(range(1,self.frame+1), car_2_theta[:,0], range(1,self.frame+1), car_2_theta[:,1])
-        plt.show()
 
 if __name__ == "__main__":
+
+    done = False
+    pg.init()
+    pg.joystick.init()
+    joystick_count = pg.joystick.get_count()
+    data = []
+    while not done:
+        print('Please adjust controls, before proceeding.')
+        # EVENT PROCESSING STEP
+        for event in pg.event.get():  # User did something
+            if event.type == pg.QUIT:  # If user clicked close
+                done = True  # Flag that we are done so we exit this loop
+
+            # Possible joystick actions: JOYAXISMOTION JOYBALLMOTION JOYBUTTONDOWN JOYBUTTONUP JOYHATMOTION
+            if event.type == pg.JOYBUTTONDOWN:
+                print("Joystick button pressed.")
+            if event.type == pg.JOYBUTTONUP:
+                print("Joystick button released.")
+
+        # For each joystick:
+        for i in range(joystick_count):
+            joystick = pg.joystick.Joystick(i)
+            game_joystick = joystick
+            game_joystick.init()
+
+            # Get the name from the OS for the controller/joystick
+            name = game_joystick.get_name()
+            # print("Joystick name: {}".format(name))
+
+            # Usually axis run in pairs, up/down for one, and left/right for
+            # the other.
+            axes = game_joystick.get_numaxes()
+            # print("Number of axes: {}".format(axes))
+            data = []
+            for i in range(axes):
+                axis = game_joystick.get_axis(i)
+                # print("Axis {} value: {:>6.3f} round: {}".format(i, axis, round(axis, 0)))
+                if i == 0 or i == 2 or i == 3:
+                    data.append(round(axis, 3))
+            # print(data)
+            if data[1] == 1.000 and data[2] == 1.000:
+                done = True
+
+    # pg.quit()
+
     Main()
