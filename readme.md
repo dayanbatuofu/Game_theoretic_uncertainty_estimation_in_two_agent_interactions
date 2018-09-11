@@ -12,4 +12,5 @@ controlled_vehicle.py contains the dynamic model of human controlled vehicle.
 <img src="./sim_outputs/IMG_0455.jpg" alt="Drawing" style="height: 500px;"/> 
 
 ## Example Demo
-<img src="./sim_outputs/output_video.gif" alt="Drawing" style="height: 100px;"/> 
+Red car is controlled by human.
+<img src="./sim_outputs/output_video.gif" alt="Drawing" style="height: 50px;"/> 
