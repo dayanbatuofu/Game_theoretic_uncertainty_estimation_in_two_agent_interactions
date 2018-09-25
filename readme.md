@@ -139,4 +139,20 @@ When H is aggressive, a socially-aware M can avoid the emergency stop as it natu
 
 <img src="./sim_outputs/social_reactive_c0c9.gif" alt="Drawing" style="height: 100px;"/>
 
+
+### Driving simulator setup with social graceful autonomous vehicle
+
+
+#### Overview <a name="overview"></a>
+
+A Logitech G29 racing wheel is adopted to build a driving simulator which can be applied to record human drivng behavior.
+controlled_vehicle.py contains the dynamic model of human controlled vehicle.
+
+#### Simulator Setup
+<img src="./sim_outputs/IMG_0455.jpg" alt="Drawing" style="height: 500px;"/> 
+
+#### Example Demo
+Red car was controlled by human.
+<img src="./sim_outputs/output_video.gif" alt="Drawing" style="height: 50px;"/> 
+
 [maxpaper]: 
