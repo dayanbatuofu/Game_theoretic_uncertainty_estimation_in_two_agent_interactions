@@ -1,6 +1,6 @@
 # Explicit Reasoning and Proactive Motion Planning towards Socially Graceful Autonomous Vehicles
 
-Contributors: Steven Elliott, Yiwei Wang, Varun Jammula, Yi ren, Wenlong Zhang, Yezhou Yang
+Contributors: Steven Elliott, Yiwei Wang, Varun Jammula, Yi Ren, Wenlong Zhang, Yezhou Yang
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -86,9 +86,6 @@ that are more socially graceful than proactive ones.
 
 Details of the motion planning algorithms can be found in our [draft paper][maxpaper].
 
-### The importance of empathy in intent decoding <a name="empathy"></a>
-[to be updated]
-
 ### The influence of driving strategy on interaction dynamics <a name="drivingstrategy"></a>
 In the following, we demonstrate interactions between two agents (M and H) in a simple 
 intersection scenario. Details of these interactions can be found in the [draft paper][maxpaper].
@@ -119,7 +116,7 @@ An aggressive H moves at the highest speed all time, forcing M to yield.
 <img src="./sim_outputs/reactive_reactive_c0c9.gif" alt="Drawing" style="height: 100px;"/>
 
 #### Case 3: Non-aggressive proactive M vs. Non-aggressive reactive H
-Proactive M moves at a high speed in order to make H believe that it is aggressive. See 
+Proactive M moves at a high speed in order to make H believe that it is aggressive.
 
 <img src="./sim_outputs/proactive_reactive_c0c0.gif" alt="Drawing" style="height: 100px;"/> 
 
@@ -139,9 +136,26 @@ When H is aggressive, a socially-aware M can avoid the emergency stop as it natu
 
 <img src="./sim_outputs/social_reactive_c0c9.gif" alt="Drawing" style="height: 100px;"/>
 
+### The importance of empathy in intent decoding <a name="empathy"></a>
+We investigated the importance of empathy in intent inference using a similar experimental setting 
+as above. We show that if M is modeled to believe that H already knows its true intent, 
+then M will create false estimation of H's intent. The following videos compare 
+the empathetic and non-empathetic cases.
+
+#### Empathetic non-aggressive reactive M vs. Empathetic mildly-aggressive reactive H
+M realizes early that H is driving more aggressively than itself, thus decides to yield before
+it enters the interaction zone.
+
+<img src="./sim_outputs/empathetic.gif" alt="Drawing" style="height: 100px;"/>
+
+#### Non-empathetic non-aggressive reactive M vs. Empathetic mildly-aggressive reactive H
+By fixing its belief of what H thinks about M, M excludes plausible explanations of H's behavior and
+fails to correctly infer H's intent. As a result, M only realizes that H is not being non-aggressive after
+it encounters H in the interaction zone, and is forced to back off.
+
+<img src="./sim_outputs/non_empathetic.gif" alt="Drawing" style="height: 100px;"/>
 
 ### Driving simulator setup with social graceful autonomous vehicle
-
 
 #### Overview <a name="overview"></a>
 
@@ -155,4 +169,4 @@ controlled_vehicle.py contains the dynamic model of human controlled vehicle.
 Red car was controlled by human.
 <img src="./sim_outputs/output_video.gif" alt="Drawing" style="height: 50px;"/> 
 
-[maxpaper]: 
+[maxpaper]: ./draft.pdf 

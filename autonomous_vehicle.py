@@ -336,10 +336,13 @@ class AutonomousVehicle:
         s = self
         who = self.who
         trials_theta = C.THETA_SET
-        inference_set = []  # TODO: need to generalize
+        inference_set = []  # T0poODO: need to generalize
         loss_value_set = []
 
         for theta_self in trials_theta:
+        # for theta_self in [s.intent]:
+        #     if s.who == 1:
+        #         theta_self = s.intent
             for theta_other in trials_theta:
                 # for theta_other in [1.]:
                 trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self,

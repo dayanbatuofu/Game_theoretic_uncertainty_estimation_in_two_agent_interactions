@@ -32,7 +32,7 @@ class Main():
         # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
-                                       loss_style='passive_aggressive',
+                                       loss_style='reactive',
                                        who=1)  #M
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
