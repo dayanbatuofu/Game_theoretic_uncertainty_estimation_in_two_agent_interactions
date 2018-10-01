@@ -5,9 +5,10 @@ Contributors: Steven Elliott, Yiwei Wang, Varun Jammula, Yi Ren, Wenlong Zhang, 
 ## Table of Contents
 1. [Overview](#overview)
 2. [From Honks to Socially Adept Motions](#directions)
-3. [Constitutive model of socially adept decision making](#motionplanning)
-    1.  [The importance of empathy in intent decoding](#empathy)
-    2.  [The influence of driving strategy on interaction dynamics](#drivingstrategy)
+3. [Constitutive Model of Socially Adept Decision Making](#motionplanning)
+    1.  [The influence of driving strategy on interaction dynamics](#drivingstrategy)
+    2.  [The importance of empathy in intent decoding](#empathy)
+4. [Driver Simulation Setup](#simulation)
 
 ## Overview <a name="overview"></a>
 
@@ -155,7 +156,7 @@ it encounters H in the interaction zone, and is forced to back off.
 
 <img src="./sim_outputs/non_empathetic.gif" alt="Drawing" style="height: 100px;"/>
 
-### Driving simulator setup with social graceful autonomous vehicle
+### Driving Simulator Setup <a name="simulation"></a>
 
 #### Overview <a name="overview"></a>
 
