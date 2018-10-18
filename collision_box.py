@@ -11,7 +11,10 @@ class Collision_Box():
             self.height = height
 
     def get_collision_loss(self, my_pos, other_pos, other_box):
+        """
 
+        :type other_pos: object
+        """
         # collision_loss = []
         #
         # for i in range(len(my_pos)):

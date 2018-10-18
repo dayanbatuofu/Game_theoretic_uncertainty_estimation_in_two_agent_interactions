@@ -73,7 +73,6 @@ class AutonomousVehicle:
         other = self.other_car
         self.frame = frame
         """ Function ran on every frame of simulation"""
-
         ########## Update human characteristics here ########
         if who == 1:  # 1 moves first
             self.states_o = np.array(other.states)  # get other's states
@@ -113,6 +112,7 @@ class AutonomousVehicle:
                                                     planned_actions[self.track_back][1])))
         self.actions_set.append(planned_actions[0])
         self.planned_actions_set = planned_actions
+
 
     def get_actions(self):
 
@@ -637,10 +637,23 @@ class AutonomousVehicle:
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
     def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):
-        loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1], s.states[-s.track_back],
-                                         s.states_o[-s.track_back], s)
-        loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1], s.states_o[-s.track_back],
-                                         s.states[-s.track_back], o)
+        if len(s.states) == 1:
+            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                             s.states[-s.track_back],
+                                             [0,0],
+                                             s.states_o[-s.track_back],
+                                             [0,0], s)
+            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                             s.states_o[-s.track_back],
+                                             [0,0],
+                                             s.states[-s.track_back],
+                                             [0,0], o)
+        else:
+
+            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1], s.states[-s.track_back], s.states[-s.track_back]-s.states[-s.track_back-1],
+                                             s.states_o[-s.track_back], s.states_o[-s.track_back]-s.states_o[-s.track_back-1], s)
+            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1], s.states_o[-s.track_back], s.states_o[-s.track_back]-s.states_o[-s.track_back-1],
+                                             s.states[-s.track_back], s.states[-s.track_back]-s.states[-s.track_back-1], o)
 
         return loss_s, loss_o
 

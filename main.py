@@ -50,8 +50,8 @@ class Main():
         if C.DRAW:
             self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
             pg.display.flip()
-            self.capture = True if input("Capture video (y/n): ") else False
-
+            # self.capture = True if input("Capture video (y/n): ") else False
+            self.capture = False
             output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             os.makedirs("./sim_outputs/%s" % output_name)
             self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")

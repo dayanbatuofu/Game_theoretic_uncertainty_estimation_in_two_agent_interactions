@@ -96,8 +96,14 @@ class LossFunctions:
         trajectory_set = np.empty((0, 2))  # TODO: need to generalize
         loss_value_set = []
         for guess in guess_self:
+            if len(s.states) == 1:
 
-            loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability, s.states[-1], s.states_o[-1], s)
+                loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability, s.states[-1], [0,0], s.states_o[-1], [0,0], s)
+            else:
+                loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability,
+                                          s.states[-1],s.states[-1]- s.states[-2], s.states_o[-1],s.states_o[-1]- s.states_o[-2] ,
+                s)
+
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
             loss_value_set = np.append(loss_value_set, loss)
@@ -106,7 +112,7 @@ class LossFunctions:
 
         return trajectory_self
 
-    def reactive_loss(self, theta_self, trajectory, trajectory_other, probability, s_self, s_other, s):
+    def reactive_loss(self, theta_self, trajectory, trajectory_other, probability, s_self, s_self_vel, s_other, s_other_vel, s):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
         loss_all = 0
@@ -121,8 +127,13 @@ class LossFunctions:
                 actions_self    = s.interpolate_from_trajectory(t_s)
                 actions_other   = o.interpolate_from_trajectory(t_o)
 
-                s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-                s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+                # s_other_predict = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+                # s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+                #
+                # print type(s_other_predict)
+                s_other_predict = self.dynamic(actions_other, s_other_vel, s_other)
+                s_self_predict = self.dynamic(actions_self, s_self_vel, s_self)
+
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
                 for i in range(s_self_predict.shape[0]):
@@ -234,6 +245,7 @@ class LossFunctions:
                                np.ones((action_guess.size,1)) * s.P_CAR.ORIENTATION))
         trials_trajectory_other = np.hstack((np.expand_dims(action_guess, axis=1),
                                np.ones((action_guess.size,1)) * o.P_CAR.ORIENTATION))
+
         loss_matrix = np.zeros((trials_trajectory_self.shape[0],trials_trajectory_other.shape[0],2))
         for i in range(trials_trajectory_self.shape[0]):
             for j in range(trials_trajectory_other.shape[0]):
@@ -370,3 +382,15 @@ class LossFunctions:
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_NUMPOINTS + 1)))
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
+
+    def dynamic(self, action_self,  vel_self, state_self):
+        predict_state = []
+        vel = vel_self
+        state = state_self
+        for i in range(len(action_self)):
+            vel = vel + action_self[i]
+            state = state + vel
+            print state
+            predict_state.append(state)
+        predict_result = np.array(predict_state)
+        return predict_result
