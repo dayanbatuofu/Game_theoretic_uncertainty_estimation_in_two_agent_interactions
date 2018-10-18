@@ -390,7 +390,6 @@ class LossFunctions:
         for i in range(len(action_self)):
             vel = vel + action_self[i]
             state = state + vel
-            print state
             predict_state.append(state)
         predict_result = np.array(predict_state)
         return predict_result
