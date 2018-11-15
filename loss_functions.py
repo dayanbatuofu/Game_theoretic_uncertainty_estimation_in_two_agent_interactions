@@ -443,7 +443,7 @@ class LossFunctions:
         af=np.array([0,0])#??
         N=100#??
         T=1;#??
-        sf=action_self[-1]
+        sf=action_self[-1] + state_self
 
         # matrix of equations
         A = np.array([[pow(0, 4), pow(0, 3), pow(0, 2), 0, 1], [4 * pow(0, 3), 3 * pow(0, 2), 2 * 0, 1, 0],
@@ -486,12 +486,12 @@ class LossFunctions:
         predict_result_traj = np.column_stack((trajx,trajy))
         predict_result_vel = np.column_stack((velx,vely))
         predict_result_acc = np.column_stack((accx,accy))
-        print 'acc'
-        print predict_result_acc
-        print 'traj'
-        print predict_result_traj
-        print 'vel'
-        print predict_result_vel
+        # print 'acc'
+        # print predict_result_acc
+        # print 'traj'
+        # print predict_result_traj
+        # print 'vel'
+        # print predict_result_vel
         #return predict_result
         return predict_result_traj, predict_result_vel, predict_result_acc
 
