@@ -98,11 +98,20 @@ class LossFunctions:
         for guess in guess_self:
             if len(s.states) == 1:
 
-                loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability, s.states[-1], [0,0], s.states_o[-1], [0,0], s)
+                loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability, s.states[-1], [0,0], [0,0],
+                                          s.states_o[-1], [0,0], [0,0], s)
+
+            elif len(s.states) == 2:
+                loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability,
+                                          s.states[-1],s.states[-1]- s.states[-2], s.states[-1]- s.states[-2],
+                                          s.states_o[-1],s.states_o[-1]- s.states_o[-2] , s.states_o[-1]- s.states_o[-2],
+                s)
+
             else:
                 loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability,
-                                          s.states[-1],s.states[-1]- s.states[-2], s.states_o[-1],s.states_o[-1]- s.states_o[-2] ,
-                s)
+                                          s.states[-1], s.states[-1] - s.states[-2], (s.states[-1] - s.states[-2])-(s.states[-2] - s.states[-3]),
+                                          s.states_o[-1], s.states_o[-1] - s.states_o[-2], (s.states_o[-1] - s.states_o[-2])-(s.states_o[-2] - s.states_o[-3]),
+                                          s)
 
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
@@ -112,7 +121,7 @@ class LossFunctions:
 
         return trajectory_self
 
-    def reactive_loss(self, theta_self, trajectory, trajectory_other, probability, s_self, s_self_vel, s_other, s_other_vel, s):
+    def reactive_loss(self, theta_self, trajectory, trajectory_other, probability, s_self, s_self_vel, s_self_acc, s_other, s_other_vel, s_other_acc, s):
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
         loss_all = 0
@@ -131,8 +140,8 @@ class LossFunctions:
                 # s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
-                s_other_predict = self.dynamic(actions_other, s_other_vel, s_other)
-                s_self_predict = self.dynamic(actions_self, s_self_vel, s_self)
+                s_other_predict,s_other_predict_vel,s_other_predict_acc = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other)
+                s_self_predict,s_self_predict_vel,s_self_predict_acc = self.dynamic(actions_self, s_self_vel, s_self_acc , s_self)
 
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
@@ -299,12 +308,46 @@ class LossFunctions:
 
         return trajectory_other
 
-    def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):
-        loss_s = self.reactive_loss(theta_self, trajectory_self, trajectory_other, [1], s.states[-1],
-                                         s.states_o[-1], s)
-        loss_o = self.reactive_loss(theta_other, trajectory_other, trajectory_self, [1], s.states_o[-1],
-                                         s.states[-1], o)
-
+    def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):## no velocity passed and code was working before :O????????
+        if len(s.states) == 1:
+            loss_s = self.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                        s.states[-1],
+                                        [0,0],[0,0],
+                                        s.states_o[-1],
+                                        [0,0],[0,0],
+                                        s)
+            loss_o = self.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                        s.states_o[-1],
+                                        [0, 0], [0, 0],
+                                        s.states[-1],
+                                        [0, 0], [0, 0],
+                                        o)
+        elif len(s.states) == 2:
+            loss_s = self.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                        s.states[-1],
+                                        s.states[-1]-s.states[-2], s.states[-1]-s.states[-2],
+                                        s.states_o[-1],
+                                        s.states_o[-1]-s.states_o[-2], s.states_o[-1]-s.states_o[-2],
+                                        s)
+            loss_o = self.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                        s.states_o[-1],
+                                        s.states_o[-1] - s.states_o[-2], s.states_o[-1] - s.states_o[-2],
+                                        s.states[-1],
+                                        s.states[-1] - s.states[-2], s.states[-1] - s.states[-2],
+                                        o)
+        else:
+            loss_s = self.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                        s.states[-1],
+                                        s.states[-1] - s.states[-2], (s.states[-1] - s.states[-2])-(s.states[-2] - s.states[-3]),
+                                        s.states_o[-1],
+                                        s.states_o[-1] - s.states_o[-2], (s.states_o[-1] - s.states_o[-2])-(s.states_o[-2] - s.states_o[-3]),
+                                        s)
+            loss_o = self.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                        s.states_o[-1],
+                                        s.states_o[-1] - s.states_o[-2], (s.states_o[-1] - s.states_o[-2])-(s.states_o[-2] - s.states_o[-3]),
+                                        s.states[-1],
+                                        s.states[-1] - s.states[-2], (s.states[-1] - s.states[-2])-(s.states[-2] - s.states[-3]),
+                                        o)
         return loss_s, loss_o
 
     def intent_loss_func(self, trajectory, autonomous_vehicle, orientation_other, collision_box_self,
@@ -383,14 +426,72 @@ class LossFunctions:
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
 
-    def dynamic(self, action_self,  vel_self, state_self):
+    def dynamic(self, action_self,  vel_self, acc_self, state_self):
         predict_state = []
-        vel = vel_self
-        state = state_self
-        for i in range(len(action_self)):
-            vel = vel + action_self[i]
-            state = state + vel
-            print state
-            predict_state.append(state)
-        predict_result = np.array(predict_state)
-        return predict_result
+        vel = vel_self #initial vel??
+        acc= acc_self #initial acc??
+        state = state_self #initial state/position??
+
+        #for i in range(len(action_self)):
+        #    vel = vel + action_self[i]
+        #    state = state + vel
+        #    predict_state.append(state)
+        #predict_result = np.array(predict_state)
+
+        #Questions?
+        #number of time steps==len(action_self)? time step value? final position? final acc==0?
+        af=np.array([0,0])#??
+        N=100#??
+        T=1;#??
+        sf=action_self[-1]
+
+        # matrix of equations
+        A = np.array([[pow(0, 4), pow(0, 3), pow(0, 2), 0, 1], [4 * pow(0, 3), 3 * pow(0, 2), 2 * 0, 1, 0],
+                      [12 * pow(0, 2), 6 * 0, 2, 0, 0], [pow((T * N), 4), pow((T * N), 3), pow((T * N), 2), (T * N), 1],
+                      [12 * pow((T * N), 2), 6 * (T * N), 2, 0, 0]])
+
+        # vector of constraints
+        bx = np.array([state[0], vel[0], acc[0], sf[0], af[0]])
+        by = np.array([state[1], vel[1], acc[1], sf[1], af[1]])
+
+        # vector of Coefficients=[a4 a3 a2 a1 a0]
+        coeffx = np.linalg.solve(A, bx)
+        coeffy = np.linalg.solve(A, by)
+
+        trajx = []
+        trajy = []
+        velx = []
+        vely = []
+        accx = []
+        accy = []
+
+        for t in range(0, N, 1):
+            trajx.append(
+                (coeffx[0] * (pow((T * t), 4))) + (coeffx[1] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (
+                            coeffx[3] * (T * t)) + (coeffx[4]))
+            trajy.append(
+                (coeffy[0] * (pow((T * t), 4))) + (coeffy[1] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (
+                            coeffy[3] * (T * t)) + (coeffy[4]))
+
+            velx.append(
+                (4 * coeffx[0] * (pow((T * t), 3))) + (3 * coeffx[1] * (pow((T * t), 2))) + (2 * coeffx[2] * (T * t)) + (
+                coeffx[3]))
+            vely.append(
+                (4 * coeffy[0] * (pow((T * t), 3))) + (3 * coeffy[1] * (pow((T * t), 2))) + (2 * coeffy[2] * (T * t)) + (
+                coeffy[3]))
+
+            accx.append((12 * coeffx[0] * (pow((T * t), 2))) + (6 * coeffx[1] * (T * t)) + (2 * coeffx[2]))
+            accy.append((12 * coeffy[0] * (pow((T * t), 2))) + (6 * coeffy[1] * (T * t)) + (2 * coeffy[2]))
+
+        predict_result_traj = np.column_stack((trajx,trajy))
+        predict_result_vel = np.column_stack((velx,vely))
+        predict_result_acc = np.column_stack((accx,accy))
+        print 'acc'
+        print predict_result_acc
+        print 'traj'
+        print predict_result_traj
+        print 'vel'
+        print predict_result_vel
+        #return predict_result
+        return predict_result_traj, predict_result_vel, predict_result_acc
+

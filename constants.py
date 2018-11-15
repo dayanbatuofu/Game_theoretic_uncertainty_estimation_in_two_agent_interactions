@@ -53,7 +53,7 @@ class CONSTANTS:
 
     np.random.seed(0)
     THETA_SET = np.array([1., 1e3])
-    TRAJECTORY_SET = np.array([5., 4., 3., 2., 1., 0., -1.])
+    TRAJECTORY_SET = np.array([5., 4., 3., 2., 1., 0., -1.])*0.2
 
     class PARAMETERSET_1:
 

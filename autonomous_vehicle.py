@@ -640,20 +640,46 @@ class AutonomousVehicle:
         if len(s.states) == 1:
             loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
                                              s.states[-s.track_back],
-                                             [0,0],
+                                             [0,0], [0,0],
                                              s.states_o[-s.track_back],
-                                             [0,0], s)
+                                             [0,0], [0,0],
+                                             s)
             loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
                                              s.states_o[-s.track_back],
-                                             [0,0],
+                                             [0,0], [0,0],
                                              s.states[-s.track_back],
-                                             [0,0], o)
+                                             [0,0], [0,0],
+                                             o)
+        elif len(s.states)==2:
+
+            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                             s.states[-s.track_back],
+                                             s.states[-s.track_back] - s.states[-s.track_back - 1],s.states[-s.track_back] - s.states[-s.track_back - 1],
+                                             s.states_o[-s.track_back],
+                                             s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],
+                                             s)
+            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                             s.states_o[-s.track_back],
+                                             s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],
+                                             s.states[-s.track_back],
+                                             s.states[-s.track_back] - s.states[-s.track_back - 1],s.states[-s.track_back] - s.states[-s.track_back - 1] ,
+                                             o)
+
         else:
 
-            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1], s.states[-s.track_back], s.states[-s.track_back]-s.states[-s.track_back-1],
-                                             s.states_o[-s.track_back], s.states_o[-s.track_back]-s.states_o[-s.track_back-1], s)
-            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1], s.states_o[-s.track_back], s.states_o[-s.track_back]-s.states_o[-s.track_back-1],
-                                             s.states[-s.track_back], s.states[-s.track_back]-s.states[-s.track_back-1], o)
+            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                             s.states[-s.track_back],
+                                             s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
+                                             s.states_o[-s.track_back],
+                                             s.states_o[-s.track_back]-s.states_o[-s.track_back-1],(s.states_o[-s.track_back]-s.states_o[-s.track_back-1])-(s.states_o[-s.track_back-1]-s.states_o[-s.track_back-2]),
+                                             s)
+            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                             s.states_o[-s.track_back],
+                                             s.states_o[-s.track_back]-s.states_o[-s.track_back-1],(s.states_o[-s.track_back]-s.states_o[-s.track_back-1])-(s.states_o[-s.track_back-1]-s.states_o[-s.track_back-2]),
+                                             s.states[-s.track_back],
+                                             s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
+                                             o)
+
 
         return loss_s, loss_o
 
