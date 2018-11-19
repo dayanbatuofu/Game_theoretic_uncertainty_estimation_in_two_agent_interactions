@@ -6,6 +6,8 @@
     </content>
     <orderEntry type="jdk" jdkName="Python 2.7 (Social_Gracefulness_of_Autonomous_Systems)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="R User Library" level="project" />
+    <orderEntry type="library" name="R Skeletons" level="application" />
   </component>
   <component name="TestRunnerService">
     <option name="projectConfiguration" value="Nosetests" />

@@ -426,37 +426,36 @@ class LossFunctions:
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
 
-    def dynamic(self, action_self,  vel_self, acc_self, state_self):
-        predict_state = []
-        vel = vel_self #initial vel??
-        acc= acc_self #initial acc??
-        state = state_self #initial state/position??
+    def dynamic(self, action_self, vel_self, acc_self, state_self):
+        vel = vel_self  # initial vel??
+        acc = acc_self  # initial acc??
+        state = state_self  # initial state/position??
 
-        #for i in range(len(action_self)):
-        #    vel = vel + action_self[i]
-        #    state = state + vel
-        #    predict_state.append(state)
-        #predict_result = np.array(predict_state)
+        af = np.array([0.0, 0.0])  # ??
+        N = 100  # ??
+        T = 1;  # ??
+        sf = action_self[-1] + state_self
 
-        #Questions?
-        #number of time steps==len(action_self)? time step value? final position? final acc==0?
-        af=np.array([0,0])#??
-        N=100#??
-        T=1;#??
-        sf=action_self[-1] + state_self
+        coeffx = np.array([10.0, 1.0, 2.0, 3.0, 0.0])
+        coeffy = np.array([0.0, 3.0, -10.0, 2.0, 20.0])
 
-        # matrix of equations
-        A = np.array([[pow(0, 4), pow(0, 3), pow(0, 2), 0, 1], [4 * pow(0, 3), 3 * pow(0, 2), 2 * 0, 1, 0],
-                      [12 * pow(0, 2), 6 * 0, 2, 0, 0], [pow((T * N), 4), pow((T * N), 3), pow((T * N), 2), (T * N), 1],
-                      [12 * pow((T * N), 2), 6 * (T * N), 2, 0, 0]])
+        # coefficient analytical calculations
+        coeffx[0] = acc[0] / (3 * (pow(T * N, 2))) + af[0] / (6 * (pow(T * N, 2))) - sf[0] / ((pow(T * N, 4))) + state[
+            0] / ((pow(T * N, 4))) + vel[0] / ((pow(T * N, 3)))
+        coeffx[1] = (2 * sf[0]) / ((pow(T * N, 3))) - af[0] / (6 * N * T) - (5 * acc[0]) / (6 * N * T) - (
+                    2 * state[0]) / ((pow(T * N, 3))) - (2 * vel[0]) / ((pow(T * N, 2)))
+        coeffx[2] = acc[0] / 2
+        coeffx[3] = vel[0]
+        coeffx[4] = state[0]
 
-        # vector of constraints
-        bx = np.array([state[0], vel[0], acc[0], sf[0], af[0]])
-        by = np.array([state[1], vel[1], acc[1], sf[1], af[1]])
+        coeffy[0] = acc[1] / (3 * (pow(T * N, 2))) + af[1] / (6 * (pow(T * N, 2))) - sf[1] / ((pow(T * N, 4))) + state[
+            1] / ((pow(T * N, 4))) + vel[1] / ((pow(T * N, 3)))
+        coeffy[1] = (2 * sf[1]) / ((pow(T * N, 3))) - af[1] / (6 * N * T) - (5 * acc[1]) / (6 * N * T) - (
+                    2 * state[1]) / ((pow(T * N, 3))) - (2 * vel[1]) / ((pow(T * N, 2)))
+        coeffy[2] = acc[1] / 2
+        coeffy[3] = vel[1]
+        coeffy[4] = state[1]
 
-        # vector of Coefficients=[a4 a3 a2 a1 a0]
-        coeffx = np.linalg.solve(A, bx)
-        coeffy = np.linalg.solve(A, by)
 
         trajx = []
         trajy = []
@@ -468,30 +467,25 @@ class LossFunctions:
         for t in range(0, N, 1):
             trajx.append(
                 (coeffx[0] * (pow((T * t), 4))) + (coeffx[1] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (
-                            coeffx[3] * (T * t)) + (coeffx[4]))
+                        coeffx[3] * (T * t)) + (coeffx[4]))
             trajy.append(
                 (coeffy[0] * (pow((T * t), 4))) + (coeffy[1] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (
-                            coeffy[3] * (T * t)) + (coeffy[4]))
+                        coeffy[3] * (T * t)) + (coeffy[4]))
 
             velx.append(
-                (4 * coeffx[0] * (pow((T * t), 3))) + (3 * coeffx[1] * (pow((T * t), 2))) + (2 * coeffx[2] * (T * t)) + (
-                coeffx[3]))
+                (4 * coeffx[0] * (pow((T * t), 3))) + (3 * coeffx[1] * (pow((T * t), 2))) + (
+                            2 * coeffx[2] * (T * t)) + (
+                    coeffx[3]))
             vely.append(
-                (4 * coeffy[0] * (pow((T * t), 3))) + (3 * coeffy[1] * (pow((T * t), 2))) + (2 * coeffy[2] * (T * t)) + (
-                coeffy[3]))
+                (4 * coeffy[0] * (pow((T * t), 3))) + (3 * coeffy[1] * (pow((T * t), 2))) + (
+                            2 * coeffy[2] * (T * t)) + (
+                    coeffy[3]))
 
             accx.append((12 * coeffx[0] * (pow((T * t), 2))) + (6 * coeffx[1] * (T * t)) + (2 * coeffx[2]))
             accy.append((12 * coeffy[0] * (pow((T * t), 2))) + (6 * coeffy[1] * (T * t)) + (2 * coeffy[2]))
 
-        predict_result_traj = np.column_stack((trajx,trajy))
-        predict_result_vel = np.column_stack((velx,vely))
-        predict_result_acc = np.column_stack((accx,accy))
-        # print 'acc'
-        # print predict_result_acc
-        # print 'traj'
-        # print predict_result_traj
-        # print 'vel'
-        # print predict_result_vel
-        #return predict_result
-        return predict_result_traj, predict_result_vel, predict_result_acc
+        predict_result_traj = np.column_stack((trajx, trajy))
+        predict_result_vel = np.column_stack((velx, vely))
+        predict_result_acc = np.column_stack((accx, accy))
 
+        return predict_result_traj, predict_result_vel, predict_result_acc
