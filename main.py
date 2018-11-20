@@ -136,7 +136,7 @@ class Main():
                             self.car_num_display = ~self.car_num_display
 
                 # Keep fps
-                self.clock.tick(self.fps)
+                # self.clock.tick(self.fps)
 
             if not self.paused:
                 self.frame += 1

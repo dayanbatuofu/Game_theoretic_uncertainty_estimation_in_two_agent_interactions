@@ -2,6 +2,7 @@ from constants import CONSTANTS as C
 from constants import MATRICES as M
 import bezier
 import numpy as np
+import time
 
 class LossFunctions:
 
@@ -140,17 +141,17 @@ class LossFunctions:
                 # s_self_predict = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
-                s_other_predict,s_other_predict_vel,s_other_predict_acc = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other)
-                s_self_predict,s_self_predict_vel,s_self_predict_acc = self.dynamic(actions_self, s_self_vel, s_self_acc , s_self)
+                s_other_predict, s_other_predict_vel, s_other_predict_acc = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other)
+                s_self_predict, s_self_predict_vel, s_self_predict_acc = self.dynamic(actions_self, s_self_vel, s_self_acc , s_self)
 
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
                 for i in range(s_self_predict.shape[0]):
                     if who == 1:
-                        if s_self_predict[i,0]<=-gap+1e-12 or s_self_predict[i,0]>=gap-1e-12 or s_other_predict[i,1]>=gap-1e-12 or s_other_predict[i,1]<=-gap+1e-12:
+                        if s_self_predict[i, 0]<=-gap+1e-12 or s_self_predict[i, 0]>=gap-1e-12 or s_other_predict[i,1]>=gap-1e-12 or s_other_predict[i,1]<=-gap+1e-12:
                             D[i] = np.inf
                     elif who == 0:
-                        if s_self_predict[i,1]<=-gap+1e-12 or s_self_predict[i,1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
+                        if s_self_predict[i, 1]<=-gap+1e-12 or s_self_predict[i, 1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
                             D[i] = np.inf
 
                 collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
@@ -162,7 +163,7 @@ class LossFunctions:
 
                 loss.append(collision_loss + intent_loss)
             loss_all += sum(np.array(loss)*np.array(probability))
-
+        # print time.time()
         return loss_all # Return weighted sum
 
     def passive_aggressive_loss(self, trajectory, s):
@@ -282,7 +283,6 @@ class LossFunctions:
         else:
             trajectory_self = []
             trajectory_other = []
-
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
     def best_trajectory(self, theta_self, theta_other, s, o, t):
@@ -487,5 +487,5 @@ class LossFunctions:
         predict_result_traj = np.column_stack((trajx, trajy))
         predict_result_vel = np.column_stack((velx, vely))
         predict_result_acc = np.column_stack((accx, accy))
-
+        # print time.time()
         return predict_result_traj, predict_result_vel, predict_result_acc

@@ -9,6 +9,9 @@ from scipy import optimize
 import pygame as pg
 from scipy.interpolate import spline
 from scipy import stats
+import time
+
+
 
 class AutonomousVehicle:
     """
@@ -112,7 +115,6 @@ class AutonomousVehicle:
                                                     planned_actions[self.track_back][1])))
         self.actions_set.append(planned_actions[0])
         self.planned_actions_set = planned_actions
-
 
     def get_actions(self):
 
@@ -634,6 +636,7 @@ class AutonomousVehicle:
             trajectory_self = []
             trajectory_other = []
 
+
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
     def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):
@@ -679,7 +682,6 @@ class AutonomousVehicle:
                                              s.states[-s.track_back],
                                              s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
                                              o)
-
 
         return loss_s, loss_o
 

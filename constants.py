@@ -18,7 +18,7 @@ class CONSTANTS:
     # DISPLAY
     DRAW = True
     ASSET_LOCATION = "assets/"
-    FPS = 10
+    FPS = 1
     AXES_SHOW = 0.5
     COORDINATE_SCALE = 150
 
@@ -49,11 +49,11 @@ class CONSTANTS:
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
     EXPTHETA = 1.
-    EXPCOLLISION = 5.
+    EXPCOLLISION = 1
 
     np.random.seed(0)
     THETA_SET = np.array([1., 1e3])
-    TRAJECTORY_SET = np.array([5., 4., 3., 2., 1., 0., -1.])*0.2
+    TRAJECTORY_SET = np.array([5., 4., 3., 2., 1., 0., -1.])
 
     class PARAMETERSET_1:
 
