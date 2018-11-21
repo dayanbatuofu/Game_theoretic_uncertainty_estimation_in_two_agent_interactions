@@ -468,8 +468,7 @@ class AutonomousVehicle:
                                  np.where(other_loss_all == np.min(other_loss_all))[0]]  # I believe others move fast
                 other_trajectory = [trajectory_other[i] for i in
                                     np.where(my_loss_all == np.min(my_loss_all))[0]]  # I believe others move fast
-                other_trajectory_conservative = \
-                    [trajectory_other[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]  # others move slow
+                other_trajectory_conservative = [trajectory_other[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]  # others move slow
 
                 if trajectory_self is not []:
                     action_self = [self.interpolate_from_trajectory(my_trajectory[i])
