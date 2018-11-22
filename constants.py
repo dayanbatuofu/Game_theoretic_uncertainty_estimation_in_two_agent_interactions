@@ -49,7 +49,7 @@ class CONSTANTS:
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
     EXPTHETA = 1.
-    EXPCOLLISION = 1
+    EXPCOLLISION = 5.
 
     np.random.seed(0)
     THETA_SET = np.array([1., 1e3])
