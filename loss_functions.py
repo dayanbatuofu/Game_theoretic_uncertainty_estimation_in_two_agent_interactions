@@ -134,11 +134,10 @@ class LossFunctions:
                 box_other = o.collision_box
                 who = s.who
 
-                actions_self    = s.interpolate_from_trajectory(t_s)
-                actions_other   = o.interpolate_from_trajectory(t_o)
-
-                # actions_other = s_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-                # actions_self = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+                actions_self = s.interpolate_from_trajectory(t_s)
+                actions_other = o.interpolate_from_trajectory(t_o)
+                actions_other = actions_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+                actions_self = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
                 s_other_predict, s_other_predict_vel = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other)
