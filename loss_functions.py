@@ -1,3 +1,5 @@
+from numpy.core.multiarray import ndarray
+
 from constants import CONSTANTS as C
 from constants import MATRICES as M
 import bezier
@@ -46,7 +48,7 @@ class LossFunctions:
             actions_self = s.interpolate_from_trajectory(trajectory)
             actions_other = o.interpolate_from_trajectory(trajectory_other)
 
-            s_other_predict = state_o + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+            s_other_predict = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
             s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
 
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box)+1e-12
@@ -137,7 +139,7 @@ class LossFunctions:
                 actions_self = s.interpolate_from_trajectory(t_s)
                 actions_other = o.interpolate_from_trajectory(t_o)
                 actions_other = actions_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-                actions_self = s_self + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+                actions_self = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
                 s_other_predict, s_other_predict_vel = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other)
@@ -160,7 +162,7 @@ class LossFunctions:
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.4))
                 
-                if t_s[0] == 0 and t_o[0] == 0:
+                if t_s[0] == 5and t_o[0] == 5:
                     print '%%%%%%%'
                     print s_self_predict
                     print s_other_predict
@@ -431,7 +433,7 @@ class LossFunctions:
         #TODO: skip state?
         return np.diff(positions, n=1, axis=0)
 
-    # def dynamic(self, action_self, vel_self, acc_self, state_self):
+    # def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic with Quintic Polynomial Planning
     #     N = 100  # ??
     #     T = 1  # ??
     #     sf = np.asarray(action_self[-1]) + np.asarray(state_self)
@@ -490,23 +492,69 @@ class LossFunctions:
     #     predict_result_vel = np.column_stack((velx, vely))
     #     predict_result_acc = np.column_stack((accx, accy))
     #     # print time.time()
-    #     return predict_result_traj, predict_result_vel, predict_result_acc
-    def dynamic(self, action_self, vel_self, acc_self, state_self):
+    #     return predict_result_traj, predict_result_vel
+
+
+
+    #
+    #
+    # def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic of cubic polynomial acceleration as an action
+    #      N = 100  # ??
+    #      T = 1  # ??
+    #
+    #      vel_0 = np.asarray(vel_self) / T  # initial vel??
+    # #     acc_0 = np.asarray(acc_self) / T / T  # initial acc??
+    #      state_0 = np.asarray(state_self)  # initial state/position??
+    #      sf = np.asarray(action_self[-1]) + state_0
+    #      # print sf - state_0
+    #      # coefficient analytical calculations
+    #      A = np.array([[1, 0, 0, 0],
+    #                    [0, 1, 0, 0],
+    #                    [1, pow(T * N, 1), pow(T * N, 2), pow(T * N, 3)],
+    #                    [0, 1, 2 * pow(T * N, 1), 3 * pow(T * N, 2)]])
+    #      b1 = np.array([state_0[0], vel_0[0], sf[0], 0])
+    #      b2 = np.array([state_0[1], vel_0[1], sf[1], 0])
+    #      coeffx = np.linalg.solve(A, b1)
+    #      coeffy = np.linalg.solve(A, b2)
+    # #     a = A.dot(coeffx)
+    # #     b = np.polyval(coeffx, T * N)
+    #      trajx = []
+    #      trajy = []
+    #      velx = []
+    #      vely = []
+    # #     accx = []
+    # #     accy = []
+    #      for t in range(0, N, 1):
+    #         trajx.append(
+    #             ((coeffx[3] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (coeffx[1] * (T * t)) + (coeffx[0])))
+    #         trajy.append(
+    #             ((coeffy[3] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (coeffy[1] * (T * t)) + (coeffy[0])))
+    #
+    #         velx.append((3 * coeffx[3] * (pow((T * t), 2))) + (2 * coeffx[2] * (T * t)) + (coeffx[1]))
+    #         vely.append((3 * coeffy[3] * (pow((T * t), 2))) + (2 * coeffy[2] * (T * t)) + (coeffy[1]))
+    #
+    #      predict_result_traj = np.column_stack((trajx, trajy))
+    #      predict_result_vel = np.column_stack((velx, vely))
+    #      return predict_result_traj, predict_result_vel
+
+    def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic of cubic polynomial
          N = 100  # ??
          T = 1  # ??
 
-         vel_0 = np.asarray(vel_self) / T  # initial vel??
-    #     acc_0 = np.asarray(acc_self) / T / T  # initial acc??
+         vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
          state_0 = np.asarray(state_self)  # initial state/position??
-         sf = np.asarray(action_self[-1]) + state_0
+         acci = np.asarray(action_self[-1]) * 0.01
+         # vel_f = vel_0
+         vel_f = np.array([0,0])
          # print sf - state_0
          # coefficient analytical calculations
+         # print acci
          A = np.array([[1, 0, 0, 0],
                        [0, 1, 0, 0],
                        [1, pow(T * N, 1), pow(T * N, 2), pow(T * N, 3)],
                        [0, 1, 2 * pow(T * N, 1), 3 * pow(T * N, 2)]])
-         b1 = np.array([state_0[0], vel_0[0], sf[0], 0])
-         b2 = np.array([state_0[1], vel_0[1], sf[1], 0])
+         b1 = np.array([vel_0[0],acci[0],vel_f[0],0])
+         b2 = np.array([vel_0[1],acci[1],vel_f[1],0])
          coeffx = np.linalg.solve(A, b1)
          coeffy = np.linalg.solve(A, b2)
     #     a = A.dot(coeffx)
@@ -519,13 +567,14 @@ class LossFunctions:
     #     accy = []
          for t in range(0, N, 1):
             trajx.append(
-                ((coeffx[3] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (coeffx[1] * (T * t)) + (coeffx[0])))
+                ((coeffx[3] * (pow((T * t), 4))/4) + (coeffx[2] * (pow((T * t), 3))/3) + (coeffx[1] * (pow((T * t), 2))/2) + (coeffx[0] * (T * t)) + state_0[0]))
             trajy.append(
+                ((coeffy[3] * (pow((T * t), 4))/4) + (coeffy[2] * (pow((T * t), 3))/3) + (coeffy[1] * (pow((T * t), 2))/2) + (coeffy[0] * (T * t)) + state_0[1]))
+
+            velx.append(
+                ((coeffx[3] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (coeffx[1] * (T * t)) + (coeffx[0])))
+            vely.append(
                 ((coeffy[3] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (coeffy[1] * (T * t)) + (coeffy[0])))
-
-            velx.append((3 * coeffx[3] * (pow((T * t), 2))) + (2 * coeffx[2] * (T * t)) + (coeffx[1]))
-            vely.append((3 * coeffy[3] * (pow((T * t), 2))) + (2 * coeffy[2] * (T * t)) + (coeffy[1]))
-
          predict_result_traj = np.column_stack((trajx, trajy))
          predict_result_vel = np.column_stack((velx, vely))
          return predict_result_traj, predict_result_vel
