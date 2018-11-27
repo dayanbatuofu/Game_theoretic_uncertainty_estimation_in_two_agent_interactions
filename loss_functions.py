@@ -162,12 +162,12 @@ class LossFunctions:
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.4))
                 
-                if t_s[0] == 5and t_o[0] == 5:
-                    print '%%%%%%%'
-                    print s_self_predict
-                    print s_other_predict
-                    print '&&&&&&&'
-                    print '&&&&&&&'
+                # if t_s[0] == 5and t_o[0] == 5:
+                #     print '%%%%%%%'
+                #     print s_self_predict
+                #     print s_other_predict
+                #     print '&&&&&&&'
+                #     print '&&&&&&&'
                 loss.append(collision_loss + intent_loss)
             loss_all += sum(np.array(loss)*np.array(probability))
         # print time.time()
