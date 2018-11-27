@@ -162,7 +162,7 @@ class LossFunctions:
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.4))
                 
-                # if t_s[0] == 5and t_o[0] == 5:
+                # if t_s[0] == 5 and t_o[0] == 5:
                 #     print '%%%%%%%'
                 #     print s_self_predict
                 #     print s_other_predict
