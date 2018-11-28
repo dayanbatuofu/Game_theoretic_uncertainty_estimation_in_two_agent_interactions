@@ -2,7 +2,7 @@ import numpy as np
 
 class CarParameters:
 
-    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION):
+    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION, ABILITY):
 
         self.SPRITE = SPRITE
         self.INITIAL_POSITION = INITIAL_POSITION
@@ -12,6 +12,7 @@ class CarParameters:
         self.ORIENTATION = ORIENTATION
         self.BOUND_X = BOUND_X
         self.BOUND_Y = BOUND_Y
+        self.ABILITY = ABILITY
 
 class CONSTANTS:
 
@@ -81,7 +82,8 @@ class CONSTANTS:
                               BOUND_Y=np.array([-0.5, 1.5]),
                               INTENT=np.array([1]),
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
-                              ORIENTATION=0)
+                              ORIENTATION=0,
+                              ABILITY=0.01)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -91,7 +93,8 @@ class CONSTANTS:
                               BOUND_Y=np.array([-0.5, 1.5]),
                               INTENT=np.array([2000]),
                               COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
-                              ORIENTATION=0)
+                              ORIENTATION=0,
+                              ABILITY=0.01)
 
     class PARAMETERSET_2:
 
@@ -119,7 +122,8 @@ class CONSTANTS:
                               BOUND_Y=np.array([-0.4, 0.4]),
                               INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
-                              ORIENTATION=0)
+                              ORIENTATION=0,
+                              ABILITY=0.01)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -127,9 +131,10 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1e3,
+                              INTENT=1,
                               COMMON_THETA=np.array([5., -90]),
-                              ORIENTATION=-90)
+                              ORIENTATION=-90,
+                              ABILITY=0.01)
 
 class MATRICES:
 

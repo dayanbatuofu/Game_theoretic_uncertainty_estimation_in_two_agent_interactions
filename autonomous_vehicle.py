@@ -375,23 +375,26 @@ class AutonomousVehicle:
                     fun_other = [np.linalg.norm(action_other[i][:s.track_back] - s.actions_set_o[-s.track_back:])
                                  for i in range(len(action_other))]
 
-                    fun = min(fun_other)
+                    if len(fun_other) != 0:
+                        fun = min(fun_other)
 
-                    # what I think other want me to do if he wants to take the benefit
-                    trajectory_self_wanted_other = \
-                        [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
+                        # what I think other want me to do if he wants to take the benefit
+                        trajectory_self_wanted_other = \
+                            [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
 
-                    # what I want other to do
-                    other_trajectory_wanted = \
-                        [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+                        # what I want other to do
+                        other_trajectory_wanted = \
+                            [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
 
-                    # what I think others expect me to do
-                    trajectory_self = np.atleast_2d(
-                        [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
+                        # what I think others expect me to do
+                        trajectory_self = np.atleast_2d(
+                            [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
 
-                    # what I think others will do
-                    trajectory_other = np.atleast_2d(
-                        [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
+                        # what I think others will do
+                        trajectory_other = np.atleast_2d(
+                            [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
+                    else:
+                        fun = 1e32
                 else:
                     fun = 1e32
 
@@ -556,22 +559,24 @@ class AutonomousVehicle:
                                 for i in range(len(action_self))]
                     fun_other = [np.linalg.norm(action_other[i][:s.track_back] - s.actions_set_o[-s.track_back:])
                                  for i in range(len(action_other))]
+                    if fun_other is not []:
+                        fun = min(fun_other)
 
-                    fun = min(fun_other)
+                        # what I think other want me to do if he wants to take the benefit
+                        trajectory_self_wanted_other = \
+                            [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
+                        trajectory_self_wanted_other = \
+                            [trajectory_self_wanted_other[i] for i in np.where(fun_other == fun)[0]]
 
-                    # what I think other want me to do if he wants to take the benefit
-                    trajectory_self_wanted_other = \
-                        [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
-                    trajectory_self_wanted_other = \
-                        [trajectory_self_wanted_other[i] for i in np.where(fun_other == fun)[0]]
-
-                    trajectory_self = np.atleast_2d(
-                        [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
-                    trajectory_other = np.atleast_2d(other_trajectory_conservative)
-                    # my_loss_all = [my_loss_all[i] for i in np.where(fun_self == np.min(fun_self))[0]]
-                    #
-                    # trajectory_self = [trajectory_self[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
-                    # trajectory_other = [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+                        trajectory_self = np.atleast_2d(
+                            [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
+                        trajectory_other = np.atleast_2d(other_trajectory_conservative)
+                        # my_loss_all = [my_loss_all[i] for i in np.where(fun_self == np.min(fun_self))[0]]
+                        #
+                        # trajectory_self = [trajectory_self[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+                        # trajectory_other = [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+                    else:
+                        fun = 1e32
                 else:
                     fun = 1e32
 
@@ -621,13 +626,14 @@ class AutonomousVehicle:
             id_s = np.atleast_1d(np.argmin(loss_matrix[:, j, 0]))
             for i in range(id_s.size):
                 id_o = np.atleast_1d(np.argmin(loss_matrix[id_s[i], :, 1]))
+                print sum(np.isin(id_o, j))
                 if sum(np.isin(id_o, j)) > 0:
                     eq_all.append([id_s[i], j])
                     my_loss_all.append(loss_matrix[id_s[i], j, 0])
                     other_loss_all.append(loss_matrix[id_s[i], j, 1])  # put self in the other's shoes
 
         # eq = [eq_all[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
-
+        # print eq_all # skip when no pure equilibrium.
         if eq_all is not []:
             trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
             trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]

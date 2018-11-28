@@ -162,10 +162,10 @@ class LossFunctions:
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.4))
                 
-                # if t_s[0] == 5 and t_o[0] == 5:
+                # if t_s[0] == 0 and t_o[0] == 0:
                 #     print '%%%%%%%'
-                #     print s_self_predict
-                #     print s_other_predict
+                #     print intent_loss
+                #     print collision_loss
                 #     print '&&&&&&&'
                 #     print '&&&&&&&'
                 loss.append(collision_loss + intent_loss)
@@ -537,7 +537,7 @@ class LossFunctions:
     #      predict_result_vel = np.column_stack((velx, vely))
     #      return predict_result_traj, predict_result_vel
 
-    def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic of cubic polynomial
+    def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic of cubic polynomial on velocity
          N = 100  # ??
          T = 1  # ??
 
