@@ -135,6 +135,8 @@ class LossFunctions:
                 box_self = s.collision_box
                 box_other = o.collision_box
                 who = s.who
+                s_ability = s.P_CAR.ABILITY
+                o_ability = o.P_CAR.ABILITY
 
                 actions_self = s.interpolate_from_trajectory(t_s)
                 actions_other = o.interpolate_from_trajectory(t_o)
@@ -142,8 +144,8 @@ class LossFunctions:
                 actions_self = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
-                s_other_predict, s_other_predict_vel = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other)
-                s_self_predict, s_self_predict_vel = self.dynamic(actions_self, s_self_vel, s_self_acc , s_self)
+                s_other_predict, s_other_predict_vel = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other, o_ability)
+                s_self_predict, s_self_predict_vel = self.dynamic(actions_self, s_self_vel, s_self_acc , s_self, s_ability)
 
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
@@ -158,9 +160,9 @@ class LossFunctions:
                 collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
 
                 if who == 1:
-                    intent_loss = theta_self * np.exp(C.EXPTHETA * (- s_self_predict[-1][0] + 0.4))
+                    intent_loss = theta_self * np.exp(C.EXPTHETA * (- s_self_predict[-1][0] + 0.6))
                 else:
-                    intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.4))
+                    intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.6))
                 
                 # if t_s[0] == 0 and t_o[0] == 0:
                 #     print '%%%%%%%'
@@ -537,13 +539,13 @@ class LossFunctions:
     #      predict_result_vel = np.column_stack((velx, vely))
     #      return predict_result_traj, predict_result_vel
 
-    def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic of cubic polynomial on velocity
+    def dynamic(self, action_self, vel_self, acc_self, state_self, ability): # Dynamic of cubic polynomial on velocity
          N = 100  # ??
          T = 1  # ??
 
          vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
          state_0 = np.asarray(state_self)  # initial state/position??
-         acci = np.asarray(action_self[-1]) * 0.01
+         acci = np.asarray(action_self[-1]) * ability
          # vel_f = vel_0
          vel_f = np.array([0,0])
          # print sf - state_0

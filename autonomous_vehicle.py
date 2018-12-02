@@ -394,7 +394,23 @@ class AutonomousVehicle:
                         trajectory_other = np.atleast_2d(
                             [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
                     else:
-                        fun = 1e32
+                        fun = 0
+
+                        # what I think other want me to do if he wants to take the benefit
+                        trajectory_self_wanted_other = \
+                            [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
+
+                        # what I want other to do
+                        other_trajectory_wanted = \
+                            [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+
+                        # what I think others expect me to do
+                        trajectory_self = np.atleast_2d(
+                            [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
+
+                        # what I think others will do
+                        trajectory_other = np.atleast_2d(
+                            [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
                 else:
                     fun = 1e32
 
@@ -634,13 +650,18 @@ class AutonomousVehicle:
 
         # eq = [eq_all[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
         # print eq_all # skip when no pure equilibrium.
-        if eq_all is not []:
+        if len(eq_all) != 0:
             trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
             trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
         else:
-            trajectory_self = []
-            trajectory_other = []
-
+            # trajectory_self = []
+            # trajectory_other = []
+            eq_all = np.array([[5,0],[0,5]])
+            trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
+            trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
+            my_loss_all = [loss_matrix[5, 0, 0],loss_matrix[0,5,0]]
+            other_loss_all = [loss_matrix[5, 0, 1],loss_matrix[0,5,1]]  # put self in the other's shoes
+            eq_all = []
 
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
