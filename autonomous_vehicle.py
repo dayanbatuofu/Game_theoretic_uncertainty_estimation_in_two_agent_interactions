@@ -642,7 +642,7 @@ class AutonomousVehicle:
             id_s = np.atleast_1d(np.argmin(loss_matrix[:, j, 0]))
             for i in range(id_s.size):
                 id_o = np.atleast_1d(np.argmin(loss_matrix[id_s[i], :, 1]))
-                print sum(np.isin(id_o, j))
+                # print sum(np.isin(id_o, j))
                 if sum(np.isin(id_o, j)) > 0:
                     eq_all.append([id_s[i], j])
                     my_loss_all.append(loss_matrix[id_s[i], j, 0])

@@ -134,7 +134,7 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([5., -90]),
                               ORIENTATION=-90,
-                              ABILITY=0.01)
+                              ABILITY=0.001)
 
 class MATRICES:
 
