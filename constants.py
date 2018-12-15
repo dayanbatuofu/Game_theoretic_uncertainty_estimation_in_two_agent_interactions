@@ -59,7 +59,7 @@ class CONSTANTS:
     class PARAMETERSET_1:
 
         # DISPLAY
-        SCREEN_WIDTH = 4
+        SCREEN_WIDTH = 5
         SCREEN_HEIGHT = 5
 
         # BOUNDS
@@ -80,8 +80,8 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([3, 1]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
-                              INTENT=np.array([1]),
-                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
+                              INTENT=1,
+                              COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
                               ABILITY=0.01)
 
@@ -91,8 +91,8 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([3, 0]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
-                              INTENT=np.array([2000]),
-                              COMMON_THETA=np.array([VEHICLE_MAX_SPEED * 0.1 * 100., 0]),
+                              INTENT=1,
+                              COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
                               ABILITY=0.01)
 

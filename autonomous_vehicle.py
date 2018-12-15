@@ -679,7 +679,7 @@ class AutonomousVehicle:
                                              s.states[-s.track_back],
                                              [0,0], [0,0],
                                              o)
-        elif len(s.states)==2:
+        elif len(s.states)== 2:
 
             loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
                                              s.states[-s.track_back],

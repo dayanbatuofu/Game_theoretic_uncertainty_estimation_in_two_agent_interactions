@@ -128,16 +128,27 @@ class LossFunctions:
 
         """ Loss function defined to be a combination of state_loss and intent_loss with a weighted factor c """
         loss_all = 0
+        o = s.other_car
+        box_self = s.collision_box
+        box_other = o.collision_box
+        s_who = s.who
+        o_who = o.who
         for t_s in trajectory:
             loss = []
             for t_o in trajectory_other:
-                o = s.other_car
-                box_self = s.collision_box
-                box_other = o.collision_box
-                who = s.who
-                s_ability = s.P_CAR.ABILITY
-                o_ability = o.P_CAR.ABILITY
 
+                if s_who == 1 & o_who == 0:
+                    s_ability = s.P_CAR.ABILITY
+                    o_ability = 0.01
+                else:
+                    s_ability = s.P_CAR.ABILITY
+                    o_ability = o.P_CAR.ABILITY
+                # s_ability = s.P_CAR.ABILITY
+                # o_ability = o.P_CAR.ABILITY
+                # print '$$$$$'
+                # print s_ability
+                # print o_ability
+                # print '#####'
                 actions_self = s.interpolate_from_trajectory(t_s)
                 actions_other = o.interpolate_from_trajectory(t_o)
                 actions_other = actions_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
@@ -150,16 +161,16 @@ class LossFunctions:
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
                 for i in range(s_self_predict.shape[0]):
-                    if who == 1:
+                    if s_who == 1:
                         if s_self_predict[i, 0]<=-gap+1e-12 or s_self_predict[i, 0]>=gap-1e-12 or s_other_predict[i,1]>=gap-1e-12 or s_other_predict[i,1]<=-gap+1e-12:
                             D[i] = np.inf
-                    elif who == 0:
+                    elif s_who == 0:
                         if s_self_predict[i, 1]<=-gap+1e-12 or s_self_predict[i, 1]>=gap-1e-12 or s_other_predict[i,0]>=gap-1e-12 or s_other_predict[i,0]<=-gap+1e-12:
                             D[i] = np.inf
 
                 collision_loss = np.sum(np.exp(C.EXPCOLLISION *(-D + C.CAR_LENGTH**2*1.5)))
 
-                if who == 1:
+                if s_who == 1:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (- s_self_predict[-1][0] + 0.6))
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.6))
@@ -298,11 +309,10 @@ class LossFunctions:
         action_guess = C.TRAJECTORY_SET
         trials_trajectory_self = t
         trials_trajectory_other = np.hstack((np.expand_dims(action_guess, axis=1),
-                               np.ones((action_guess.size,1)) * o.P_CAR.ORIENTATION))
-        loss_matrix = np.zeros((trials_trajectory_other.shape[0],2))
+                               np.ones((action_guess.size, 1)) * o.P_CAR.ORIENTATION))
+        loss_matrix = np.zeros((trials_trajectory_other.shape[0], 2))
         for j in range(trials_trajectory_other.shape[0]):
-            loss_matrix[j,:] = self.simulate_game([t],[trials_trajectory_other[j]],
-                                                    theta_self,theta_other,s,o)
+            loss_matrix[j,:] = self.simulate_game([t], [trials_trajectory_other[j]], theta_self, theta_other, s, o)
 
         # find equilibrium
         my_loss_all = []
@@ -579,4 +589,5 @@ class LossFunctions:
                 ((coeffy[3] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (coeffy[1] * (T * t)) + (coeffy[0])))
          predict_result_traj = np.column_stack((trajx, trajy))
          predict_result_vel = np.column_stack((velx, vely))
+
          return predict_result_traj, predict_result_vel

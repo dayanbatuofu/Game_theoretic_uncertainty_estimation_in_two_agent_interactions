@@ -12,9 +12,8 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 600
+        self.duration = 160
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
-
         # Time handling
         self.clock = pg.time.Clock()
         self.fps = C.FPS
@@ -146,17 +145,17 @@ class Main():
         print('Output pickled and dumped.')
         if self.capture:
             # Compile to video
-            os.system("ffmpeg -f image2 -framerate 1 -i %simg%%03d.jpeg %s/output_video.mp4 " % (self.output_dir, self.output_dir))
-            # img_list = [self.output_dir+"img"+str(i).zfill(3)+".jpeg" for i in range(self.frame)]
-            # import imageio
-            # images = []
-            # for filename in img_list:
-            #     images.append(imageio.imread(filename))
-            # imageio.mimsave(self.output_dir+'movie.gif', images)
-
-            # Delete images
-            [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
-            print("Simulation video output saved to %s." % self.output_dir)
+            # os.system("ffmpeg -f image2 -framerate 1 -i %simg%%03d.jpeg %s/output_video.mp4 " % (self.output_dir, self.output_dir))
+            img_list = [self.output_dir+"img"+str(i).zfill(3)+".jpeg" for i in range(self.frame)]
+            import imageio
+            images = []
+            for filename in img_list:
+                images.append(imageio.imread(filename))
+            imageio.mimsave(self.output_dir+'movie.gif', images)
+            #
+            # # Delete images
+            # [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
+            # print("Simulation video output saved to %s." % self.output_dir)
         print("Simulation ended.")
 
         import matplotlib.pyplot as plt
