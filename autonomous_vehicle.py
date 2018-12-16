@@ -44,7 +44,7 @@ class AutonomousVehicle:
         # Initialize my space
         self.states = [self.P_CAR.INITIAL_POSITION]
         self.intent = self.P_CAR.INTENT
-        self.actions_set = [self.interpolate_from_trajectory(self.P_CAR.COMMON_THETA)[0]]
+        self.actions_set = [self.dynamic(self.P_CAR.COMMON_THETA)[0]]
         self.trajectory = []
         self.planned_actions_set = []
         self.track_back = 0
@@ -111,9 +111,10 @@ class AutonomousVehicle:
 
         planned_actions[np.where(np.abs(planned_actions) < 1e-6)] = 0.  # remove numerical errors
 
-        self.states.append(np.add(self.states[-1], (planned_actions[self.track_back][0],
-                                                    planned_actions[self.track_back][1])))
-        self.actions_set.append(planned_actions[0])
+        # self.states.append(np.add(self.states[-1], (planned_actions[self.track_back][0],
+        #                                             planned_actions[self.track_back][1])))
+        self.states.append(planned_actions[self.track_back])
+        self.actions_set.append(planned_actions[self.track_back])
         self.planned_actions_set = planned_actions
 
     def get_actions(self):
@@ -218,10 +219,10 @@ class AutonomousVehicle:
             trajectory_self = self.loss.loss(guess_set, self, guess_other=guess_other)
         else:
             trajectory_self = self.multi_search(guess_set)
-
+        # print trajectory_self
         # Interpolate for output
-        actions_self = self.interpolate_from_trajectory(trajectory_self)
-
+        actions_self = self.dynamic(trajectory_self)
+        # print actions_self
         return trajectory_self, actions_self
 
     def basic_motion(self):
@@ -369,48 +370,52 @@ class AutonomousVehicle:
                                    for i in range(len(my_trajectory))]
                     action_other = [self.interpolate_from_trajectory(other_trajectory[i])
                                     for i in range(len(other_trajectory))]
-
+                    # print '*********'
+                    # print action_other
+                    # print action_self
+                    # print "&&&&&&&&&"
                     fun_self = [np.linalg.norm(action_self[i][:s.track_back] - s.actions_set[-s.track_back:])
                                 for i in range(len(action_self))]
                     fun_other = [np.linalg.norm(action_other[i][:s.track_back] - s.actions_set_o[-s.track_back:])
                                  for i in range(len(action_other))]
+                    # print fun_self
+                    # print fun_other
+                    # if len(fun_other) != 0:
+                    fun = min(fun_other)
 
-                    if len(fun_other) != 0:
-                        fun = min(fun_other)
+                    # what I think other want me to do if he wants to take the benefit
+                    trajectory_self_wanted_other = \
+                        [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
 
-                        # what I think other want me to do if he wants to take the benefit
-                        trajectory_self_wanted_other = \
-                            [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
+                    # what I want other to do
+                    other_trajectory_wanted = \
+                        [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
 
-                        # what I want other to do
-                        other_trajectory_wanted = \
-                            [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+                    # what I think others expect me to do
+                    trajectory_self = np.atleast_2d(
+                        [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
 
-                        # what I think others expect me to do
-                        trajectory_self = np.atleast_2d(
-                            [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
-
-                        # what I think others will do
-                        trajectory_other = np.atleast_2d(
-                            [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
-                    else:
-                        fun = 0
-
-                        # what I think other want me to do if he wants to take the benefit
-                        trajectory_self_wanted_other = \
-                            [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
-
-                        # what I want other to do
-                        other_trajectory_wanted = \
-                            [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
-
-                        # what I think others expect me to do
-                        trajectory_self = np.atleast_2d(
-                            [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
-
-                        # what I think others will do
-                        trajectory_other = np.atleast_2d(
-                            [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
+                    # what I think others will do
+                    trajectory_other = np.atleast_2d(
+                        [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
+                    # else:
+                    #     fun = 0
+                    #
+                    #     # what I think other want me to do if he wants to take the benefit
+                    #     trajectory_self_wanted_other = \
+                    #         [trajectory_self[i] for i in np.where(other_loss_all == np.min(other_loss_all))[0]]
+                    #
+                    #     # what I want other to do
+                    #     other_trajectory_wanted = \
+                    #         [trajectory_other[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
+                    #
+                    #     # what I think others expect me to do
+                    #     trajectory_self = np.atleast_2d(
+                    #         [my_trajectory[i] for i in np.where(fun_self == np.min(fun_self))[0]])
+                    #
+                    #     # what I think others will do
+                    #     trajectory_other = np.atleast_2d(
+                    #         [other_trajectory[i] for i in np.where(fun_other == fun)[0]])
                 else:
                     fun = 1e32
 
@@ -662,7 +667,8 @@ class AutonomousVehicle:
             my_loss_all = [loss_matrix[5, 0, 0],loss_matrix[0,5,0]]
             other_loss_all = [loss_matrix[5, 0, 1],loss_matrix[0,5,1]]  # put self in the other's shoes
             eq_all = []
-
+        # print trajectory_self
+        # print trajectory_other
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
     def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):
@@ -821,9 +827,64 @@ class AutonomousVehicle:
                            trajectory[0] * np.cos(np.deg2rad(trajectory[1]))],
                           [0, trajectory[0] * np.sin(np.deg2rad(trajectory[1])) / 2,
                            trajectory[0] * np.sin(np.deg2rad(trajectory[1]))]])
-
+        # print nodes
         curve = bezier.Curve(nodes, degree=2)
 
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_NUMPOINTS + 1)))
         # TODO: skip state?
         return np.diff(positions, n=1, axis=0)
+
+    def dynamic(self, action_self): # Dynamic of cubic polynomial on velocity
+
+         N = 100  # ??
+         T = 1  # ??
+         if len(self.states) == 1:
+             vel_self = np.asarray([0, 0])
+         else:
+             vel_self = self.states[-self.track_back] - self.states[-self.track_back - 1]
+
+         vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
+         state_0 = np.asarray(self.states[-1])  # initial state/position??
+         # acci = np.array([0, 0])
+         # if self.who == 1:
+         #     acci[0] = trajectory[0] * self.P_CAR.ABILITY
+         #     acci[1] = 0
+         # else:
+         #     acci[0] = 0
+         #     acci[1] = -trajectory[0] * self.P_CAR.ABILITY
+         if self.who == 1:
+             acci = np.array([action_self[0] * self.P_CAR.ABILITY, 0])
+         else:
+             acci = np.array([0, -action_self[0] * self.P_CAR.ABILITY])
+         # vel_f = vel_0
+         # print sf - state_0
+         # coefficient analytical calculations
+         # print acci
+         A = np.array([[1, 0, 0, 0],
+                       [0, 1, 0, 0],
+                       [0, 0, 2, 0],
+                       [0, 0, 2, 6 * pow(T * N, 1)]])
+         b1 = np.array([state_0[0], vel_0[0], acci[0], 0])
+         b2 = np.array([state_0[1], vel_0[1], acci[1], 0])
+         coeffx = np.linalg.solve(A, b1)
+         coeffy = np.linalg.solve(A, b2)
+        #     a = A.dot(coeffx)
+        #     b = np.polyval(coeffx, T * N)
+         velx = []
+         vely = []
+         for t in range(0, N, 1):
+            velx.append(
+                ((coeffx[3] * 3 * (pow((T * t), 2))) + (coeffx[2] * 2 * (pow((T * t), 1))) + (coeffx[1])))
+            vely.append(
+                ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
+         if self.who == 1:
+             velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             vely = np.clip(vely, 0, 0)
+         else:
+             vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             velx = np.clip(velx, 0, 0)
+         predict_result_vel = np.column_stack((velx, vely))
+         A = np.zeros([N, N])
+         A[np.tril_indices(N, 0)] = 1
+         predict_result_traj = np.matmul(A, predict_result_vel) + state_0
+         return predict_result_traj

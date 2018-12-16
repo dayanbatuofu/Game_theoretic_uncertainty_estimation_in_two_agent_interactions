@@ -28,7 +28,7 @@ class Main():
 
         # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
-        # Vehicle Definitions ('aggressive,'reactive','passive_aggressive')
+        # Vehicle Definitions ('aggressive','reactive','passive_aggressive')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
                                        loss_style='reactive',
@@ -160,11 +160,11 @@ class Main():
 
         import matplotlib.pyplot as plt
         import numpy as np
-        car_1_theta = np.empty((0,2))
-        car_2_theta = np.empty((0,2))
+        car_1_theta = np.empty((0, 2))
+        car_2_theta = np.empty((0, 2))
         for t in range(self.frame):
-            car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t],axis=0),axis=0)
-            car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t],axis=0),axis=0)
+            car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t], axis=0), axis=0)
+            car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t], axis=0), axis=0)
         plt.subplot(2, 1, 1)
         plt.plot(range(1,self.frame+1), car_1_theta[:,0], range(1,self.frame+1), car_1_theta[:,1])
         plt.subplot(2, 1, 2)

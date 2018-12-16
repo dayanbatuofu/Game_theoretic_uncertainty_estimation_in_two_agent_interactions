@@ -136,27 +136,26 @@ class LossFunctions:
         for t_s in trajectory:
             loss = []
             for t_o in trajectory_other:
-
-                if s_who == 1 & o_who == 0:
-                    s_ability = s.P_CAR.ABILITY
-                    o_ability = 0.01
-                else:
-                    s_ability = s.P_CAR.ABILITY
-                    o_ability = o.P_CAR.ABILITY
-                # s_ability = s.P_CAR.ABILITY
-                # o_ability = o.P_CAR.ABILITY
+                # if s_who == 1 & o_who == 0:
+                #     s_ability = s.P_CAR.ABILITY
+                #     o_ability = 0.01
+                # else:
+                #     s_ability = s.P_CAR.ABILITY
+                #     o_ability = o.P_CAR.ABILITY
+                s_ability = s.P_CAR.ABILITY
+                o_ability = o.P_CAR.ABILITY
                 # print '$$$$$'
                 # print s_ability
                 # print o_ability
                 # print '#####'
-                actions_self = s.interpolate_from_trajectory(t_s)
-                actions_other = o.interpolate_from_trajectory(t_o)
-                actions_other = actions_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-                actions_self = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+                # actions_self = s.interpolate_from_trajectory(t_s)
+                # actions_other = o.interpolate_from_trajectory(t_o)
+                # actions_other = actions_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+                # actions_self = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
-                s_other_predict, s_other_predict_vel = self.dynamic(actions_other, s_other_vel, s_other_acc, s_other, o_ability)
-                s_self_predict, s_self_predict_vel = self.dynamic(actions_self, s_self_vel, s_self_acc , s_self, s_ability)
+                s_other_predict, s_other_predict_vel = self.dynamic(t_o, s_other_vel, s_other_acc, s_other, o_ability, o)
+                s_self_predict, s_self_predict_vel = self.dynamic(t_s, s_self_vel, s_self_acc , s_self, s_ability, s)
 
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
@@ -443,6 +442,7 @@ class LossFunctions:
 
         positions = np.transpose(curve.evaluate_multi(np.linspace(0, 1, C.ACTION_NUMPOINTS + 1)))
         #TODO: skip state?
+
         return np.diff(positions, n=1, axis=0)
 
     # def dynamic(self, action_self, vel_self, acc_self, state_self): # Dynamic with Quintic Polynomial Planning
@@ -549,24 +549,70 @@ class LossFunctions:
     #      predict_result_vel = np.column_stack((velx, vely))
     #      return predict_result_traj, predict_result_vel
 
-    def dynamic(self, action_self, vel_self, acc_self, state_self, ability): # Dynamic of cubic polynomial on velocity
+    # def dynamic(self, action_self, vel_self, acc_self, state_self, ability): # Dynamic of cubic polynomial on velocity
+    #      N = 100  # ??
+    #      T = 1  # ??
+    #
+    #      vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
+    #      state_0 = np.asarray(state_self)  # initial state/position??
+    #      acci = np.asarray(action_self[-1]) * ability
+    #      # vel_f = vel_0
+    #      vel_f = np.array([0,0])
+    #      # print sf - state_0
+    #      # coefficient analytical calculations
+    #      # print acci
+    #      A = np.array([[1, 0, 0, 0],
+    #                    [0, 1, 0, 0],
+    #                    [1, pow(T * N, 1), pow(T * N, 2), pow(T * N, 3)],
+    #                    [0, 1, 2 * pow(T * N, 1), 3 * pow(T * N, 2)]])
+    #      b1 = np.array([vel_0[0],acci[0],vel_f[0],0])
+    #      b2 = np.array([vel_0[1],acci[1],vel_f[1],0])
+    #      coeffx = np.linalg.solve(A, b1)
+    #      coeffy = np.linalg.solve(A, b2)
+    # #     a = A.dot(coeffx)
+    # #     b = np.polyval(coeffx, T * N)
+    #      trajx = []
+    #      trajy = []
+    #      velx = []
+    #      vely = []
+    # #     accx = []
+    # #     accy = []
+    #      for t in range(0, N, 1):
+    #         trajx.append(
+    #             ((coeffx[3] * (pow((T * t), 4))/4) + (coeffx[2] * (pow((T * t), 3))/3) + (coeffx[1] * (pow((T * t), 2))/2) + (coeffx[0] * (T * t)) + state_0[0]))
+    #         trajy.append(
+    #             ((coeffy[3] * (pow((T * t), 4))/4) + (coeffy[2] * (pow((T * t), 3))/3) + (coeffy[1] * (pow((T * t), 2))/2) + (coeffy[0] * (T * t)) + state_0[1]))
+    #
+    #         velx.append(
+    #             ((coeffx[3] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (coeffx[1] * (T * t)) + (coeffx[0])))
+    #         vely.append(
+    #             ((coeffy[3] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (coeffy[1] * (T * t)) + (coeffy[0])))
+    #      predict_result_traj = np.column_stack((trajx, trajy))
+    #      predict_result_vel = np.column_stack((velx, vely))
+    #
+    #      return predict_result_traj, predict_result_vel
+    #
+    # dynamic with acc as a linear function
+    def dynamic(self, action_self, vel_self, acc_self, state_self, ability,s): # Dynamic of cubic polynomial on velocity
          N = 100  # ??
          T = 1  # ??
 
          vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
          state_0 = np.asarray(state_self)  # initial state/position??
-         acci = np.asarray(action_self[-1]) * ability
-         # vel_f = vel_0
-         vel_f = np.array([0,0])
+
+         if s.who == 1:
+             acci = np.array([action_self[0] * ability, 0])
+         else:
+             acci = np.array([0, -action_self[0] * ability])
          # print sf - state_0
          # coefficient analytical calculations
          # print acci
          A = np.array([[1, 0, 0, 0],
                        [0, 1, 0, 0],
-                       [1, pow(T * N, 1), pow(T * N, 2), pow(T * N, 3)],
-                       [0, 1, 2 * pow(T * N, 1), 3 * pow(T * N, 2)]])
-         b1 = np.array([vel_0[0],acci[0],vel_f[0],0])
-         b2 = np.array([vel_0[1],acci[1],vel_f[1],0])
+                       [0, 0, 2, 0],
+                       [0, 0, 2, 6 * pow(T * N, 1)]])
+         b1 = np.array([state_0[0], vel_0[0], acci[0], 0])
+         b2 = np.array([state_0[1], vel_0[1], acci[1], 0])
          coeffx = np.linalg.solve(A, b1)
          coeffy = np.linalg.solve(A, b2)
     #     a = A.dot(coeffx)
@@ -578,16 +624,18 @@ class LossFunctions:
     #     accx = []
     #     accy = []
          for t in range(0, N, 1):
-            trajx.append(
-                ((coeffx[3] * (pow((T * t), 4))/4) + (coeffx[2] * (pow((T * t), 3))/3) + (coeffx[1] * (pow((T * t), 2))/2) + (coeffx[0] * (T * t)) + state_0[0]))
-            trajy.append(
-                ((coeffy[3] * (pow((T * t), 4))/4) + (coeffy[2] * (pow((T * t), 3))/3) + (coeffy[1] * (pow((T * t), 2))/2) + (coeffy[0] * (T * t)) + state_0[1]))
-
             velx.append(
-                ((coeffx[3] * (pow((T * t), 3))) + (coeffx[2] * (pow((T * t), 2))) + (coeffx[1] * (T * t)) + (coeffx[0])))
+                ((coeffx[3] * 3 * (pow((T * t), 2))) + (coeffx[2] * 2 * (pow((T * t), 1))) + (coeffx[1])))
             vely.append(
-                ((coeffy[3] * (pow((T * t), 3))) + (coeffy[2] * (pow((T * t), 2))) + (coeffy[1] * (T * t)) + (coeffy[0])))
-         predict_result_traj = np.column_stack((trajx, trajy))
+                ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
+         if s.who == 1:
+             velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             vely = np.clip(vely, 0, 0)
+         else:
+             vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             velx = np.clip(velx, 0, 0)
          predict_result_vel = np.column_stack((velx, vely))
-
+         A = np.zeros([N, N])
+         A[np.tril_indices(N, 0)] = 1
+         predict_result_traj = np.matmul(A, predict_result_vel) + state_0
          return predict_result_traj, predict_result_vel

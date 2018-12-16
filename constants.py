@@ -83,7 +83,7 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.01)
+                              ABILITY=0.001)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -94,7 +94,7 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.01)
+                              ABILITY=0.001)
 
     class PARAMETERSET_2:
 
@@ -112,18 +112,18 @@ class CONSTANTS:
         # COLLISION BOXES
         COLLISION_BOXES = np.array([(-0.4, 0.4, -0.4, 0.4)])  # List of separate collision boxes (-x, x, -y, y)
 
-        VEHICLE_MAX_SPEED = 0.05
+        VEHICLE_MAX_SPEED = 0.025
 
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
-                              INITIAL_POSITION=np.array([-2.0, 0]),
+                              INITIAL_POSITION=np.array([-2, 0]),
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
-                              INTENT=1,
+                              INTENT=1000,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.01)
+                              ABILITY=0.001)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -131,7 +131,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1,
+                              INTENT=1000,
                               COMMON_THETA=np.array([5., -90]),
                               ORIENTATION=-90,
                               ABILITY=0.001)
