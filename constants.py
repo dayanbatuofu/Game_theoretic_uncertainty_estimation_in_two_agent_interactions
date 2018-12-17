@@ -53,7 +53,7 @@ class CONSTANTS:
     EXPCOLLISION = 5.
 
     np.random.seed(0)
-    THETA_SET = np.array([1e3, 1e5]) #TODO: CHANGE THETA_SET
+    THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
     TRAJECTORY_SET = np.array([ 3, 2., 1., 0., -1., -2])
 
     class PARAMETERSET_1:
@@ -121,10 +121,10 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
-                              INTENT=1e3,
+                              INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.005)
+                              ABILITY=0.01)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -132,7 +132,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1e3,
+                              INTENT=1,
                               COMMON_THETA=np.array([5., -90]),
                               ORIENTATION=-90,
                               ABILITY=0.005)
