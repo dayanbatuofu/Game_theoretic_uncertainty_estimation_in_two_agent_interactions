@@ -12,7 +12,7 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 160
+        self.duration = 200
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()

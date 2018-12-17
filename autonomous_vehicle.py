@@ -44,7 +44,7 @@ class AutonomousVehicle:
         # Initialize my space
         self.states = [self.P_CAR.INITIAL_POSITION]
         self.intent = self.P_CAR.INTENT
-        self.actions_set = [self.dynamic(self.P_CAR.COMMON_THETA)[0]]
+        self.actions_set = [self.interpolate_from_trajectory(self.P_CAR.COMMON_THETA)[0]]
         self.trajectory = []
         self.planned_actions_set = []
         self.track_back = 0
@@ -113,9 +113,9 @@ class AutonomousVehicle:
 
         # self.states.append(np.add(self.states[-1], (planned_actions[self.track_back][0],
         #                                             planned_actions[self.track_back][1])))
-        self.states.append(planned_actions[self.track_back])
-        self.actions_set.append(planned_actions[self.track_back])
-        self.planned_actions_set = planned_actions
+        self.states.append(planned_actions[0])
+        self.actions_set.append(planned_trajectory)
+        self.planned_actions_set = self.interpolate_from_trajectory(planned_trajectory)
 
     def get_actions(self):
 
@@ -366,9 +366,9 @@ class AutonomousVehicle:
                 other_trajectory_wanted = []
 
                 if trajectory_self is not []:
-                    action_self = [self.interpolate_from_trajectory(my_trajectory[i])
+                    action_self = [self.dynamic(my_trajectory[i])
                                    for i in range(len(my_trajectory))]
-                    action_other = [self.interpolate_from_trajectory(other_trajectory[i])
+                    action_other = [self.dynamic(other_trajectory[i])
                                     for i in range(len(other_trajectory))]
                     # print '*********'
                     # print action_other
@@ -655,18 +655,18 @@ class AutonomousVehicle:
 
         # eq = [eq_all[i] for i in np.where(my_loss_all == np.min(my_loss_all))[0]]
         # print eq_all # skip when no pure equilibrium.
-        if len(eq_all) != 0:
-            trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
-            trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
-        else:
-            # trajectory_self = []
-            # trajectory_other = []
-            eq_all = np.array([[5,0],[0,5]])
-            trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
-            trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
-            my_loss_all = [loss_matrix[5, 0, 0],loss_matrix[0,5,0]]
-            other_loss_all = [loss_matrix[5, 0, 1],loss_matrix[0,5,1]]  # put self in the other's shoes
-            eq_all = []
+        # if len(eq_all) != 0:
+        trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
+        trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
+        # else:
+        #     # trajectory_self = []
+        #     # trajectory_other = []
+        #     eq_all = np.array([[5,0],[0,5]])
+        #     trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
+        #     trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
+        #     my_loss_all = [loss_matrix[5, 0, 0],loss_matrix[0,5,0]]
+        #     other_loss_all = [loss_matrix[5, 0, 1],loss_matrix[0,5,1]]  # put self in the other's shoes
+        #     eq_all = []
         # print trajectory_self
         # print trajectory_other
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
@@ -839,12 +839,24 @@ class AutonomousVehicle:
          N = 100  # ??
          T = 1  # ??
          if len(self.states) == 1:
-             vel_self = np.asarray([0, 0])
+             if action_self[1] == 0:
+                vel_self = np.array([C.PARAMETERSET_2.INITIAL_SPEED, 0])
+             else:
+                vel_self = np.array([0, -C.PARAMETERSET_2.INITIAL_SPEED])
          else:
-             vel_self = self.states[-self.track_back] - self.states[-self.track_back - 1]
+             vel_self = self.states[-1] - self.states[-2]
 
          vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
-         state_0 = np.asarray(self.states[-1])  # initial state/position??
+         if self.who == 1:
+             if action_self[1] == 0:
+                 state_0 = np.asarray(self.states[-1])
+             else:
+                 state_0 = np.asarray(self.states_o[-1])
+         elif action_self[1] == 0:
+             state_0 = np.asarray(self.states_o[-1])
+         else:
+             state_0 = np.asarray(self.states[-1])
+         # state_0 = np.asarray(self.states[-1])  # initial state/position??
          # acci = np.array([0, 0])
          # if self.who == 1:
          #     acci[0] = trajectory[0] * self.P_CAR.ABILITY
@@ -852,7 +864,7 @@ class AutonomousVehicle:
          # else:
          #     acci[0] = 0
          #     acci[1] = -trajectory[0] * self.P_CAR.ABILITY
-         if self.who == 1:
+         if action_self[1] == 0:
              acci = np.array([action_self[0] * self.P_CAR.ABILITY, 0])
          else:
              acci = np.array([0, -action_self[0] * self.P_CAR.ABILITY])
@@ -872,12 +884,12 @@ class AutonomousVehicle:
         #     b = np.polyval(coeffx, T * N)
          velx = []
          vely = []
-         for t in range(0, N, 1):
+         for t in range(1, N+1, 1):
             velx.append(
                 ((coeffx[3] * 3 * (pow((T * t), 2))) + (coeffx[2] * 2 * (pow((T * t), 1))) + (coeffx[1])))
             vely.append(
                 ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
-         if self.who == 1:
+         if action_self[1] == 0:
              velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
              vely = np.clip(vely, 0, 0)
          else:

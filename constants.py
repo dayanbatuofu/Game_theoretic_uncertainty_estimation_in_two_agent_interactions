@@ -53,8 +53,8 @@ class CONSTANTS:
     EXPCOLLISION = 5.
 
     np.random.seed(0)
-    THETA_SET = np.array([1., 1e3])
-    TRAJECTORY_SET = np.array([5., 4., 3., 2., 1., 0., -1.])
+    THETA_SET = np.array([1e3, 1e5]) #TODO: CHANGE THETA_SET
+    TRAJECTORY_SET = np.array([ 3, 2., 1., 0., -1., -2])
 
     class PARAMETERSET_1:
 
@@ -112,7 +112,8 @@ class CONSTANTS:
         # COLLISION BOXES
         COLLISION_BOXES = np.array([(-0.4, 0.4, -0.4, 0.4)])  # List of separate collision boxes (-x, x, -y, y)
 
-        VEHICLE_MAX_SPEED = 0.025
+        VEHICLE_MAX_SPEED = 0.05
+        INITIAL_SPEED = 0.02
 
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
@@ -120,10 +121,10 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
-                              INTENT=1000,
+                              INTENT=1e3,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.001)
+                              ABILITY=0.005)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -131,10 +132,10 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1000,
+                              INTENT=1e3,
                               COMMON_THETA=np.array([5., -90]),
                               ORIENTATION=-90,
-                              ABILITY=0.001)
+                              ABILITY=0.005)
 
 class MATRICES:
 

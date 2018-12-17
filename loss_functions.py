@@ -45,12 +45,15 @@ class LossFunctions:
 
         loss_all = []
         for trajectory_other in trajectory_other_all:
-            actions_self = s.interpolate_from_trajectory(trajectory)
-            actions_other = o.interpolate_from_trajectory(trajectory_other)
-
-            s_other_predict = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-            s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-
+            # actions_self = s.interpolate_from_trajectory(trajectory)
+            # actions_other = o.interpolate_from_trajectory(trajectory_other)
+            #
+            # s_other_predict = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+            # s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+            s_ability = s.P_CAR.ABILITY
+            o_ability = o.P_CAR.ABILITY
+            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, o, o_ability)
+            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s, s_ability)
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box)+1e-12
             gap = 1.05 #TODO: generalize this
             for i in range(s_self_predict.shape[0]):
@@ -107,8 +110,7 @@ class LossFunctions:
             elif len(s.states) == 2:
                 loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability,
                                           s.states[-1],s.states[-1]- s.states[-2], s.states[-1]- s.states[-2],
-                                          s.states_o[-1],s.states_o[-1]- s.states_o[-2] , s.states_o[-1]- s.states_o[-2],
-                s)
+                                          s.states_o[-1],s.states_o[-1]- s.states_o[-2] , s.states_o[-1]- s.states_o[-2], s)
 
             else:
                 loss = self.reactive_loss(s.intent, [guess], trajectory_other, s.inference_probability,
@@ -154,8 +156,8 @@ class LossFunctions:
                 # actions_self = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
                 #
                 # print type(s_other_predict)
-                s_other_predict, s_other_predict_vel = self.dynamic(t_o, s_other_vel, s_other_acc, s_other, o_ability, o)
-                s_self_predict, s_self_predict_vel = self.dynamic(t_s, s_self_vel, s_self_acc , s_self, s_ability, s)
+                s_other_predict, s_other_predict_vel = self.dynamic(t_o, o, o_ability)
+                s_self_predict, s_self_predict_vel = self.dynamic(t_s, s, s_ability)
 
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other)+1e-12
                 gap = 1.05 #TODO: generalize this
@@ -198,12 +200,15 @@ class LossFunctions:
 
         loss_all = []
         for trajectory_other in trajectory_other_all:  # what other will do if I did trajectory
-            actions_self = s.interpolate_from_trajectory(trajectory)
-            actions_other = o.interpolate_from_trajectory(trajectory_other)
-
-            s_other_predict = state_o + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-            s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-
+            # actions_self = s.interpolate_from_trajectory(trajectory)
+            # actions_other = o.interpolate_from_trajectory(trajectory_other)
+            #
+            # s_other_predict = state_o + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+            # s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+            s_ability = s.P_CAR.ABILITY
+            o_ability = o.P_CAR.ABILITY
+            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, o, o_ability)
+            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s, s_ability)
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box)+1e-12
             gap = 1.05 #TODO: generalize this
             for i in range(s_self_predict.shape[0]):
@@ -593,17 +598,78 @@ class LossFunctions:
     #      return predict_result_traj, predict_result_vel
     #
     # dynamic with acc as a linear function
-    def dynamic(self, action_self, vel_self, acc_self, state_self, ability,s): # Dynamic of cubic polynomial on velocity
+    # def dynamic(self, action_self, vel_self, acc_self, state_self, ability,s): # Dynamic of cubic polynomial on velocity
+    #      N = 100  # ??
+    #      T = 1  # ??
+    #
+    #      vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
+    #      state_0 = np.asarray(state_self)  # initial state/position??
+    #
+    #      if s.who == 1:
+    #          acci = np.array([action_self[0] * ability, 0])
+    #      else:
+    #          acci = np.array([0, -action_self[0] * ability])
+    #      # print sf - state_0
+    #      # coefficient analytical calculations
+    #      # print acci
+    #      A = np.array([[1, 0, 0, 0],
+    #                    [0, 1, 0, 0],
+    #                    [0, 0, 2, 0],
+    #                    [0, 0, 2, 6 * pow(T * N, 1)]])
+    #      b1 = np.array([state_0[0], vel_0[0], acci[0], 0])
+    #      b2 = np.array([state_0[1], vel_0[1], acci[1], 0])
+    #      coeffx = np.linalg.solve(A, b1)
+    #      coeffy = np.linalg.solve(A, b2)
+    # #     a = A.dot(coeffx)
+    # #     b = np.polyval(coeffx, T * N)
+    #      trajx = []
+    #      trajy = []
+    #      velx = []
+    #      vely = []
+    # #     accx = []
+    # #     accy = []
+    #      for t in range(0, N, 1):
+    #         velx.append(
+    #             ((coeffx[3] * 3 * (pow((T * t), 2))) + (coeffx[2] * 2 * (pow((T * t), 1))) + (coeffx[1])))
+    #         vely.append(
+    #             ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
+    #      if s.who == 1:
+    #          velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+    #          vely = np.clip(vely, 0, 0)
+    #      else:
+    #          vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+    #          velx = np.clip(velx, 0, 0)
+    #      predict_result_vel = np.column_stack((velx, vely))
+    #      A = np.zeros([N, N])
+    #      A[np.tril_indices(N, 0)] = 1
+    #      predict_result_traj = np.matmul(A, predict_result_vel) + state_0
+    #      return predict_result_traj, predict_result_vel
+    def dynamic(self, action_self, s, ability): # Dynamic of cubic polynomial on velocity
+
          N = 100  # ??
          T = 1  # ??
+         if len(s.states) == 1:
+             if action_self[1] == 0:
+                vel_self = np.array([C.PARAMETERSET_2.INITIAL_SPEED, 0])
+             else:
+                 vel_self = np.array([0, -C.PARAMETERSET_2.INITIAL_SPEED])
+         else:
+             vel_self = s.states[-s.track_back] - s.states[-s.track_back - 1]
 
          vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
-         state_0 = np.asarray(state_self)  # initial state/position??
-
-         if s.who == 1:
+         state_0 = np.asarray(s.states[-1])  # initial state/position??
+         # acci = np.array([0, 0])
+         # if self.who == 1:
+         #     acci[0] = trajectory[0] * self.P_CAR.ABILITY
+         #     acci[1] = 0
+         # else:
+         #     acci[0] = 0
+         #     acci[1] = -trajectory[0] * self.P_CAR.ABILITY
+         if action_self[1] == 0:
              acci = np.array([action_self[0] * ability, 0])
          else:
              acci = np.array([0, -action_self[0] * ability])
+         # vel_f = vel_0
          # print sf - state_0
          # coefficient analytical calculations
          # print acci
@@ -615,20 +681,16 @@ class LossFunctions:
          b2 = np.array([state_0[1], vel_0[1], acci[1], 0])
          coeffx = np.linalg.solve(A, b1)
          coeffy = np.linalg.solve(A, b2)
-    #     a = A.dot(coeffx)
-    #     b = np.polyval(coeffx, T * N)
-         trajx = []
-         trajy = []
+        #     a = A.dot(coeffx)
+        #     b = np.polyval(coeffx, T * N)
          velx = []
          vely = []
-    #     accx = []
-    #     accy = []
          for t in range(0, N, 1):
             velx.append(
                 ((coeffx[3] * 3 * (pow((T * t), 2))) + (coeffx[2] * 2 * (pow((T * t), 1))) + (coeffx[1])))
             vely.append(
                 ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
-         if s.who == 1:
+         if action_self[1] == 0:
              velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
              vely = np.clip(vely, 0, 0)
          else:
