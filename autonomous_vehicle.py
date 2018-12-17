@@ -210,8 +210,7 @@ class AutonomousVehicle:
 
         trials = C.TRAJECTORY_SET
         guess_set = np.hstack((np.expand_dims(trials, axis=1), np.ones((trials.size, 1)) * self.P_CAR.ORIENTATION))
-        guess_other = np.hstack(
-            (np.expand_dims(trials, axis=1), np.ones((trials.size, 1)) * self.other_car.P_CAR.ORIENTATION))
+        guess_other = np.hstack((np.expand_dims(trials, axis=1), np.ones((trials.size, 1)) * self.other_car.P_CAR.ORIENTATION))
 
         if self.loss.characterization is 'basic':
             trajectory_self = self.basic_motion()
@@ -365,7 +364,7 @@ class AutonomousVehicle:
                 trajectory_self_wanted_other = []
                 other_trajectory_wanted = []
 
-                if trajectory_self is not []:
+                if trajectory_self is not [] and trajectory_other is not []:
                     action_self = [self.dynamic(my_trajectory[i])
                                    for i in range(len(my_trajectory))]
                     action_other = [self.dynamic(other_trajectory[i])
@@ -380,8 +379,10 @@ class AutonomousVehicle:
                                  for i in range(len(action_other))]
                     # print fun_self
                     # print fun_other
-                    # if len(fun_other) != 0:
-                    fun = min(fun_other)
+                    if len(fun_other) != 0:
+                        fun = min(fun_other)
+                    else:
+                        break
 
                     # what I think other want me to do if he wants to take the benefit
                     trajectory_self_wanted_other = \
@@ -836,7 +837,7 @@ class AutonomousVehicle:
 
     def dynamic(self, action_self): # Dynamic of cubic polynomial on velocity
 
-         N = 100  # ??
+         N = C.ACTION_TIMESTEPS  # ??
          T = 1  # ??
          if len(self.states) == 1:
              if action_self[1] == 0:

@@ -35,9 +35,9 @@ class CONSTANTS:
 
 
     # OPTIMIZATION
-    ACTION_TIMESTEPS = 100  # 5 seconds
+    ACTION_TIMESTEPS = 200  # 5 seconds
     ACTION_TURNANGLE = 0  # degrees #TODO: not sure why slsqp does not work with larger angles
-    ACTION_NUMPOINTS = 100
+    ACTION_NUMPOINTS = 200
 
     TRACK_BACK = 1
 
@@ -50,11 +50,11 @@ class CONSTANTS:
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
     EXPTHETA = 1.
-    EXPCOLLISION = 5.
+    EXPCOLLISION = 5
 
     np.random.seed(0)
     THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
-    TRAJECTORY_SET = np.array([ 3, 2., 1., 0., -1., -2])
+    TRAJECTORY_SET = np.array([3., 2., 1., 0., -1., -2.])
 
     class PARAMETERSET_1:
 
@@ -113,7 +113,7 @@ class CONSTANTS:
         COLLISION_BOXES = np.array([(-0.4, 0.4, -0.4, 0.4)])  # List of separate collision boxes (-x, x, -y, y)
 
         VEHICLE_MAX_SPEED = 0.05
-        INITIAL_SPEED = 0.02
+        INITIAL_SPEED = 0.025
 
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
@@ -135,7 +135,7 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([5., -90]),
                               ORIENTATION=-90,
-                              ABILITY=0.005)
+                              ABILITY=0.0005)
 
 class MATRICES:
 

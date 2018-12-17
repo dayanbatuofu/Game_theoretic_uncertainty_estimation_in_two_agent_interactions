@@ -135,27 +135,19 @@ class LossFunctions:
         box_other = o.collision_box
         s_who = s.who
         o_who = o.who
+        if s_who == 1:
+            s_ability = s.P_CAR.ABILITY
+            o_ability = s.P_CAR.ABILITY
+        else:
+            s_ability = s.P_CAR.ABILITY
+            o_ability = o.P_CAR.ABILITY
+        # s_ability = s.P_CAR.ABILITY
+        # o_ability = o.P_CAR.ABILITY
+
         for t_s in trajectory:
             loss = []
             for t_o in trajectory_other:
-                # if s_who == 1 & o_who == 0:
-                #     s_ability = s.P_CAR.ABILITY
-                #     o_ability = 0.01
-                # else:
-                #     s_ability = s.P_CAR.ABILITY
-                #     o_ability = o.P_CAR.ABILITY
-                s_ability = s.P_CAR.ABILITY
-                o_ability = o.P_CAR.ABILITY
-                # print '$$$$$'
-                # print s_ability
-                # print o_ability
-                # print '#####'
-                # actions_self = s.interpolate_from_trajectory(t_s)
-                # actions_other = o.interpolate_from_trajectory(t_o)
-                # actions_other = actions_other + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-                # actions_self = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-                #
-                # print type(s_other_predict)
+
                 s_other_predict, s_other_predict_vel = self.dynamic(t_o, o, o_ability)
                 s_self_predict, s_self_predict_vel = self.dynamic(t_s, s, s_ability)
 
@@ -175,13 +167,7 @@ class LossFunctions:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (- s_self_predict[-1][0] + 0.6))
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.6))
-                
-                # if t_s[0] == 0 and t_o[0] == 0:
-                #     print '%%%%%%%'
-                #     print intent_loss
-                #     print collision_loss
-                #     print '&&&&&&&'
-                #     print '&&&&&&&'
+
                 loss.append(collision_loss + intent_loss)
             loss_all += sum(np.array(loss)*np.array(probability))
         # print time.time()
@@ -229,6 +215,7 @@ class LossFunctions:
             gracefulness_loss = []
             for wanted_trajectory_self in s.wanted_trajectory_self:  # what other want me to do right now
                 gracefulness_loss.append((trajectory[0] - wanted_trajectory_self[0]) ** 2)
+
 
             loss_all.append(collision_loss + intent_loss + 0.1*sum(gracefulness_loss*s.inference_probability))
 
@@ -646,7 +633,7 @@ class LossFunctions:
     #      return predict_result_traj, predict_result_vel
     def dynamic(self, action_self, s, ability): # Dynamic of cubic polynomial on velocity
 
-         N = 100  # ??
+         N = C.ACTION_TIMESTEPS  # ??
          T = 1  # ??
          if len(s.states) == 1:
              if action_self[1] == 0:
