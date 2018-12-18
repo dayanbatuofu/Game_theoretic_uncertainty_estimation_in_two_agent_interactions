@@ -12,7 +12,7 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 200
+        self.duration = 500
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()
@@ -74,7 +74,7 @@ class Main():
                 # calculate gracefulness
                 grace = []
                 for wanted_trajectory_other in self.car_2.wanted_trajectory_other:
-                    wanted_actions_other = self.car_2.interpolate_from_trajectory(wanted_trajectory_other)
+                    wanted_actions_other = self.car_2.dynamic(wanted_trajectory_other)
                     grace.append((self.car_1.actions_set[-1][0] - wanted_actions_other[0][0]) ** 2)
                 self.car_1.social_gracefulness.append(sum(grace*self.car_2.inference_probability))
 
@@ -82,6 +82,7 @@ class Main():
                 self.sim_data.append_car1(states=self.car_1.states,
                                           actions=self.car_1.actions_set,
                                           action_sets=self.car_1.planned_actions_set,
+                                          trajectory = self.car_1.planned_trajectory_set,
                                           predicted_theta_other=self.car_1.predicted_theta_other,
                                           predicted_theta_self=self.car_1.predicted_theta_self,
                                           predicted_actions_other=self.car_1.predicted_actions_other,
@@ -97,6 +98,7 @@ class Main():
                 self.sim_data.append_car2(states=self.car_2.states,
                                           actions=self.car_2.actions_set,
                                           action_sets=self.car_2.planned_actions_set,
+                                          trajectory=self.car_2.planned_trajectory_set,
                                           predicted_theta_other=self.car_2.predicted_theta_other,
                                           predicted_theta_self=self.car_2.predicted_theta_self,
                                           predicted_actions_other=self.car_2.predicted_actions_other,

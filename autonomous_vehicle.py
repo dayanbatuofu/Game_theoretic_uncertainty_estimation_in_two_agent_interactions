@@ -44,9 +44,10 @@ class AutonomousVehicle:
         # Initialize my space
         self.states = [self.P_CAR.INITIAL_POSITION]
         self.intent = self.P_CAR.INTENT
-        self.actions_set = [self.interpolate_from_trajectory(self.P_CAR.COMMON_THETA)[0]]
+        self.actions_set = [self.dynamic(self.P_CAR.COMMON_THETA)[0]-self.states[-1]]
         self.trajectory = []
         self.planned_actions_set = []
+        self.planned_trajectory_set = []
         self.track_back = 0
 
         # Initialize others space
@@ -100,10 +101,10 @@ class AutonomousVehicle:
         self.predicted_theta_self = theta_self
         self.predicted_trajectory_other = predicted_trajectory_other
         self.predicted_others_prediction_of_my_trajectory = predicted_others_prediction_of_my_trajectory
-        self.predicted_actions_other = [self.interpolate_from_trajectory(predicted_trajectory_other[i])
+        self.predicted_actions_other = [self.dynamic(predicted_trajectory_other[i])
                                         for i in range(len(predicted_trajectory_other))]
         self.predicted_others_prediction_of_my_actions = [
-            self.interpolate_from_trajectory(predicted_others_prediction_of_my_trajectory[i])
+            self.dynamic(predicted_others_prediction_of_my_trajectory[i])
             for i in range(len(predicted_others_prediction_of_my_trajectory))]
 
         ########## Calculate machine actions here ###########
@@ -114,8 +115,9 @@ class AutonomousVehicle:
         # self.states.append(np.add(self.states[-1], (planned_actions[self.track_back][0],
         #                                             planned_actions[self.track_back][1])))
         self.states.append(planned_actions[0])
-        self.actions_set.append(planned_trajectory)
-        self.planned_actions_set = self.interpolate_from_trajectory(planned_trajectory)
+        self.actions_set.append(self.states[-1]-self.states[-2])
+        self.planned_actions_set = self.dynamic(planned_trajectory)
+        self.planned_trajectory_set.append(planned_trajectory)
 
     def get_actions(self):
 
@@ -373,9 +375,9 @@ class AutonomousVehicle:
                     # print action_other
                     # print action_self
                     # print "&&&&&&&&&"
-                    fun_self = [np.linalg.norm(action_self[i][:s.track_back] - s.actions_set[-s.track_back:])
+                    fun_self = [np.linalg.norm((action_self[i][:s.track_back] - s.states[-1]) - s.actions_set[-s.track_back:])
                                 for i in range(len(action_self))]
-                    fun_other = [np.linalg.norm(action_other[i][:s.track_back] - s.actions_set_o[-s.track_back:])
+                    fun_other = [np.linalg.norm((action_other[i][:s.track_back] - s.states_o[-1]) - s.actions_set_o[-s.track_back:])
                                  for i in range(len(action_other))]
                     # print fun_self
                     # print fun_other
@@ -891,10 +893,10 @@ class AutonomousVehicle:
             vely.append(
                 ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
          if action_self[1] == 0:
-             velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             velx = np.clip(velx, 0, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
              vely = np.clip(vely, 0, 0)
          else:
-             vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, 0)
              velx = np.clip(velx, 0, 0)
          predict_result_vel = np.column_stack((velx, vely))
          A = np.zeros([N, N])

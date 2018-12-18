@@ -35,9 +35,9 @@ class CONSTANTS:
 
 
     # OPTIMIZATION
-    ACTION_TIMESTEPS = 200  # 5 seconds
+    ACTION_TIMESTEPS = 100  # 5 seconds
     ACTION_TURNANGLE = 0  # degrees #TODO: not sure why slsqp does not work with larger angles
-    ACTION_NUMPOINTS = 200
+    ACTION_NUMPOINTS = 100
 
     TRACK_BACK = 1
 
@@ -122,7 +122,7 @@ class CONSTANTS:
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
                               INTENT=1,
-                              COMMON_THETA=np.array([5., 0]),
+                              COMMON_THETA=np.array([0., 0]),
                               ORIENTATION=0,
                               ABILITY=0.01)
 
@@ -133,9 +133,9 @@ class CONSTANTS:
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
                               INTENT=1,
-                              COMMON_THETA=np.array([5., -90]),
+                              COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=-90,
-                              ABILITY=0.0005)
+                              ABILITY=0.01)
 
 class MATRICES:
 

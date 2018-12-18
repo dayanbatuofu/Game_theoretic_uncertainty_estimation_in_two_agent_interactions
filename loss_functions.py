@@ -121,6 +121,8 @@ class LossFunctions:
 
             trajectory_set = np.append(trajectory_set, [guess], axis=0)
             loss_value_set = np.append(loss_value_set, loss)
+        # if s.who == 0:
+        #     print loss_value_set
 
         trajectory_self = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
 
@@ -135,14 +137,14 @@ class LossFunctions:
         box_other = o.collision_box
         s_who = s.who
         o_who = o.who
-        if s_who == 1:
-            s_ability = s.P_CAR.ABILITY
-            o_ability = s.P_CAR.ABILITY
-        else:
-            s_ability = s.P_CAR.ABILITY
-            o_ability = o.P_CAR.ABILITY
-        # s_ability = s.P_CAR.ABILITY
-        # o_ability = o.P_CAR.ABILITY
+        # if s_who == 1:
+        #     s_ability = s.P_CAR.ABILITY
+        #     o_ability = s.P_CAR.ABILITY
+        # else:
+        #     s_ability = s.P_CAR.ABILITY
+        #     o_ability = o.P_CAR.ABILITY
+        s_ability = s.P_CAR.ABILITY
+        o_ability = o.P_CAR.ABILITY
 
         for t_s in trajectory:
             loss = []
@@ -678,10 +680,10 @@ class LossFunctions:
             vely.append(
                 ((coeffy[3] * 3 * (pow((T * t), 2))) + (coeffy[2] * 2 * (pow((T * t), 1))) + (coeffy[1])))
          if action_self[1] == 0:
-             velx = np.clip(velx, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             velx = np.clip(velx, 0, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
              vely = np.clip(vely, 0, 0)
          else:
-             vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, C.PARAMETERSET_2.VEHICLE_MAX_SPEED)
+             vely = np.clip(vely, -C.PARAMETERSET_2.VEHICLE_MAX_SPEED, 0)
              velx = np.clip(velx, 0, 0)
          predict_result_vel = np.column_stack((velx, vely))
          A = np.zeros([N, N])
