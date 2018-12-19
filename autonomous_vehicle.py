@@ -10,7 +10,7 @@ import pygame as pg
 from scipy.interpolate import spline
 from scipy import stats
 import time
-
+import matplotlib.pyplot as plt
 
 
 class AutonomousVehicle:
@@ -19,7 +19,6 @@ class AutonomousVehicle:
             X-Position
             Y-Position
     """
-
     def __init__(self, scenario_parameters, car_parameters_self, loss_style, who):
 
         self.P = scenario_parameters
@@ -90,7 +89,6 @@ class AutonomousVehicle:
         theta_other, theta_self, predicted_trajectory_other, predicted_others_prediction_of_my_trajectory, \
         wanted_others_prediction_of_my_trajectory, other_wanted_trajectory, inference_probability, theta_probability = \
             self.get_predicted_intent_of_other()
-
         self.wanted_trajectory_self = wanted_others_prediction_of_my_trajectory
         self.wanted_trajectory_other = other_wanted_trajectory
         self.inference_probability = inference_probability
@@ -675,48 +673,48 @@ class AutonomousVehicle:
         return trajectory_self, trajectory_other, my_loss_all, other_loss_all
 
     def simulate_game(self, trajectory_self, trajectory_other, theta_self, theta_other, s, o):
-        if len(s.states) == 1:
-            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
-                                             s.states[-s.track_back],
-                                             [0,0], [0,0],
-                                             s.states_o[-s.track_back],
-                                             [0,0], [0,0],
-                                             s)
-            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
-                                             s.states_o[-s.track_back],
-                                             [0,0], [0,0],
-                                             s.states[-s.track_back],
-                                             [0,0], [0,0],
-                                             o)
-        elif len(s.states)== 2:
-
-            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
-                                             s.states[-s.track_back],
-                                             s.states[-s.track_back] - s.states[-s.track_back - 1],s.states[-s.track_back] - s.states[-s.track_back - 1],
-                                             s.states_o[-s.track_back],
-                                             s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],
-                                             s)
-            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
-                                             s.states_o[-s.track_back],
-                                             s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],
-                                             s.states[-s.track_back],
-                                             s.states[-s.track_back] - s.states[-s.track_back - 1],s.states[-s.track_back] - s.states[-s.track_back - 1] ,
-                                             o)
-
-        else:
-
-            loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
-                                             s.states[-s.track_back],
-                                             s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
-                                             s.states_o[-s.track_back],
-                                             s.states_o[-s.track_back]-s.states_o[-s.track_back-1],(s.states_o[-s.track_back]-s.states_o[-s.track_back-1])-(s.states_o[-s.track_back-1]-s.states_o[-s.track_back-2]),
-                                             s)
-            loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
-                                             s.states_o[-s.track_back],
-                                             s.states_o[-s.track_back]-s.states_o[-s.track_back-1],(s.states_o[-s.track_back]-s.states_o[-s.track_back-1])-(s.states_o[-s.track_back-1]-s.states_o[-s.track_back-2]),
-                                             s.states[-s.track_back],
-                                             s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
-                                             o)
+        # if len(s.states) == 1:
+        loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+                                         s.states[-s.track_back],
+                                         [0,0], [0,0],
+                                         s.states_o[-s.track_back],
+                                         [0,0], [0,0],
+                                         s)
+        loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+                                         s.states_o[-s.track_back],
+                                         [0,0], [0,0],
+                                         s.states[-s.track_back],
+                                         [0,0], [0,0],
+                                         s)
+        # elif len(s.states)== 2:
+        #
+        #     loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+        #                                      s.states[-s.track_back],
+        #                                      s.states[-s.track_back] - s.states[-s.track_back - 1],s.states[-s.track_back] - s.states[-s.track_back - 1],
+        #                                      s.states_o[-s.track_back],
+        #                                      s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],
+        #                                      s)
+        #     loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+        #                                      s.states_o[-s.track_back],
+        #                                      s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],s.states_o[-s.track_back] - s.states_o[-s.track_back - 1],
+        #                                      s.states[-s.track_back],
+        #                                      s.states[-s.track_back] - s.states[-s.track_back - 1],s.states[-s.track_back] - s.states[-s.track_back - 1] ,
+        #                                      o)
+        #
+        # else:
+        #
+        #     loss_s = self.loss.reactive_loss(theta_self, trajectory_self, trajectory_other, [1],
+        #                                      s.states[-s.track_back],
+        #                                      s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
+        #                                      s.states_o[-s.track_back],
+        #                                      s.states_o[-s.track_back]-s.states_o[-s.track_back-1],(s.states_o[-s.track_back]-s.states_o[-s.track_back-1])-(s.states_o[-s.track_back-1]-s.states_o[-s.track_back-2]),
+        #                                      s)
+        #     loss_o = self.loss.reactive_loss(theta_other, trajectory_other, trajectory_self, [1],
+        #                                      s.states_o[-s.track_back],
+        #                                      s.states_o[-s.track_back]-s.states_o[-s.track_back-1],(s.states_o[-s.track_back]-s.states_o[-s.track_back-1])-(s.states_o[-s.track_back-1]-s.states_o[-s.track_back-2]),
+        #                                      s.states[-s.track_back],
+        #                                      s.states[-s.track_back]-s.states[-s.track_back-1],(s.states[-s.track_back]-s.states[-s.track_back-1])-(s.states[-s.track_back-1]-s.states[-s.track_back-2]) ,
+        #                                      o)
 
         return loss_s, loss_o
 
@@ -838,43 +836,52 @@ class AutonomousVehicle:
         return np.diff(positions, n=1, axis=0)
 
     def dynamic(self, action_self): # Dynamic of cubic polynomial on velocity
+         ability = self.P_CAR.ABILITY
+         ability_o = self.P_CAR.ABILITY_O
 
          N = C.ACTION_TIMESTEPS  # ??
          T = 1  # ??
-         if len(self.states) == 1:
-             if action_self[1] == 0:
-                vel_self = np.array([C.PARAMETERSET_2.INITIAL_SPEED, 0])
-             else:
-                vel_self = np.array([0, -C.PARAMETERSET_2.INITIAL_SPEED])
-         else:
-             vel_self = self.states[-1] - self.states[-2]
+         if self.who == 1: #if the car who conduct the prediction is car#1
+              if action_self[1] == 0: # car#1 predict car#1
+                  if len(self.states) == 1: #first state
+                      vel_self = np.array([C.PARAMETERSET_2.INITIAL_SPEED, 0])
+                      state_0 = np.asarray(self.states[-1])
+                      acci = np.array([action_self[0] * ability, 0])
+                  else:
+                      vel_self = self.actions_set[-1]
+                      state_0 = np.asarray(self.states[-1])
+                      acci = np.array([action_self[0] * ability, 0])
+              else: # car1 predicts car2
+                  if len(self.states_o) == 1: # the car dynamic it want to predict
+                      vel_self = np.array([0, -C.PARAMETERSET_2.INITIAL_SPEED])
+                      state_0 = np.asarray(self.states_o[-1])
+                      acci = np.array([0, -action_self[0] * ability_o])
+                  else:
+                      vel_self = self.actions_set_o[-1]
+                      state_0 = np.array(self.states_o[-1])
+                      acci = np.array([0, -action_self[0] * ability])
+
+         if self.who == 0: # if it is car 2
+              if action_self[1] == 0: # car 2 predict car 1
+                  if len(self.states_o) == 1:
+                      vel_self = np.array([C.PARAMETERSET_2.INITIAL_SPEED, 0])
+                      state_0 = np.asarray(self.states_o[-1])
+                      acci = np.array([action_self[0] * ability, 0])
+                  else:
+                      vel_self = self.actions_set_o[-1]
+                      state_0 = np.asarray(self.states_o[-1])
+                      acci = np.array([action_self[0] * ability_o, 0])
+              else: #car 2 predict car 2
+                  if len(self.states) == 1:  # the car dynamic it want to predict
+                      vel_self = np.array([0, -C.PARAMETERSET_2.INITIAL_SPEED])
+                      state_0 = np.asarray(self.states[-1])
+                      acci = np.array([0, -action_self[0] * ability])
+                  else:
+                      vel_self = self.actions_set[-1]
+                      state_0 = np.array(self.states[-1])
+                      acci = np.array([0, -action_self[0] * ability])
 
          vel_0 = np.asarray(vel_self) / T  # type: ndarray # initial vel??
-         if self.who == 1:
-             if action_self[1] == 0:
-                 state_0 = np.asarray(self.states[-1])
-             else:
-                 state_0 = np.asarray(self.states_o[-1])
-         elif action_self[1] == 0:
-             state_0 = np.asarray(self.states_o[-1])
-         else:
-             state_0 = np.asarray(self.states[-1])
-         # state_0 = np.asarray(self.states[-1])  # initial state/position??
-         # acci = np.array([0, 0])
-         # if self.who == 1:
-         #     acci[0] = trajectory[0] * self.P_CAR.ABILITY
-         #     acci[1] = 0
-         # else:
-         #     acci[0] = 0
-         #     acci[1] = -trajectory[0] * self.P_CAR.ABILITY
-         if action_self[1] == 0:
-             acci = np.array([action_self[0] * self.P_CAR.ABILITY, 0])
-         else:
-             acci = np.array([0, -action_self[0] * self.P_CAR.ABILITY])
-         # vel_f = vel_0
-         # print sf - state_0
-         # coefficient analytical calculations
-         # print acci
          A = np.array([[1, 0, 0, 0],
                        [0, 1, 0, 0],
                        [0, 0, 2, 0],
@@ -902,4 +909,5 @@ class AutonomousVehicle:
          A = np.zeros([N, N])
          A[np.tril_indices(N, 0)] = 1
          predict_result_traj = np.matmul(A, predict_result_vel) + state_0
+
          return predict_result_traj

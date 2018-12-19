@@ -2,7 +2,7 @@ import numpy as np
 
 class CarParameters:
 
-    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION, ABILITY):
+    def __init__(self, SPRITE, INITIAL_POSITION, DESIRED_POSITION, BOUND_X, BOUND_Y, INTENT, COMMON_THETA, ORIENTATION, ABILITY, ABILITY_O):
 
         self.SPRITE = SPRITE
         self.INITIAL_POSITION = INITIAL_POSITION
@@ -13,6 +13,7 @@ class CarParameters:
         self.BOUND_X = BOUND_X
         self.BOUND_Y = BOUND_Y
         self.ABILITY = ABILITY
+        self.ABILITY_O = ABILITY_O
 
 class CONSTANTS:
 
@@ -52,7 +53,7 @@ class CONSTANTS:
     EXPTHETA = 1.
     EXPCOLLISION = 5
 
-    np.random.seed(0)
+    np.random.seed(40)
     THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
     TRAJECTORY_SET = np.array([3., 2., 1., 0., -1., -2.])
 
@@ -83,7 +84,8 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.001)
+                              ABILITY=0.02,
+                              ABILITY_O=0.02)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -94,7 +96,8 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.001)
+                              ABILITY=0.02,
+                              ABILITY_O=0.02)
 
     class PARAMETERSET_2:
 
@@ -124,7 +127,8 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([0., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.01)
+                              ABILITY=0.002,
+                              ABILITY_O=0.001)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -135,7 +139,8 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=-90,
-                              ABILITY=0.01)
+                              ABILITY=0.001,
+                              ABILITY_O=0.002)
 
 class MATRICES:
 
