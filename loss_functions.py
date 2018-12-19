@@ -51,10 +51,9 @@ class LossFunctions:
             #
             # s_other_predict = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
             # s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
-            s_ability = s.P_CAR.ABILITY
-            o_ability = o.P_CAR.ABILITY
-            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s, o_ability)
-            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s, s_ability)
+
+            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s)
+            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s)
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
             gap = 1.05  # TODO: generalize this
             for i in range(s_self_predict.shape[0]):
@@ -193,11 +192,8 @@ class LossFunctions:
 
         loss_all = []
         for trajectory_other in trajectory_other_all:  # what other will do if I did trajectory
-
-            s_ability = s.P_CAR.ABILITY
-            o_ability = o.P_CAR.ABILITY
-            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s, o_ability)
-            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s, s_ability)
+            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s)
+            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s)
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
             gap = 1.05  # TODO: generalize this
             for i in range(s_self_predict.shape[0]):

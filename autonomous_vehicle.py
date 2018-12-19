@@ -63,6 +63,7 @@ class AutonomousVehicle:
         self.predicted_others_prediction_of_my_actions = np.tile((0, 0), (C.ACTION_TIMESTEPS, 1))
         self.wanted_trajectory_self = []  # what other wants me to do
         self.wanted_trajectory_other = [] # what I want other to do
+        self.wanted_states_other = []
         self.inference_probability = [] # probability density of the inference vectors
         self.inference_probability_proactive = [] # for proactive and socially aware actions
         self.theta_probability = np.ones(C.THETA_SET.shape)/C.THETA_SET.size
@@ -91,6 +92,7 @@ class AutonomousVehicle:
             self.get_predicted_intent_of_other()
         self.wanted_trajectory_self = wanted_others_prediction_of_my_trajectory
         self.wanted_trajectory_other = other_wanted_trajectory
+        self.wanted_states_other = [self.dynamic(other_wanted_trajectory[i]) for i in range(len(other_wanted_trajectory))]
         self.inference_probability = inference_probability
         self.inference_probability_proactive = inference_probability
         self.theta_probability = theta_probability

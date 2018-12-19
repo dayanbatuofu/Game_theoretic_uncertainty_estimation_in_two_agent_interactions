@@ -128,7 +128,7 @@ class CONSTANTS:
                               COMMON_THETA=np.array([0., 0]),
                               ORIENTATION=0,
                               ABILITY=0.002,
-                              ABILITY_O=0.001)
+                              ABILITY_O=0.002)
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
@@ -139,7 +139,7 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=-90,
-                              ABILITY=0.001,
+                              ABILITY=0.002,
                               ABILITY_O=0.002)
 
 class MATRICES:

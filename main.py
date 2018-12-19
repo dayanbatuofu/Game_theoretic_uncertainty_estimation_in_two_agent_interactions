@@ -12,7 +12,7 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 500
+        self.duration = 150
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()
@@ -90,6 +90,7 @@ class Main():
                                           self.car_1.predicted_others_prediction_of_my_actions,
                                           wanted_trajectory_self=self.car_1.wanted_trajectory_self,
                                           wanted_trajectory_other=self.car_1.wanted_trajectory_other,
+                                          wanted_states_other=self.car_1.wanted_states_other,
                                           inference_probability=self.car_1.inference_probability,
                                           inference_probability_proactive=self.car_1.inference_probability_proactive,
                                           theta_probability=self.car_1.theta_probability,
@@ -106,6 +107,7 @@ class Main():
                                           self.car_2.predicted_others_prediction_of_my_actions,
                                           wanted_trajectory_self=self.car_2.wanted_trajectory_self,
                                           wanted_trajectory_other=self.car_2.wanted_trajectory_other,
+                                          wanted_states_other=self.car_2.wanted_states_other,
                                           inference_probability=self.car_2.inference_probability,
                                           inference_probability_proactive=self.car_2.inference_probability_proactive,
                                           theta_probability=self.car_2.theta_probability,)

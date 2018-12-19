@@ -15,6 +15,7 @@ class Sim_Data():
         self.car1_predicted_others_prediction_of_my_actions = []
         self.car1_wanted_trajectory_self = []
         self.car1_wanted_trajectory_other = []
+        self.car1_wanted_states_other = []
         self.car1_inference_probability = []
         self.car1_inference_probability_proactive = []
         self.car1_theta_probability = []
@@ -31,13 +32,14 @@ class Sim_Data():
         self.car2_predicted_others_prediction_of_my_actions = []
         self.car2_wanted_trajectory_self = []
         self.car2_wanted_trajectory_other = []
+        self.car2_wanted_states_other = []
         self.car2_inference_probability = []
         self.car2_inference_probability_proactive = []
         self.car2_theta_probability = []
 
     def append_car1(self, states, actions, action_sets, trajectory, predicted_theta_other, predicted_theta_self,
                     predicted_actions_other, predicted_others_prediction_of_my_actions, wanted_trajectory_self,
-                    wanted_trajectory_other, inference_probability, inference_probability_proactive,
+                    wanted_trajectory_other, wanted_states_other, inference_probability, inference_probability_proactive,
                     theta_probability, social_gracefulness):
 
         self.car1_states = states
@@ -50,6 +52,7 @@ class Sim_Data():
         self.car1_predicted_others_prediction_of_my_actions.append(predicted_others_prediction_of_my_actions)
         self.car1_wanted_trajectory_self.append(wanted_trajectory_self)
         self.car1_wanted_trajectory_other.append(wanted_trajectory_other)
+        self.car1_wanted_states_other.append(wanted_states_other)
         self.car1_inference_probability.append(inference_probability)
         self.car1_inference_probability_proactive.append(inference_probability_proactive)
         self.car1_theta_probability.append(theta_probability)
@@ -57,7 +60,7 @@ class Sim_Data():
 
     def append_car2(self, states, actions, action_sets, trajectory, predicted_theta_other, predicted_theta_self,
                     predicted_actions_other, predicted_others_prediction_of_my_actions, wanted_trajectory_self,
-                    wanted_trajectory_other, inference_probability, inference_probability_proactive,
+                    wanted_trajectory_other, wanted_states_other, inference_probability, inference_probability_proactive,
                     theta_probability):
 
 
@@ -79,6 +82,7 @@ class Sim_Data():
         self.car2_predicted_others_prediction_of_my_actions.append(predicted_others_prediction_of_my_actions)
         self.car2_wanted_trajectory_self.append(wanted_trajectory_self)
         self.car2_wanted_trajectory_other.append(wanted_trajectory_other)
+        self.car2_wanted_states_other.append(wanted_states_other)
         self.car2_inference_probability.append(inference_probability)
         self.car2_inference_probability_proactive.append(inference_probability_proactive)
         self.car2_theta_probability.append(theta_probability)
