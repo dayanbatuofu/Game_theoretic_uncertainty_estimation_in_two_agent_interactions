@@ -268,7 +268,7 @@ class AutonomousVehicle:
 
         candidates = np.where(loss_value_set == np.min(loss_value_set))[0][0]
         self.predicted_trajectory_other = trajectory_other_set[candidates]
-        self.predicted_actions_other = [self.interpolate_from_trajectory(self.predicted_trajectory_other[i])
+        self.predicted_actions_other = [self.dynamic(self.predicted_trajectory_other[i])
                                         for i in range(len(self.predicted_trajectory_other))]
         self.inference_probability_proactive = inference_probability_set[candidates]
 
