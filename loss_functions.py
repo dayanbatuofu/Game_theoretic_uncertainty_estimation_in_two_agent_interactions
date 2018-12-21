@@ -169,7 +169,7 @@ class LossFunctions:
 
                 collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-D + C.CAR_LENGTH ** 2 * 1.5)))
 
-                if s_who == 1:
+                if t_s[1] == 0:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (- s_self_predict[-1][0] + 0.6))
                 else:
                     intent_loss = theta_self * np.exp(C.EXPTHETA * (s_self_predict[-1][1] + 0.6))
