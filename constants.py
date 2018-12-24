@@ -50,10 +50,10 @@ class CONSTANTS:
     LEARNING_RATE = 0.5
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
-    EXPTHETA = 1.
-    EXPCOLLISION = 5
+    EXPTHETA = 1
+    EXPCOLLISION = 4
 
-    np.random.seed(40)
+    np.random.seed(1)
     THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
     TRAJECTORY_SET = np.array([3., 2., 1., 0., -1., -2.])
 

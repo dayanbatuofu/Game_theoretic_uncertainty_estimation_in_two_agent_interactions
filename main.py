@@ -12,7 +12,7 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 150
+        self.duration = 100
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()
@@ -31,7 +31,7 @@ class Main():
         # Vehicle Definitions ('aggressive','reactive','passive_aggressive')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
-                                       loss_style='passive_aggressive',
+                                       loss_style='aggressive',
                                        who=1)  #M
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
@@ -75,7 +75,7 @@ class Main():
                 grace = []
                 for wanted_trajectory_other in self.car_2.wanted_trajectory_other:
                     wanted_actions_other = self.car_2.dynamic(wanted_trajectory_other)
-                    grace.append((self.car_1.states[-1][0] - wanted_actions_other[0][0]) ** 2)
+                    grace.append(1000*(self.car_1.states[-1][0] - wanted_actions_other[0][0]) ** 2)
                 self.car_1.social_gracefulness.append(sum(grace*self.car_2.inference_probability))
 
                 # Update data

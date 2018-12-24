@@ -366,7 +366,7 @@ class AutonomousVehicle:
                 trajectory_self_wanted_other = []
                 other_trajectory_wanted = []
 
-                if trajectory_self is not [] and trajectory_other is not []:
+                if trajectory_self is not []:
                     action_self = [self.dynamic(my_trajectory[i])
                                    for i in range(len(my_trajectory))]
                     action_other = [self.dynamic(other_trajectory[i])
@@ -375,10 +375,28 @@ class AutonomousVehicle:
                     # print action_other
                     # print action_self
                     # print "&&&&&&&&&"
-                    fun_self = [np.linalg.norm((action_self[i][:s.track_back] - s.states[-1]) - s.actions_set[-s.track_back:])
-                                for i in range(len(action_self))]
-                    fun_other = [np.linalg.norm((action_other[i][:s.track_back] - s.states_o[-1]) - s.actions_set_o[-s.track_back:])
-                                 for i in range(len(action_other))]
+                    if self.frame == 0:
+                        if self.who == 1:
+                            fun_self = [np.linalg.norm(np.sum((action_self[i][0] - s.states[-1]) - s.actions_set[-1]) - self.P_CAR.ABILITY * my_trajectory[i][0])
+                                        for i in range(len(my_trajectory))]
+                            fun_other = [np.linalg.norm(np.sum((action_other[i][0] - s.states_o[-1]) - s.actions_set_o[-1]) + self.P_CAR.ABILITY_O * other_trajectory[i][0])
+                                         for i in range(len(other_trajectory))]
+                        else:
+                            fun_self = [np.linalg.norm(np.sum((action_self[i][0] - s.states[-1]) - s.actions_set[-1]) + self.P_CAR.ABILITY * my_trajectory[i][0])
+                                        for i in range(len(my_trajectory))]
+                            fun_other = [np.linalg.norm(np.sum((action_other[i][0] - s.states_o[-1]) - s.actions_set_o[-1]) - self.P_CAR.ABILITY_O * other_trajectory[i][0])
+                                         for i in range(len(other_trajectory))]
+                    else:
+                        if self.who == 1:
+                            fun_self = [np.linalg.norm(np.sum(s.actions_set[-1] - s.actions_set[-2]) - self.P_CAR.ABILITY * my_trajectory[i][0])
+                                        for i in range(len(my_trajectory))]
+                            fun_other = [np.linalg.norm(np.sum(s.actions_set_o[-1] - s.actions_set_o[-2]) + self.P_CAR.ABILITY_O * other_trajectory[i][0])
+                                         for i in range(len(other_trajectory))]
+                        else:
+                            fun_self = [np.linalg.norm(np.sum(s.actions_set[-1] - s.actions_set[-2]) + self.P_CAR.ABILITY * my_trajectory[i][0])
+                                        for i in range(len(my_trajectory))]
+                            fun_other = [np.linalg.norm(np.sum(s.actions_set_o[-1] - s.actions_set_o[-2]) - self.P_CAR.ABILITY_O * other_trajectory[i][0])
+                                         for i in range(len(other_trajectory))]
                     # print fun_self
                     # print fun_other
                     if len(fun_other) != 0:
@@ -458,7 +476,7 @@ class AutonomousVehicle:
         # update theta probability
         for theta_other in trials_theta:
             theta_probability.append(sum(inference_probability_out[np.where(theta_other_out==theta_other)[0]]))
-        # theta_probability = (self.theta_probability * self.frame + theta_probability) / (self.frame + 1)
+        #theta_probability = (self.theta_probability * self.frame + theta_probability) / (self.frame + 1)
         theta_probability = self.theta_probability * theta_probability
         if sum(theta_probability) > 0:
             theta_probability = theta_probability/sum(theta_probability)
