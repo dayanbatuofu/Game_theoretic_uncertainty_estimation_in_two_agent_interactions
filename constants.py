@@ -51,7 +51,7 @@ class CONSTANTS:
     INTENT_LIMIT = 1000. #TODO: this is the max alpha, need to explain what this means
 
     EXPTHETA = 1
-    EXPCOLLISION = 4
+    EXPCOLLISION = 3
 
     np.random.seed(1)
     THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
@@ -136,7 +136,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1,
+                              INTENT=1e9,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=-90,
                               ABILITY=0.002,

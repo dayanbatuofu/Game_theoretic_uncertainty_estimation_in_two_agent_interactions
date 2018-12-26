@@ -57,18 +57,18 @@ class LossFunctions:
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
             gap = 1.05  # TODO: generalize this
             for i in range(s_self_predict.shape[0]):
-                if who == 1:
+                if trajectory[1] == 0:
                     if s_self_predict[i, 0] <= -gap + 1e-12 or s_self_predict[i, 0] >= gap - 1e-12 or s_other_predict[
                         i, 1] >= gap - 1e-12 or s_other_predict[i, 1] <= -gap + 1e-12:
                         D[i] = np.inf
-                elif who == 0:
+                else:
                     if s_self_predict[i, 1] <= -gap + 1e-12 or s_self_predict[i, 1] >= gap - 1e-12 or s_other_predict[
                         i, 0] >= gap - 1e-12 or s_other_predict[i, 0] <= -gap + 1e-12:
                         D[i] = np.inf
             collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-D + C.CAR_LENGTH ** 2 * 1.5)))
             # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
-            if who == 1:
+            if trajectory[1] == 0:
                 intent_loss = s.intent * np.exp(C.EXPTHETA * (s.P_CAR.DESIRED_POSITION[0] - s_self_predict[-1][0]))
             else:
                 intent_loss = s.intent * np.exp(C.EXPTHETA * (-s.P_CAR.DESIRED_POSITION[1] + s_self_predict[-1][1]))
@@ -158,11 +158,11 @@ class LossFunctions:
                 D = box_self.get_collision_loss(s_self_predict, s_other_predict, box_other) + 1e-12
                 gap = 1.05  # TODO: generalize this
                 for i in range(s_self_predict.shape[0]):
-                    if s_who == 1:
+                    if t_s[1] == 0:
                         if s_self_predict[i, 0] <= -gap + 1e-12 or s_self_predict[i, 0] >= gap - 1e-12 or \
                                 s_other_predict[i, 1] >= gap - 1e-12 or s_other_predict[i, 1] <= -gap + 1e-12:
                             D[i] = np.inf
-                    elif s_who == 0:
+                    else:
                         if s_self_predict[i, 1] <= -gap + 1e-12 or s_self_predict[i, 1] >= gap - 1e-12 or \
                                 s_other_predict[i, 0] >= gap - 1e-12 or s_other_predict[i, 0] <= -gap + 1e-12:
                             D[i] = np.inf
@@ -197,18 +197,18 @@ class LossFunctions:
             D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
             gap = 1.05  # TODO: generalize this
             for i in range(s_self_predict.shape[0]):
-                if who == 1:
+                if trajectory[1] == 0:
                     if s_self_predict[i, 0] <= -gap + 1e-12 or s_self_predict[i, 0] >= gap - 1e-12 or s_other_predict[
                         i, 1] >= gap - 1e-12 or s_other_predict[i, 1] <= -gap + 1e-12:
                         D[i] = np.inf
-                elif who == 0:
+                else:
                     if s_self_predict[i, 1] <= -gap + 1e-12 or s_self_predict[i, 1] >= gap - 1e-12 or s_other_predict[
                         i, 0] >= gap - 1e-12 or s_other_predict[i, 0] <= -gap + 1e-12:
                         D[i] = np.inf
             collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-D + C.CAR_LENGTH ** 2 * 1.5)))
             # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
 
-            if who == 1:
+            if trajectory[1] == 0:
                 intent_loss = s.intent * np.exp(C.EXPTHETA * (s.P_CAR.DESIRED_POSITION[0] - s_self_predict[-1][0]))
             else:
                 intent_loss = s.intent * np.exp(C.EXPTHETA * (-s.P_CAR.DESIRED_POSITION[1] + s_self_predict[-1][1]))
