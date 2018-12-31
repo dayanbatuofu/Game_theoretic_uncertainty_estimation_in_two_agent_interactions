@@ -215,9 +215,9 @@ class LossFunctions:
 
             gracefulness_loss = []
             for wanted_trajectory_self in s.wanted_trajectory_self:  # what other want me to do right now
-                gracefulness_loss.append((trajectory[0] - wanted_trajectory_self[0]) ** 2)
+                gracefulness_loss.append( (trajectory[0] - wanted_trajectory_self[0]) ** 2)
 
-            loss_all.append(collision_loss + intent_loss + 0.1 * sum(gracefulness_loss * s.inference_probability))
+            loss_all.append(collision_loss + intent_loss + 0.001 * sum(gracefulness_loss * s.inference_probability))
 
         return sum(np.array(loss_all) * np.array(
             inference_probability)), trajectory_other_all, inference_probability  # Return weighted sum

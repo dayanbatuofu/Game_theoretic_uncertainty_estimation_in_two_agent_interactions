@@ -221,6 +221,7 @@ class Sim_Draw():
 
         # Annotations
         font = pg.font.SysFont("Arial", 30)
+
         label = font.render("Car 1 state: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
         self.screen.blit(label, (350, 360))
         label = font.render("Car 1 action index: (%5.4f)" % (sim_data.car1_planned_trajectory_set[frame][0]), 1, (0, 0, 0))
@@ -255,7 +256,7 @@ class Sim_Draw():
         # label = font.render("Car 2 intent by 2: %5.4f" % (np.sum(sim_data.car2_predicted_theta_self[frame])), 1, (0, 0, 0))
         # self.screen.blit(label, (410, 560))
 
-        label = font.render("Lack of Gracefulness: %1.4f" % (np.sum(sim_data.car1_gracefulness)), 1, (0, 0, 0))
+        label = font.render("Lack of Courtesy: %1.4f" % (np.sum(sim_data.car1_gracefulness)), 1, (0, 0, 0))
         self.screen.blit(label, (350, 10))
 
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))

@@ -12,7 +12,7 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 80
+        self.duration = 100
         self.P = C.PARAMETERSET_2  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()
@@ -31,11 +31,11 @@ class Main():
         # Vehicle Definitions ('aggressive','reactive','passive_aggressive')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
-                                       loss_style='reactive',
+                                       loss_style="reactive",
                                        who=1)  #M
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
-                                       loss_style='reactive',
+                                       loss_style="passive_aggressive",
                                        who=0)  #H
 
         # Assign 'other' cars
