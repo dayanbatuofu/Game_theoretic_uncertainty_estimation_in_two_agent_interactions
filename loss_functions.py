@@ -30,6 +30,9 @@ class LossFunctions:
         elif self.characterization is "passive_aggressive":
             return self.passive_aggressive_loss(guess, autonomous_vehicle)
 
+        elif self.characterization is "berkeley_courtesy":
+            return self.berkeley_courtesy_loss(guess, autonomous_vehicle)
+
         else:
             raise ValueError('incorrect loss function characterization specified.')
 
@@ -218,6 +221,49 @@ class LossFunctions:
                 gracefulness_loss.append( (trajectory[0] - wanted_trajectory_self[0]) ** 2)
 
             loss_all.append(collision_loss + intent_loss + 0.001 * sum(gracefulness_loss * s.inference_probability))
+
+        return sum(np.array(loss_all) * np.array(
+            inference_probability)), trajectory_other_all, inference_probability  # Return weighted sum
+
+    def berkeley_courtesy_loss(self, trajectory, s):
+        who = s.who
+        o = s.other_car
+        state_s = s.states[-1]
+        state_o = s.states_o[-1]
+
+        ##############################################################################################
+        # predict how others perceive your action
+        trajectory_other_all, inference_probability = self.multi_search_intent(trajectory, s)
+        ##############################################################################################
+
+        loss_all = []
+        for trajectory_other in trajectory_other_all:  # what other will do if I did trajectory
+            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s)
+            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s)
+            D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
+            gap = 1.05  # TODO: generalize this
+            for i in range(s_self_predict.shape[0]):
+                if trajectory[1] == 0:
+                    if s_self_predict[i, 0] <= -gap + 1e-12 or s_self_predict[i, 0] >= gap - 1e-12 or s_other_predict[
+                        i, 1] >= gap - 1e-12 or s_other_predict[i, 1] <= -gap + 1e-12:
+                        D[i] = np.inf
+                else:
+                    if s_self_predict[i, 1] <= -gap + 1e-12 or s_self_predict[i, 1] >= gap - 1e-12 or s_other_predict[
+                        i, 0] >= gap - 1e-12 or s_other_predict[i, 0] <= -gap + 1e-12:
+                        D[i] = np.inf
+            collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-D + C.CAR_LENGTH ** 2 * 1.5)))
+            # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
+
+            if trajectory[1] == 0:
+                intent_loss = s.intent * np.exp(C.EXPTHETA * (s.P_CAR.DESIRED_POSITION[0] - s_self_predict[-1][0]))
+                intent_loss_other = o.intent * np.exp(C.EXPTHETA * (-o.P_CAR.DESIRED_POSITION[1] + s_other_predict[-1][1]))
+            else:
+                intent_loss = s.intent * np.exp(C.EXPTHETA * (-s.P_CAR.DESIRED_POSITION[1] + s_self_predict[-1][1]))
+                intent_loss_other = o.intent * np.exp(C.EXPTHETA * (o.P_CAR.DESIRED_POSITION[0] - s_other_predict[-1][0]))
+
+            gracefulness_loss = collision_loss + intent_loss_other
+
+            loss_all.append(collision_loss + intent_loss + 0.97 * gracefulness_loss)
 
         return sum(np.array(loss_all) * np.array(
             inference_probability)), trajectory_other_all, inference_probability  # Return weighted sum
