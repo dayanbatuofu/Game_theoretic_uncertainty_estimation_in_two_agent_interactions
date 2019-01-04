@@ -15,4 +15,14 @@ import matplotlib.pyplot as plt
 
 
 class DummyVehicle:
-    def __init__(self):
+    def __init__(self, scenario_parameters, car_parameters_self, who):
+        self.P = scenario_parameters
+        self.P_CAR = car_parameters_self
+        self.who = who
+
+        self.states =
+        self.actions_set =
+        self.intent
+        self.FOV =   #wheather the vehicle sees the other dummy vehicle
+
+
