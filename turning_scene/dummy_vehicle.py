@@ -22,7 +22,24 @@ class DummyVehicle:
 
         self.states =
         self.actions_set =
-        self.intent
+        self.intent =
         self.FOV =   #wheather the vehicle sees the other dummy vehicle
 
+
+
+    def update(self, frame):
+
+
+
+
+
+
+
+    def get_action(self, other_states):
+
+
+
+
+
+    def dynamic(self, action):
 

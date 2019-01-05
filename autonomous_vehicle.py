@@ -451,7 +451,7 @@ class AutonomousVehicle:
                                       trajectory_self_wanted_other,
                                       other_trajectory_wanted,
                                       1./len(trajectory_other)*len(trajectory_self_wanted_other)*len(other_trajectory_wanted)])
-                loss_value_set.append(round(fun*1000)/1000)
+                loss_value_set.append(round(fun*1e12)/1e12)
 
         candidate = np.where(loss_value_set == np.min(loss_value_set))[0]
         theta_self_out = []

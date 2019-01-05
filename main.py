@@ -26,9 +26,9 @@ class Main():
         # Sim output
         self.sim_data = Sim_Data()
 
-        # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
+        # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")c
 
-        # Vehicle Definitions ('aggressive','reactive','passive_aggressive')
+        # Vehicle Definitions ('aggressive','reactive','passive_aggressive',"berkeley_courtesy")
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
                                        loss_style="berkeley_courtesy",

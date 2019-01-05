@@ -93,7 +93,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([3, 0]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
-                              INTENT=1,
+                              INTENT=1e3,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
                               ABILITY=0.02,
