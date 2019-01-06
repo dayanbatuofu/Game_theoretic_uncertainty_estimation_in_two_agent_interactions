@@ -256,7 +256,7 @@ class Sim_Draw():
         # label = font.render("Car 2 intent by 2: %5.4f" % (np.sum(sim_data.car2_predicted_theta_self[frame])), 1, (0, 0, 0))
         # self.screen.blit(label, (410, 560))
 
-        label = font.render("Lack of Courtesy: %1.4f" % (np.sum(sim_data.car1_gracefulness)/C.PARAMETERSET_2.CAR_1.ABILITY * 0.002), 1, (0, 0, 0))
+        label = font.render("Lack of Courtesy: %1.4f" % (np.sum(sim_data.car1_gracefulness)), 1, (0, 0, 0))
         self.screen.blit(label, (350, 10))
 
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))

@@ -1,5 +1,6 @@
 from constants import CONSTANTS as C
 from autonomous_vehicle import AutonomousVehicle
+from dummy_vehicle import DummyVehicle
 from sim_draw import Sim_Draw
 from sim_data import Sim_Data
 import pickle
@@ -26,26 +27,26 @@ class Main():
         # Sim output
         self.sim_data = Sim_Data()
 
-        # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")c
+        # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
-        # Vehicle Definitions ('aggressive','reactive','passive_aggressive',"berkeley_courtesy")
-        self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
+        # Vehicle Definitions ('aggressive','reactive','passive_aggressive')
+        self.car_1 = DummyVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
-                                       loss_style="berkeley_courteous",
                                        who=1)  #M
-        self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
+        self.car_2 = DummyVehicle (scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,
-                                       loss_style="reactive",
                                        who=0)  #H
+        self.car_3 = AutonomousVehicle()
 
         # Assign 'other' cars
         self.car_1.other_car = self.car_2
         self.car_2.other_car = self.car_1
         self.car_1.states_o = self.car_2.states
         self.car_2.states_o = self.car_1.states
-        self.car_1.actions_set_o = self.car_2.actions_set
-        self.car_2.actions_set_o = self.car_1.actions_set
-
+        # self.car_1.actions_set_o = self.car_2.actions_set
+        # self.car_2.actions_set_o = self.car_1.actions_set
+        self.car_3.other_car_1 = self.car_1
+        self.car_3.other_car_2 = self.car_2
         if C.DRAW:
             self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
             pg.display.flip()
