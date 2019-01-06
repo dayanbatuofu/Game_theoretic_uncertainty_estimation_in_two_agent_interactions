@@ -218,6 +218,10 @@ class AutonomousVehicle:
             trajectory_self = self.basic_motion()
         elif self.loss.characterization is 'reactive':
             trajectory_self = self.loss.loss(guess_set, self, guess_other=guess_other)
+        elif self.loss.characterization is 'courteous':
+            trajectory_self = self.multi_search_courteous(guess_set)
+        elif self.loss.characterization is 'berkeley_courteous':
+            trajectory_self = self.multi_search_berkeley_courteous(guess_set)
         else:
             trajectory_self = self.multi_search(guess_set)
         # print trajectory_self
@@ -275,6 +279,120 @@ class AutonomousVehicle:
         trajectory = trajectory_set[candidates]
 
         return trajectory
+
+    def multi_search_courteous(self, guess_set):
+        s = self
+        o = s.other_car
+        theta_s = s.intent
+        box_o = o.collision_box
+        box_s = s.collision_box
+        orientation_o = o.P_CAR.ORIENTATION
+        orientation_s = s.P_CAR.ORIENTATION
+
+        """ run multiple searches with different initial guesses """
+        trajectory_set = np.empty((0, 2))  # TODO: need to generalize
+        trajectory_other_set = []
+        loss_value_set = []
+        inference_probability_set = []
+
+        # first find courteous baseline payoff of the other agent
+        baseline_loss_all = []
+        for wanted_trajectory_self, theta_other in zip(s.wanted_trajectory_self, s.predicted_theta_other):
+            baseline_loss_all.append(s.loss.courteous_baseline_loss(
+                agent=s, action=wanted_trajectory_self, other_agent_intent=theta_other))
+
+        for guess in guess_set:
+            fun = self.loss.berkeley_courtesy_loss(
+                    agent=s, action=guess, baseline=baseline_loss_all, beta=C.COURTESY_CONSTANT)
+            trajectory_set = np.append(trajectory_set, [guess], axis=0)
+            loss_value_set = np.append(loss_value_set, fun)
+        candidates = np.where(loss_value_set == np.min(loss_value_set))[0][0]
+        trajectory = guess_set[candidates]
+
+        # get responsive actions from the other agent when ego agent takes "trajectory"
+        trajectory_other_set = []
+        for other_intent, other_intent_p in zip(s.predicted_theta_other, s.inference_probability):
+            # predict how others perceive your action
+            trajectory_other_all, trajectory_probability = \
+                self.loss.other_agent_response(agent=s, action=trajectory, other_agent_intent=other_intent)
+            trajectory_other_set.append([other_intent,
+                                         other_intent_p,
+                                         trajectory_other_all,
+                                         trajectory_probability,
+                                         1./len(trajectory_other_all)])
+
+        self.inference_probability_proactive = []
+        self.predicted_trajectory_other = []
+        self.predicted_actions_other = []
+        for i in range(len(trajectory_other_set)):
+            for trajectory_other in trajectory_other_set[i][2]:
+                self.inference_probability_proactive.append(s.inference_probability[i]*trajectory_other_set[i][4])
+                self.predicted_trajectory_other.append(trajectory_other)
+                self.predicted_actions_other.append(self.loss.dynamic(trajectory_other, o)[0])
+
+        self.inference_probability_proactive = \
+            np.array(self.inference_probability_proactive)/sum(self.inference_probability_proactive)
+
+        return trajectory
+
+    def multi_search_berkeley_courteous(self, guess_set):
+        s = self
+        o = s.other_car
+        theta_s = s.intent
+        box_o = o.collision_box
+        box_s = s.collision_box
+        orientation_o = o.P_CAR.ORIENTATION
+        orientation_s = s.P_CAR.ORIENTATION
+
+        """ run multiple searches with different initial guesses """
+        trajectory_set = np.empty((0, 2))  # TODO: need to generalize
+        trajectory_other_set = []
+        loss_value_set = []
+        inference_probability_set = []
+
+        # first find courteous baseline payoff of the other agent
+        baseline_loss_all = []
+        for theta_other in s.predicted_theta_other:
+            baseline_temp = []
+            for guess in guess_set:
+                baseline_temp.append(s.loss.courteous_baseline_loss(
+                    agent=s, action=guess, other_agent_intent=theta_other))
+            baseline_loss_all.append(min(baseline_temp))
+
+        for guess in guess_set:
+            fun = self.loss.berkeley_courtesy_loss(
+                    agent=s, action=guess, baseline=baseline_loss_all, beta=C.COURTESY_CONSTANT)
+            trajectory_set = np.append(trajectory_set, [guess], axis=0)
+            loss_value_set = np.append(loss_value_set, fun)
+        candidates = np.where(loss_value_set == np.min(loss_value_set))[0][0]
+        trajectory = guess_set[candidates]
+
+        # get responsive actions from the other agent when ego agent takes "trajectory"
+        trajectory_other_set = []
+        for other_intent, other_intent_p in zip(s.predicted_theta_other, s.inference_probability):
+            # predict how others perceive your action
+            trajectory_other_all, trajectory_probability = \
+                self.loss.other_agent_response(agent=s, action=trajectory, other_agent_intent=other_intent)
+            trajectory_other_set.append([other_intent,
+                                         other_intent_p,
+                                         trajectory_other_all,
+                                         trajectory_probability,
+                                         1./len(trajectory_other_all)])
+
+        self.inference_probability_proactive = []
+        self.predicted_trajectory_other = []
+        self.predicted_actions_other = []
+        for i in range(len(trajectory_other_set)):
+            for trajectory_other in trajectory_other_set[i][2]:
+                self.inference_probability_proactive.append(s.inference_probability[i]*trajectory_other_set[i][4])
+                self.predicted_trajectory_other.append(trajectory_other)
+                self.predicted_actions_other.append(self.loss.dynamic(trajectory_other, o)[0])
+
+        self.inference_probability_proactive = \
+            np.array(self.inference_probability_proactive)/sum(self.inference_probability_proactive)
+
+        return trajectory
+
 
     def get_predicted_intent_of_other(self):
         """ predict the aggressiveness of the agent and what the agent expect me to do """
@@ -451,7 +569,7 @@ class AutonomousVehicle:
                                       trajectory_self_wanted_other,
                                       other_trajectory_wanted,
                                       1./len(trajectory_other)*len(trajectory_self_wanted_other)*len(other_trajectory_wanted)])
-                loss_value_set.append(round(fun*1000)/1000)
+                loss_value_set.append(round(fun*1e12)/1e12)
 
         candidate = np.where(loss_value_set == np.min(loss_value_set))[0]
         theta_self_out = []

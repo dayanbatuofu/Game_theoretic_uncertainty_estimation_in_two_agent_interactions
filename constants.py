@@ -57,6 +57,8 @@ class CONSTANTS:
     THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
     TRAJECTORY_SET = np.array([3., 2., 1., 0., -1., -2.])
 
+    COURTESY_CONSTANT = 10.
+
     class PARAMETERSET_1:
 
         # DISPLAY
@@ -120,7 +122,7 @@ class CONSTANTS:
 
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
-                              INITIAL_POSITION=np.array([-2, 0]),
+                              INITIAL_POSITION=np.array([-2.0, 0]),
                               DESIRED_POSITION=np.array([0.4, 0]),
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.4, 0.4]),
