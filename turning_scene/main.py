@@ -14,7 +14,7 @@ class Main():
 
         # Setup
         self.duration = 100
-        self.P = C.PARAMETERSET_2  # Scenario parameters choice
+        self.P = C.PARAMETERSET_3  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()
         self.fps = C.FPS
@@ -31,20 +31,17 @@ class Main():
 
         # Vehicle Definitions ('aggressive','reactive','passive_aggressive')
         self.car_1 = DummyVehicle(scenario_parameters=self.P,
-                                       car_parameters_self=self.P.CAR_1,
-                                       who=1)  #M
-        self.car_2 = DummyVehicle (scenario_parameters=self.P,
-                                       car_parameters_self=self.P.CAR_2,
-                                       who=0)  #H
-        self.car_3 = AutonomousVehicle()
+                                  car_parameters_self=self.P.CAR_1,
+                                  who=1)  #H1
+        self.car_2 = DummyVehicle(scenario_parameters=self.P,
+                                  car_parameters_self=self.P.CAR_2,
+                                  who=2)  #H2
+        self.car_3 = AutonomousVehicle(scenario_parameters=self.P,
+                                       car_parameters_self=self.P.CAR_3,
+                                       loss_style="observer",
+                                       who=3) #M
 
         # Assign 'other' cars
-        self.car_1.other_car = self.car_2
-        self.car_2.other_car = self.car_1
-        self.car_1.states_o = self.car_2.states
-        self.car_2.states_o = self.car_1.states
-        # self.car_1.actions_set_o = self.car_2.actions_set
-        # self.car_2.actions_set_o = self.car_1.actions_set
         self.car_3.other_car_1 = self.car_1
         self.car_3.other_car_2 = self.car_2
         if C.DRAW:
@@ -71,47 +68,10 @@ class Main():
             if not self.paused:
                 self.car_1.update(self.frame)
                 self.car_2.update(self.frame)
-
-                # calculate gracefulness
-                grace = []
-                for wanted_trajectory_other in self.car_2.wanted_trajectory_other:
-                    wanted_actions_other = self.car_2.dynamic(wanted_trajectory_other)
-                    grace.append(1000*(self.car_1.states[-1][0] - wanted_actions_other[0][0]) ** 2)
-                self.car_1.social_gracefulness.append(sum(grace*self.car_2.inference_probability))
+                self.car_3.update(self.frame)
 
                 # Update data
-                self.sim_data.append_car1(states=self.car_1.states,
-                                          actions=self.car_1.actions_set,
-                                          action_sets=self.car_1.planned_actions_set,
-                                          trajectory = self.car_1.planned_trajectory_set,
-                                          predicted_theta_other=self.car_1.predicted_theta_other,
-                                          predicted_theta_self=self.car_1.predicted_theta_self,
-                                          predicted_actions_other=self.car_1.predicted_actions_other,
-                                          predicted_others_prediction_of_my_actions=
-                                          self.car_1.predicted_others_prediction_of_my_actions,
-                                          wanted_trajectory_self=self.car_1.wanted_trajectory_self,
-                                          wanted_trajectory_other=self.car_1.wanted_trajectory_other,
-                                          wanted_states_other=self.car_1.wanted_states_other,
-                                          inference_probability=self.car_1.inference_probability,
-                                          inference_probability_proactive=self.car_1.inference_probability_proactive,
-                                          theta_probability=self.car_1.theta_probability,
-                                          social_gracefulness=self.car_1.social_gracefulness)
-
-                self.sim_data.append_car2(states=self.car_2.states,
-                                          actions=self.car_2.actions_set,
-                                          action_sets=self.car_2.planned_actions_set,
-                                          trajectory=self.car_2.planned_trajectory_set,
-                                          predicted_theta_other=self.car_2.predicted_theta_other,
-                                          predicted_theta_self=self.car_2.predicted_theta_self,
-                                          predicted_actions_other=self.car_2.predicted_actions_other,
-                                          predicted_others_prediction_of_my_actions=
-                                          self.car_2.predicted_others_prediction_of_my_actions,
-                                          wanted_trajectory_self=self.car_2.wanted_trajectory_self,
-                                          wanted_trajectory_other=self.car_2.wanted_trajectory_other,
-                                          wanted_states_other=self.car_2.wanted_states_other,
-                                          inference_probability=self.car_2.inference_probability,
-                                          inference_probability_proactive=self.car_2.inference_probability_proactive,
-                                          theta_probability=self.car_2.theta_probability,)
+                self.sim_data.record([self.car_1, self.car_2, self.car_3])
 
             if self.frame >= self.duration:
                 break
@@ -163,18 +123,18 @@ class Main():
             # print("Simulation video output saved to %s." % self.output_dir)
         print("Simulation ended.")
 
-        import matplotlib.pyplot as plt
-        import numpy as np
-        car_1_theta = np.empty((0, 2))
-        car_2_theta = np.empty((0, 2))
-        for t in range(self.frame):
-            car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t], axis=0), axis=0)
-            car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t], axis=0), axis=0)
-        plt.subplot(2, 1, 1)
-        plt.plot(range(1,self.frame+1), car_1_theta[:,0], range(1,self.frame+1), car_1_theta[:,1])
-        plt.subplot(2, 1, 2)
-        plt.plot(range(1,self.frame+1), car_2_theta[:,0], range(1,self.frame+1), car_2_theta[:,1])
-        plt.show()
+        # import matplotlib.pyplot as plt
+        # import numpy as np
+        # car_1_theta = np.empty((0, 2))
+        # car_2_theta = np.empty((0, 2))
+        # for t in range(self.frame):
+        #     car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t], axis=0), axis=0)
+        #     car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t], axis=0), axis=0)
+        # plt.subplot(2, 1, 1)
+        # plt.plot(range(1,self.frame+1), car_1_theta[:,0], range(1,self.frame+1), car_1_theta[:,1])
+        # plt.subplot(2, 1, 2)
+        # plt.plot(range(1,self.frame+1), car_2_theta[:,0], range(1,self.frame+1), car_2_theta[:,1])
+        # plt.show()
 
 if __name__ == "__main__":
     Main()
