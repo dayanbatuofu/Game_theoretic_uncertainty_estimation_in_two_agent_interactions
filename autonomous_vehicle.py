@@ -458,11 +458,11 @@ class AutonomousVehicle:
         s = self
         who = self.who
         trials_theta = C.THETA_SET
-        #if who == 1:
-        #    trials_theta_other = [1.]
-        #else:
-        #    trials_theta_other = C.THETA_SET
-        trials_theta_other = C.THETA_SET
+        if who == 1:
+           trials_theta_other = [1.]
+        else:
+           trials_theta_other = C.THETA_SET
+        # trials_theta_other = C.THETA_SET
         inference_set = []  # T0poODO: need to generalize
         loss_value_set = []
         for theta_self in trials_theta:
@@ -599,7 +599,7 @@ class AutonomousVehicle:
         for theta_other in trials_theta:
             theta_probability.append(sum(inference_probability_out[np.where(theta_other_out==theta_other)[0]]))
         #theta_probability = (self.theta_probability * self.frame + theta_probability) / (self.frame + 1)
-        theta_probability = self.theta_probability * theta_probability
+        # theta_probability = self.theta_probability * theta_probability
         if sum(theta_probability) > 0:
             theta_probability = theta_probability/sum(theta_probability)
         else:
@@ -689,6 +689,8 @@ class AutonomousVehicle:
                         trajectory_other_out.append(inference_set[candidate[i]][2][k])
                         trajectory_self_out.append(inference_set[candidate[i]][3][j])
                         trajectory_self_wanted_other_out.append(inference_set[candidate[i]][4][q])
+
+
         return theta_other_out, theta_self_out, trajectory_other_out, trajectory_self_out, \
                trajectory_self_wanted_other_out
 

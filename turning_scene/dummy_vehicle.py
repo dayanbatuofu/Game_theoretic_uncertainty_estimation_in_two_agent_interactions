@@ -43,3 +43,12 @@ class DummyVehicle:
 
     def dynamic(self, action):
 
+
+    def traj2path(self, state):
+
+
+
+
+
+
+    def
