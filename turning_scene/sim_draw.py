@@ -60,14 +60,19 @@ class Sim_Draw():
         size_car_2 = self.car2_image.get_size()
         self.screen.blit(self.car2_image, (pixel_pos_car_2[0] - size_car_2[0] / 2, pixel_pos_car_2[1] - size_car_2[1] / 2))
 
+        pixel_pos_car_3 = self.c2p(sim_data.car3_states[frame])
+        size_car_3 = self.car3_image.get_size()
+        self.screen.blit(self.car2_image,
+                         (pixel_pos_car_3[0] - size_car_3[0] / 2, pixel_pos_car_3[1] - size_car_3[1] / 2))
+
         coordinates_size = self.coordinates_image.get_size()
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE - coordinates_size[1] - 10 / 2))
 
-        if not car_num_display:  # If Car 1
+        if car_num_display == 1:  # If Car 1
             # Draw predicted state of other
             state_range = []
             for t in range(len(sim_data.car1_predicted_actions_other[frame])):
-                state_range.append(self.c2p((sim_data.car1_predicted_actions_other[frame][t][-1]-sim_data.car2_states[frame])*0.7+sim_data.car2_states[frame]))
+                state_range.append(self.c2p((sim_data.car1_predicted_actions_other[frame][t][-1]-sim_data.car1_states[frame])*0.7+sim_data.car1_states[frame]))
                 # for i in range(len(sim_data.car1_predicted_actions_other[frame][t])):
                 #     state = sim_data.car2_states[frame] + \
                 #             np.sum(sim_data.car1_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
