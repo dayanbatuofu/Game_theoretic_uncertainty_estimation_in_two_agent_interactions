@@ -42,6 +42,8 @@ class Main():
                                        who=3) #M
 
         # Assign 'other' cars
+        self.car_1.other_car = self.car_2
+        self.car_2.other_car = self.car_1
         self.car_3.other_car_1 = self.car_1
         self.car_3.other_car_2 = self.car_2
         if C.DRAW:
