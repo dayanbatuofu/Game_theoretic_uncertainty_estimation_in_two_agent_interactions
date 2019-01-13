@@ -599,7 +599,7 @@ class AutonomousVehicle:
         for theta_other in trials_theta:
             theta_probability.append(sum(inference_probability_out[np.where(theta_other_out==theta_other)[0]]))
         #theta_probability = (self.theta_probability * self.frame + theta_probability) / (self.frame + 1)
-        # theta_probability = self.theta_probability * theta_probability
+        theta_probability = self.theta_probability * theta_probability
         if sum(theta_probability) > 0:
             theta_probability = theta_probability/sum(theta_probability)
         else:
