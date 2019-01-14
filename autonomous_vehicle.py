@@ -457,12 +457,12 @@ class AutonomousVehicle:
         """ run multiple searches with different initial guesses """
         s = self
         who = self.who
-        trials_theta = C.THETA_SET
+        trials_theta_other = C.THETA_SET
         if who == 1:
-           trials_theta_other = [1.]
+           trials_theta = [1.]
         else:
-           trials_theta_other = C.THETA_SET
-        # trials_theta_other = C.THETA_SET
+           trials_theta = C.THETA_SET
+        #trials_theta = C.THETA_SET
         inference_set = []  # T0poODO: need to generalize
         loss_value_set = []
         for theta_self in trials_theta:
