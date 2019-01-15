@@ -341,37 +341,57 @@ class Sim_Draw():
         #     # self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
 
         # Bounds
-        if self.P.BOUND_HUMAN_X is not None:
-            _bound1 = self.c2p((self.P.BOUND_HUMAN_X[0], 0))
-            _bound2 = self.c2p((self.P.BOUND_HUMAN_X[1], 0))
-            bounds = np.array([_bound1[1], _bound2[1]])
-            # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
-                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        bounds = 0.4
+        centers = np.array([-1.2, -0.4, 0.4, 1.2])
 
-        if self.P.BOUND_HUMAN_Y is not None:
-            _bound1 = self.c2p((0, self.P.BOUND_HUMAN_Y[0]))
-            _bound2 = self.c2p((0, self.P.BOUND_HUMAN_Y[1]))
-            bounds = np.array([_bound1[0], _bound2[0]])
-            # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
-                         ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
 
-        if self.P.BOUND_MACHINE_X is not None:
-            _bound1 = self.c2p((self.P.BOUND_MACHINE_X[0], 0))
-            _bound2 = self.c2p((self.P.BOUND_MACHINE_X[1], 0))
-            bounds = np.array([_bound1[1], _bound2[1]])
-            # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
-                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
 
-        if self.P.BOUND_MACHINE_Y is not None:
-            _bound1 = self.c2p((0, self.P.BOUND_MACHINE_Y[0]))
-            _bound2 = self.c2p((0, self.P.BOUND_MACHINE_Y[1]))
-            bounds = np.array([_bound1[0], _bound2[0]])
-            # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
-                         ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
+        # Draw vertical lines
+
+        for i in range(len(centers)):
+            _centers = self.c2p((centers[i],0))
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, _centers),
+                     (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, _centers), bounds*2)
+
+        # Draw horizontal lines
+        for i in range(len(centers)):
+            _centers = self.c2p((0, centers[i]))
+            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (_centers, 0),
+                         (_centers, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds*2)
+
+
+
+        # if self.P.BOUND_HUMAN_X is not None:
+        #     _bound1 = self.c2p((self.P.BOUND_HUMAN_X[0], 0))
+        #     _bound2 = self.c2p((self.P.BOUND_HUMAN_X[1], 0))
+        #     bounds = np.array([_bound1[1], _bound2[1]])
+        #     # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
+        #                  (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        #
+        # if self.P.BOUND_HUMAN_Y is not None:
+        #     _bound1 = self.c2p((0, self.P.BOUND_HUMAN_Y[0]))
+        #     _bound2 = self.c2p((0, self.P.BOUND_HUMAN_Y[1]))
+        #     bounds = np.array([_bound1[0], _bound2[0]])
+        #     # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
+        #                  ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
+        #
+        # if self.P.BOUND_MACHINE_X is not None:
+        #     _bound1 = self.c2p((self.P.BOUND_MACHINE_X[0], 0))
+        #     _bound2 = self.c2p((self.P.BOUND_MACHINE_X[1], 0))
+        #     bounds = np.array([_bound1[1], _bound2[1]])
+        #     # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
+        #                  (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        #
+        # if self.P.BOUND_MACHINE_Y is not None:
+        #     _bound1 = self.c2p((0, self.P.BOUND_MACHINE_Y[0]))
+        #     _bound2 = self.c2p((0, self.P.BOUND_MACHINE_Y[1]))
+        #     bounds = np.array([_bound1[0], _bound2[0]])
+        #     # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
+        #                  ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
 
     def c2p(self, coordinates):
         x = C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH / 2)
