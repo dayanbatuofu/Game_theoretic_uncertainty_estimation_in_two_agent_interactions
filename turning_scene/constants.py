@@ -169,9 +169,8 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([0., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.0001,
+                              ABILITY=0.001,
                               ABILITY_O=0.002)
-
         # Car 2
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
                               INITIAL_POSITION=np.array([3, -1.2]),
@@ -192,7 +191,7 @@ class CONSTANTS:
                               INTENT=1e3,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=180,
-                              ABILITY=0.00005,
+                              ABILITY=0.002,
                               ABILITY_O=0.002)
 
 

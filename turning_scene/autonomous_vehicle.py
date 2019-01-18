@@ -71,8 +71,8 @@ class AutonomousVehicle:
     def check_view(self):
 
         if self.frame >= 2:
-            action_car2 = (self.other_car_1.speed[-2] - self.other_car_1.speed[-1])
-            if action_car2 >= 0:
+            action_car1 = (self.other_car_1.speed[-1] - self.other_car_1.speed[-2])
+            if action_car1 > 0:
                 new_FOV = 0
             else:
                 new_FOV = 1
@@ -85,8 +85,8 @@ class AutonomousVehicle:
 
     def get_actions(self, FOV):
         if FOV == 0:
-            actions = 1
-        else:
+            actions = -2
+        elif FOV == 1:
             actions = -2
         return actions
 

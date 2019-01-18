@@ -32,9 +32,6 @@ class DummyVehicle:
                                            self.image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.P)
 
         self.states = [self.P_CAR.INITIAL_POSITION]
-        self.actions_set = []
-        self.trajectory = []
-        self.track_back = 0
         self.speed = [self.P_CAR.INITIAL_SPEED]
         self.ability = self.P_CAR.ABILITY
         self.orientation = [self.P_CAR.ORIENTATION]
@@ -76,7 +73,7 @@ class DummyVehicle:
     def get_actions(self, FOV):
         if self.who == 1:
             if FOV == 0:
-                actions = 0
+                actions = 1
             elif FOV == 1:
                 actions  = -2
         elif self.who == 2:
@@ -145,22 +142,22 @@ class DummyVehicle:
         x0,y0 = block_state
 
         xp = x0 + C.CAR_LENGTH*0.5
-        yp = y0 - C.CAR_WIDTH*0.5
+        yp = y0 + C.CAR_WIDTH*0.5
 
-        xq = x0 + C.CAR_LENGTH*0.5
+        xq = x0 - C.CAR_LENGTH*0.5
         yq = y0 - C.CAR_WIDTH*0.5
 
-        a = np.divide((y2-y1),(x2-x1))
-        b = np.divide((y1*x2-y1*x1+x1*y2-x1*y1),(x2-x1))
+        a = np.divide((y2-y1), (x2-x1))
+        b = np.divide((y1*x2-x1*y2), (x2-x1))
 
         diff1 = a*xp + b - yp
         diff2 = a*xq + b - yq
 
 
-        if diff1*diff2 <= 0:
-            new_FOV = 0
-        else:
+        if diff1*diff2 >= 0:
             new_FOV = 1
+        else:
+            new_FOV = 0
 
 
 
