@@ -138,7 +138,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1,
+                              INTENT=1e3,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=-90,
                               ABILITY=0.002,

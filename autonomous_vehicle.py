@@ -457,12 +457,12 @@ class AutonomousVehicle:
         """ run multiple searches with different initial guesses """
         s = self
         who = self.who
-        trials_theta = C.THETA_SET
-        #if who == 1:
-        #    trials_theta_other = [1.]
-        #else:
-        #    trials_theta_other = C.THETA_SET
         trials_theta_other = C.THETA_SET
+        if who == 1:
+           trials_theta = [1.]
+        else:
+           trials_theta = C.THETA_SET
+        # trials_theta = C.THETA_SET
         inference_set = []  # T0poODO: need to generalize
         loss_value_set = []
         for theta_self in trials_theta:
@@ -596,7 +596,7 @@ class AutonomousVehicle:
 
         inference_probability_out = np.array(inference_probability_out)
         # update theta probability
-        for theta_other in trials_theta:
+        for theta_other in trials_theta_other:
             theta_probability.append(sum(inference_probability_out[np.where(theta_other_out==theta_other)[0]]))
         #theta_probability = (self.theta_probability * self.frame + theta_probability) / (self.frame + 1)
         theta_probability = self.theta_probability * theta_probability
@@ -606,8 +606,8 @@ class AutonomousVehicle:
             theta_probability = np.ones(C.THETA_SET.shape)/C.THETA_SET.size
 
         # update inference probability accordingly
-        for i in range(len(trials_theta)):
-            id = np.where(theta_other_out == trials_theta[i])[0]
+        for i in range(len(trials_theta_other)):
+            id = np.where(theta_other_out == trials_theta_other[i])[0]
             inference_probability_out[id] = inference_probability_out[id]/\
                                              sum(inference_probability_out[id]) * theta_probability[i]
         inference_probability_out = inference_probability_out/sum(inference_probability_out)
@@ -689,6 +689,8 @@ class AutonomousVehicle:
                         trajectory_other_out.append(inference_set[candidate[i]][2][k])
                         trajectory_self_out.append(inference_set[candidate[i]][3][j])
                         trajectory_self_wanted_other_out.append(inference_set[candidate[i]][4][q])
+
+
         return theta_other_out, theta_self_out, trajectory_other_out, trajectory_self_out, \
                trajectory_self_wanted_other_out
 
@@ -801,6 +803,7 @@ class AutonomousVehicle:
         # if len(eq_all) != 0:
         trajectory_self = [trials_trajectory_self[eq_all[i][0]] for i in range(len(eq_all))]
         trajectory_other = [trials_trajectory_other[eq_all[i][1]] for i in range(len(eq_all))]
+
         # else:
         #     # trajectory_self = []
         #     # trajectory_other = []

@@ -176,7 +176,7 @@ class LossFunctions:
 
                 loss.append(collision_loss + intent_loss)
             loss_all += sum(np.array(loss) * np.array(probability))
-        # print time.time()
+        # print time.time()pychre
         return loss_all  # Return weighted sum
 
     def courteous_baseline_loss(self, agent, action, other_agent_intent):  # loss of other when self uses s.wanted_trajectory_self

@@ -13,7 +13,7 @@ class Main():
     def __init__(self):
 
         # Setup
-        self.duration = 100
+        self.duration = 500
         self.P = C.PARAMETERSET_3  # Scenario parameters choice
         # Time handling
         self.clock = pg.time.Clock()
@@ -25,7 +25,7 @@ class Main():
         self.car_num_display = 0
 
         # Sim output
-        self.sim_data = Sim_Data()
+        self.sim_data = Sim_Data(3)
 
         # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")
 
@@ -38,12 +38,15 @@ class Main():
                                   who=2)  #H2
         self.car_3 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_3,
-                                       loss_style="observer",
                                        who=3) #M
 
         # Assign 'other' cars
-        self.car_1.other_car = self.car_2
-        self.car_2.other_car = self.car_1
+        self.car_1.other_car_1 = self.car_2
+        self.car_1.other_car_2 = self.car_3
+
+        self.car_2.other_car_1 = self.car_1
+        self.car_2.other_car_2 = self.car_3
+
         self.car_3.other_car_1 = self.car_1
         self.car_3.other_car_2 = self.car_2
         if C.DRAW:

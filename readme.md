@@ -14,7 +14,7 @@ Contributors: Steven Elliott, Yiwei Wang, Varun Jammula, Yi Ren, Wenlong Zhang, 
 
 The past decade has witnessed rapid advancement of autonomous driving since [the DARPA urban 
 challenge](http://archive.darpa.mil/grandchallenge/). 
-Till 2017, there were [44 large corporates](https://www.cbinsights.com/research/autonomous-driverless-vehicles-corporations-list/)
+Till 2017, there were [46 large corporates](https://www.cbinsights.com/research/autonomous-driverless-vehicles-corporations-list/)
  across the world developing autonomous vehicles (
 AVs). In the U.S., California and Arizona have allowed tests of AVs on public roads without human drivers. 
 There are currently more than 600 AVs on the public roads in Arizona, including Alphabet's Waymo, 

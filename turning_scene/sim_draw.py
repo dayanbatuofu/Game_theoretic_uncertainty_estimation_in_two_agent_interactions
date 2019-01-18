@@ -52,67 +52,69 @@ class Sim_Draw():
         self.draw_axes()
 
         # Draw Images
-        pixel_pos_car_1 = self.c2p(sim_data.car1_states[frame])
+        pixel_pos_car_1 = self.c2p(sim_data.states[0][frame])
         size_car_1 = self.car1_image.get_size()
+        self.car1_image = pg.transform.rotate(pg.image.load(C.ASSET_LOCATION + "red_car_sized.png"), sim_data.orientations[0][frame])
         self.screen.blit(self.car1_image, (pixel_pos_car_1[0] - size_car_1[0] / 2, pixel_pos_car_1[1] - size_car_1[1] / 2))
 
-        pixel_pos_car_2 = self.c2p(sim_data.car2_states[frame])
+        pixel_pos_car_2 = self.c2p(sim_data.states[1][frame])
         size_car_2 = self.car2_image.get_size()
         self.screen.blit(self.car2_image, (pixel_pos_car_2[0] - size_car_2[0] / 2, pixel_pos_car_2[1] - size_car_2[1] / 2))
 
-        pixel_pos_car_3 = self.c2p(sim_data.car3_states[frame])
+        pixel_pos_car_3 = self.c2p(sim_data.states[2][frame])
         size_car_3 = self.car3_image.get_size()
-        self.screen.blit(self.car2_image,
+        self.screen.blit(self.car3_image,
                          (pixel_pos_car_3[0] - size_car_3[0] / 2, pixel_pos_car_3[1] - size_car_3[1] / 2))
 
         coordinates_size = self.coordinates_image.get_size()
         self.screen.blit(self.coordinates_image, (10, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE - coordinates_size[1] - 10 / 2))
 
-        if car_num_display == 1:  # If Car 1
-            # Draw predicted state of other
-            state_range = []
-            for t in range(len(sim_data.car1_predicted_actions_other[frame])):
-                state_range.append(self.c2p((sim_data.car1_predicted_actions_other[frame][t][-1]-sim_data.car1_states[frame])*0.7+sim_data.car1_states[frame]))
-                # for i in range(len(sim_data.car1_predicted_actions_other[frame][t])):
-                #     state = sim_data.car2_states[frame] + \
-                #             np.sum(sim_data.car1_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
-                #     state_range.append(self.c2p(state))
-            state_range_unique, index, counts = \
-                np.unique(state_range, axis=0, return_index=True, return_counts=True)
-            probability = np.zeros(len(state_range_unique))
-            for i in range(len(state_range_unique)):
-                for j in range(len(state_range)):
-                    if np.array_equal(state_range[j], state_range_unique[i]):
-                        probability[i] += sim_data.car1_inference_probability_proactive[frame][j]
-                # pg.draw.lines(self.screen, DARK_CAR1, False, [self.c2p(sim_data.car2_states[frame]), state_range_unique[i]], 12)
-                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
-                               int(probability[i]*36), DARK_CAR1)
-                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
-                               max(int(probability[i]*36)-4,1), LIGHT_LIGHT_GREY)
-
-            # Draw prediction state of self
-            state_range = []
-            for t in range(len(sim_data.car2_predicted_actions_other[frame])):
-                # state_range.append(self.c2p(
-                #     np.sum(sim_data.car2_predicted_actions_other[frame][t], axis=0)*0.7+
-                #     sim_data.car1_states[frame]))
-                state_range.append(self.c2p((sim_data.car2_predicted_actions_other[frame][t][-1]-sim_data.car1_states[frame])*0.7+sim_data.car1_states[frame]))
-                # for i in range(len(sim_data.car2_predicted_actions_other[frame][t])):
-                #     state = sim_data.car1_states[frame] + \
-                #             np.sum(sim_data.car2_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
-                #     state_range.append(self.c2p(state))
-            state_range_unique, index, counts = \
-                np.unique(state_range, axis=0, return_index=True, return_counts=True)
-            probability = np.zeros(len(state_range_unique))
-            for i in range(len(state_range_unique)):
-                for j in range(len(state_range)):
-                    if np.array_equal(state_range[j], state_range_unique[i]):
-                        probability[i] += sim_data.car2_inference_probability_proactive[frame][j]
-                # pg.draw.lines(self.screen, DARK_CAR2, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 12)
-                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
-                               int(probability[i]*36), DARK_CAR2)
-                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
-                               max(int(probability[i]*36)-4,1), LIGHT_LIGHT_GREY)
+        # if car_num_display == 0:  # If Car 1
+        #     # Draw predicted state of other
+        #     state_range = []
+        #     for t in range(len(sim_data.car1_predicted_actions_other[frame])):
+        #         state_range.append(self.c2p((sim_data.car1_predicted_actions[frame][t][-1]-sim_data.car1_states[frame])*0.7+sim_data.car1_states[frame]))
+        #         # for i in range(len(sim_data.car1_predicted_actions_other[frame][t])):
+        #         #     state = sim_data.car2_states[frame] + \
+        #         #             np.sum(sim_data.car1_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
+        #         #     state_range.append(self.c2p(state))
+        #     state_range_unique, index, counts = \
+        #         np.unique(state_range, axis=0, return_index=True, return_counts=True)
+        #     probability = np.zeros(len(state_range_unique))
+        #     for i in range(len(state_range_unique)):
+        #         for j in range(len(state_range)):
+        #             if np.array_equal(state_range[j], state_range_unique[i]):
+        #                 probability[i] += sim_data.car1_inference_probability_proactive[frame][j]
+        #         # pg.draw.lines(self.screen, DARK_CAR1, False, [self.c2p(sim_data.car2_states[frame]), state_range_unique[i]], 12)
+        #         pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+        #                        int(probability[i]*36), DARK_CAR1)
+        #         pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+        #                        max(int(probability[i]*36)-4,1), LIGHT_LIGHT_GREY)
+        #
+        #     # Draw prediction state of self
+        #     state_range = []
+        #     for t in range(len(sim_data.car2_predicted_actions[frame])):
+        #         # state_range.append(self.c2p(
+        #         #     np.sum(sim_data.car2_predicted_actions_other[frame][t], axis=0)*0.7+
+        #         #     sim_data.car1_states[frame]))
+        #         state_range.append(self.c2p((sim_data.car2_predicted_actions[frame][t][-1]-sim_data.car1_states[frame])*0.7+sim_data.car2_states[frame]))
+        #         # for i in range(len(sim_data.car2_predicted_actions_other[frame][t])):
+        #         #     state = sim_data.car1_states[frame] + \
+        #         #             np.sum(sim_data.car2_predicted_actions_other[frame][t][:i+1], axis=0)*0.7
+        #         #     state_range.append(self.c2p(state))
+        #     state_range_unique, index, counts = \
+        #         np.unique(state_range, axis=0, return_index=True, return_counts=True)
+        #     probability = np.zeros(len(state_range_unique))
+        #     for i in range(len(state_range_unique)):
+        #         for j in range(len(state_range)):
+        #             if np.array_equal(state_range[j], state_range_unique[i]):
+        #                 probability[i] += sim_data.car2_inference_probability_proactive[frame][j]
+        #         # pg.draw.lines(self.screen, DARK_CAR2, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 12)
+        #         pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+        #                        int(probability[i]*36), DARK_CAR2)
+        #         pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+        #                        max(int(probability[i]*36)-4,1), LIGHT_LIGHT_GREY)
+        #     state_range = []
 
             # # # Draw prediction of prediction state of other
             # # state_range = []
@@ -158,82 +160,94 @@ class Sim_Draw():
             # #                    int(probability[i]*28), LIGHT_CAR1)
             #
             # Draw what others want me to do
-            state_range = []
-            for t in range(len(sim_data.car2_wanted_trajectory_other[frame])):
-                # state_range.append(self.c2p(
-                #     sim_data.car2_wanted_trajectory_other[frame][t]))
-                state_range.append(self.c2p((sim_data.car2_wanted_states_other[frame][t][-1]-sim_data.car1_states[frame])*0.7 + sim_data.car1_states[frame]))
-                # for i in range(len(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t])):
-                #     state = sim_data.car1_states[frame] + \
-                #             np.sum(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t][:i+1], axis=0)*0.7
-                #     state_range.append(self.c2p(state))
-            state_range_unique, index, counts = \
-                np.unique(state_range, axis=0, return_index=True, return_counts=True)
-            probability = np.zeros(len(state_range_unique))
-            for i in range(len(state_range_unique)):
-                for j in range(len(state_range)):
-                    if np.array_equal(state_range[j], state_range_unique[i]):
-                        probability[i] += sim_data.car2_inference_probability[frame][j]
-                # pg.draw.lines(self.screen, YELLOW, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 4)
-                pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
-                               int(probability[i]*24), YELLOW)
+            # state_range = []
+            # for t in range(len(sim_data.car2_wanted_trajectory_other[frame])):
+            #     # state_range.append(self.c2p(
+            #     #     sim_data.car2_wanted_trajectory_other[frame][t]))
+            #     state_range.append(self.c2p((sim_data.car2_wanted_states_other[frame][t][-1]-sim_data.car1_states[frame])*0.7 + sim_data.car1_states[frame]))
+            #     # for i in range(len(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t])):
+            #     #     state = sim_data.car1_states[frame] + \
+            #     #             np.sum(sim_data.car1_predicted_others_prediction_of_my_actions[frame][t][:i+1], axis=0)*0.7
+            #     #     state_range.append(self.c2p(state))
+            # state_range_unique, index, counts = \
+            #     np.unique(state_range, axis=0, return_index=True, return_counts=True)
+            # probability = np.zeros(len(state_range_unique))
+            # for i in range(len(state_range_unique)):
+            #     for j in range(len(state_range)):
+            #         if np.array_equal(state_range[j], state_range_unique[i]):
+            #             probability[i] += sim_data.car2_inference_probability[frame][j]
+            #     # pg.draw.lines(self.screen, YELLOW, False, [self.c2p(sim_data.car1_states[frame]), state_range_unique[i]], 4)
+            #     pygame.gfxdraw.filled_circle(self.screen, state_range_unique[i][0], state_range_unique[i][1],
+            #                    int(probability[i]*24), YELLOW)
 
-            # Draw planned action of self
-            state_range = []
-            for i in range(len(sim_data.car1_planned_action_sets[frame])):
-                    # state = sim_data.car1_states[frame] + \
-                    #         np.sum(sim_data.car1_planned_action_sets[frame][:i+1], axis=0)*0.7
-                    # state_range.append(self.c2p(state))
-                state_range.append(self.c2p((sim_data.car1_planned_action_sets[frame][i]-sim_data.car1_states[frame])*0.7+sim_data.car1_states[frame]))
+            # # Draw planned action of self
+            # state_range = []
+            # for i in range(len(sim_data.car1_planned_action_sets[frame])):
+            #         # state = sim_data.car1_states[frame] + \
+            #         #         np.sum(sim_data.car1_planned_action_sets[frame][:i+1], axis=0)*0.7
+            #         # state_range.append(self.c2p(state))
+            #     state_range.append(self.c2p((sim_data.car1_planned_action_sets[frame][i]-sim_data.car1_states[frame])*0.7+sim_data.car1_states[frame]))
+            #
+            # pg.draw.lines(self.screen, GREEN, False, state_range, 4)
+            #
+            # # Draw planned action of other
+            # state_range = []
+            # for i in range(len(sim_data.car2_planned_action_sets[frame])):
+            #     # state = sim_data.car2_states[frame] + \
+            #     #         np.sum(sim_data.car2_planned_action_sets[frame][:i+1], axis=0)*0.7
+            #     # state_range.append(self.c2p(state))
+            #     state_range.append(self.c2p((sim_data.car2_planned_action_sets[frame][i]-sim_data.car2_states[frame])*0.7+sim_data.car2_states[frame]))
+            # pg.draw.lines(self.screen, GREEN, False, state_range, 4)
+            # state_range = []
+            # for i in range(len(sim_data.car3_planned_action_sets[frame])):
+            #     # state = sim_data.car2_states[frame] + \
+            #     #         np.sum(sim_data.car2_planned_action_sets[frame][:i+1], axis=0)*0.7
+            #     # state_range.append(self.c2p(state))
+            #     state_range.append(self.c2p((sim_data.car3_planned_action_sets[frame][i]-sim_data.car3_states[frame])*0.7+sim_data.car3_states[frame]))
+            # pg.draw.lines(self.screen, GREEN, False, state_range, 4)
 
-            pg.draw.lines(self.screen, GREEN, False, state_range, 4)
 
-            # Draw planned action of other
-            state_range = []
-            for i in range(len(sim_data.car2_planned_action_sets[frame])):
-                # state = sim_data.car2_states[frame] + \
-                #         np.sum(sim_data.car2_planned_action_sets[frame][:i+1], axis=0)*0.7
-                # state_range.append(self.c2p(state))
-                state_range.append(self.c2p((sim_data.car2_planned_action_sets[frame][i]-sim_data.car2_states[frame])*0.7+sim_data.car2_states[frame]))
-            pg.draw.lines(self.screen, GREEN, False, state_range, 4)
-
-        else:  # If Car 2
-
-            # Draw predicted state of other
-            state_range = []
-            for i in range(len(sim_data.car2_predicted_actions_other[frame])):
-                state = sim_data.car2_predicted_actions_other[frame][i]
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, DARK_GREY, False, state_range, 16)
-
-            # Draw prediction of prediction state of self
-            state_range = []
-            for i in range(len(sim_data.car2_predicted_others_prediction_of_my_actions[frame])):
-                state = sim_data.car2_states[frame] + np.sum(sim_data.car2_predicted_others_prediction_of_my_actions[frame][:i + 1], axis=0)
-                state_range.append(self.c2p(state))
-            pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 16)
-
-            # Draw state
-            state_range = []
-            for i in range(len(sim_data.car2_planned_action_sets[frame])):
-                # state = sim_data.car2_states[frame] + np.sum(sim_data.car2_planned_action_sets[frame][:i + 1], axis=0)
-                # state_range.append(self.c2p(state))
-                state_range.append(self.c2p((sim_data.car1_planned_action_sets[frame][i]-sim_data.car1_states[frame]) * 0.7 + sim_data.car1_states[frame]))
-            pg.draw.lines(self.screen, BLACK, False, state_range, 6)
+        # else:  # If Car 2
+        #
+        #     # Draw predicted state of other
+        #     state_range = []
+        #     for i in range(len(sim_data.car2_predicted_actions_other[frame])):
+        #         state = sim_data.car2_predicted_actions_other[frame][i]
+        #         state_range.append(self.c2p(state))
+        #     pg.draw.lines(self.screen, DARK_GREY, False, state_range, 16)
+        #
+        #     # # Draw prediction of prediction state of self
+        #     # state_range = []
+        #     # for i in range(len(sim_data.car2_predicted_others_prediction_of_my_actions[frame])):
+        #     #     state = sim_data.car2_states[frame] + np.sum(sim_data.car2_predicted_others_prediction_of_my_actions[frame][:i + 1], axis=0)
+        #     #     state_range.append(self.c2p(state))
+        #     # pg.draw.lines(self.screen, LIGHT_GREY, False, state_range, 16)
+        #
+        #     # Draw state
+        #     state_range = []
+        #     for i in range(len(sim_data.car2_planned_action_sets[frame])):
+        #         # state = sim_data.car2_states[frame] + np.sum(sim_data.car2_planned_action_sets[frame][:i + 1], axis=0)
+        #         # state_range.append(self.c2p(state))
+        #         state_range.append(self.c2p((sim_data.car1_planned_action_sets[frame][i]-sim_data.car1_states[frame]) * 0.7 + sim_data.car1_states[frame]))
+        #     pg.draw.lines(self.screen, BLACK, False, state_range, 6)
 
         # Annotations
         font = pg.font.SysFont("Arial", 30)
-
-        label = font.render("Car 1 state: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (350, 360))
-        label = font.render("Car 1 action index: (%5.4f)" % (sim_data.car1_planned_trajectory_set[frame][0]), 1, (0, 0, 0))
-        self.screen.blit(label, (350, 400))
-
-        label = font.render("Car 2 state: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
-        self.screen.blit(label, (350, 440))
-        label = font.render("Car 2 action index: (%5.4f)" % (sim_data.car2_planned_trajectory_set[frame][0]), 1, (0, 0, 0))
-        self.screen.blit(label, (350, 480))
-
+        #
+        # label = font.render("Car 1 state: (%5.4f , %5.4f)" % (sim_data.car1_states[frame][0], sim_data.car1_states[frame][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 360))
+        # label = font.render("Car 1 action index: (%5.4f)" % (sim_data.car1_planned_trajectory_set[frame][0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 400))
+        #
+        # label = font.render("Car 2 state: (%5.4f , %5.4f)" % (sim_data.car2_states[frame][0], sim_data.car2_states[frame][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 440))
+        # label = font.render("Car 2 action index: (%5.4f)" % (sim_data.car2_planned_trajectory_set[frame][0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 480))
+        #
+        # label = font.render("Car 3 state: (%5.4f , %5.4f)" % (sim_data.car3_states[frame][0], sim_data.car3_states[frame][1]), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 520))
+        # label = font.render("Car 3 action index: (%5.4f)" % (sim_data.car3_planned_trajectory_set[frame][0]), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 560))
 
         # label = font.render("Car 1 intent by 1: %5.4f" % (np.sum(sim_data.car1_predicted_theta_self[frame])), 1, (0, 0, 0))
         # self.screen.blit(label, (410, 440))
@@ -258,8 +272,8 @@ class Sim_Draw():
         # label = font.render("Car 2 intent by 2: %5.4f" % (np.sum(sim_data.car2_predicted_theta_self[frame])), 1, (0, 0, 0))
         # self.screen.blit(label, (410, 560))
 
-        label = font.render("Lack of Courtesy: %1.4f" % (np.sum(sim_data.car1_gracefulness)), 1, (0, 0, 0))
-        self.screen.blit(label, (350, 10))
+        # label = font.render("Lack of Courtesy: %1.4f" % (np.sum(sim_data.car1_gracefulness)), 1, (0, 0, 0))
+        # self.screen.blit(label, (350, 10))
 
         label = font.render("Frame: %i" % (frame + 1), 1, (0, 0, 0))
         self.screen.blit(label, (10, 10))
@@ -327,38 +341,71 @@ class Sim_Draw():
         #     # text = font.render("%3.2f" % label, 1, GREY)
         #     # self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
 
-        # Bounds
-        if self.P.BOUND_HUMAN_X is not None:
-            _bound1 = self.c2p((self.P.BOUND_HUMAN_X[0], 0))
-            _bound2 = self.c2p((self.P.BOUND_HUMAN_X[1], 0))
-            bounds = np.array([_bound1[1], _bound2[1]])
-            # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
-                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        # # Bounds
+        # bounds = 0.4
+        # centers = np.array([-1.2, -0.4, 0.4, 1.2])
+        # _bound1 = self.c2p((bounds, 0))
+        # _bound2 = self.c2p((bounds, 0))
+        # width = np.abs(_bound1[1] - bounds[1])
+        #
+        #
+        # # Draw vertical lines
+        #
+        # for i in range(len(centers)):
+        #
+        #     _centers = self.c2p((centers[i],0))[0]
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, _centers),
+        #              (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, _centers), width)
+        #
+        # # Draw horizontal lines
+        # for i in [1, 2]:
+        #     _centers = self.c2p((0, centers[i]))[1]
+        #     pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (_centers, 0),
+        #                  (_centers, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), width)
 
-        if self.P.BOUND_HUMAN_Y is not None:
-            _bound1 = self.c2p((0, self.P.BOUND_HUMAN_Y[0]))
-            _bound2 = self.c2p((0, self.P.BOUND_HUMAN_Y[1]))
-            bounds = np.array([_bound1[0], _bound2[0]])
-            # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
-                         ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
 
-        if self.P.BOUND_MACHINE_X is not None:
-            _bound1 = self.c2p((self.P.BOUND_MACHINE_X[0], 0))
-            _bound2 = self.c2p((self.P.BOUND_MACHINE_X[1], 0))
-            bounds = np.array([_bound1[1], _bound2[1]])
-            # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
-                         (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        # draw horizontal lines
 
-        if self.P.BOUND_MACHINE_Y is not None:
-            _bound1 = self.c2p((0, self.P.BOUND_MACHINE_Y[0]))
-            _bound2 = self.c2p((0, self.P.BOUND_MACHINE_Y[1]))
-            bounds = np.array([_bound1[0], _bound2[0]])
-            # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
-            pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
-                         ((bounds[1] + bounds[0])/2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
+        _bound1 = self.c2p((-0.8, 0))
+        _bound2 = self.c2p((0, 0))
+        bounds = np.array([_bound1[1], _bound2[1]])
+        # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
+                     (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        _bound1 = self.c2p((0, 0))
+        _bound2 = self.c2p((0.8, 0))
+        bounds = np.array([_bound1[1], _bound2[1]])
+        # pg.draw.line(self.screen, BLACK, (0, bounds[0]), (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, bounds[0]), 2)
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, (0, (bounds[1] + bounds[0])/2),
+                     (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE, (bounds[1] + bounds[0])/2), bounds[0] - bounds[1])
+        # draw vertical lines
+        _bound1 = self.c2p((0, -1.6))
+        _bound2 = self.c2p((0, -0.8))
+        bounds = np.array([_bound1[0], _bound2[0]])
+        # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0]) / 2, 0),
+                     ((bounds[1] + bounds[0]) / 2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
+
+        _bound1 = self.c2p((0, -0.8))
+        _bound2 = self.c2p((0, 0))
+        bounds = np.array([_bound1[0], _bound2[0]])
+        # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0]) / 2, 0),
+                     ((bounds[1] + bounds[0]) / 2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
+
+        _bound1 = self.c2p((0, 0))
+        _bound2 = self.c2p((0, 0.8))
+        bounds = np.array([_bound1[0], _bound2[0]])
+        # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0]) / 2, 0),
+                     ((bounds[1] + bounds[0]) / 2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
+
+        _bound1 = self.c2p((0, 0.8))
+        _bound2 = self.c2p((0, 1.6))
+        bounds = np.array([_bound1[0], _bound2[0]])
+        # pg.draw.line(self.screen, BLACK, (bounds[0], 0), (bounds[0], self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), 2)
+        pg.draw.line(self.screen, LIGHT_LIGHT_GREY, ((bounds[1] + bounds[0]) / 2, 0),
+                     ((bounds[1] + bounds[0]) / 2, self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE), bounds[1] - bounds[0])
 
     def c2p(self, coordinates):
         x = C.COORDINATE_SCALE * (coordinates[1] - self.origin[1] + self.P.SCREEN_WIDTH / 2)
