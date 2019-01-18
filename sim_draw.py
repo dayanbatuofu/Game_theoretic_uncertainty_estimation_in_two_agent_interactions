@@ -325,6 +325,11 @@ class Sim_Draw():
         #     # text = font.render("%3.2f" % label, 1, GREY)
         #     # self.screen.blit(text, (self.P.SCREEN_WIDTH * C.COORDINATE_SCALE - 30, 10 + offset_y + (self.P.SCREEN_HEIGHT * C.COORDINATE_SCALE) - (i * spacing)))
 
+
+        # Draw vertical lines
+
+
+
         # Bounds
         if self.P.BOUND_HUMAN_X is not None:
             _bound1 = self.c2p((self.P.BOUND_HUMAN_X[0], 0))
