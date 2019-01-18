@@ -192,7 +192,7 @@ class CONSTANTS:
                               INTENT=1e3,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=180,
-                              ABILITY=0.001,
+                              ABILITY=0.0001,
                               ABILITY_O=0.002)
 
 

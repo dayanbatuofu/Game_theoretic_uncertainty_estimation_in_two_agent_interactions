@@ -87,7 +87,7 @@ class AutonomousVehicle:
         if FOV == 0:
             actions = 1
         else:
-            actions = -1
+            actions = -2
         return actions
 
     def dynamic(self, action):
@@ -96,7 +96,7 @@ class AutonomousVehicle:
         state = path_state[0]
         acci = np.array([action * self.ability])
 
-        planned_speed = vel_self - acci
+        planned_speed = vel_self + acci
         planned_speed = np.clip(planned_speed, 0, C.VEHICLE_MAX_SPEED)
         predict_result_traj = state + planned_speed
 
