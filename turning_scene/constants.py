@@ -157,7 +157,7 @@ class CONSTANTS:
         # COLLISION BOXES
         COLLISION_BOXES = np.array([(-0.4, 0.4, -0.4, 0.4)])  # List of separate collision boxes (-x, x, -y, y)
 
-        VEHICLE_MAX_SPEED = 0.05
+        VEHICLE_MAX_SPEED = 0.03
         INITIAL_SPEED = 0.025
 
         # Car 1
@@ -169,12 +169,12 @@ class CONSTANTS:
                               INTENT=1,
                               COMMON_THETA=np.array([0., 0]),
                               ORIENTATION=0,
-                              ABILITY=0.002,
+                              ABILITY=0.0001,
                               ABILITY_O=0.002)
 
         # Car 2
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
-                              INITIAL_POSITION=np.array([4, -1.2]),
+                              INITIAL_POSITION=np.array([3, -1.2]),
                               INITIAL_SPEED=0.025,
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
@@ -185,14 +185,14 @@ class CONSTANTS:
                               ABILITY_O=0.002)
         # Car 3
         CAR_3 = CarParameters(SPRITE="white_car_sized.png",
-                              INITIAL_POSITION=np.array([1.46, -0.4]),
+                              INITIAL_POSITION=np.array([1.6, -0.4]),
                               INITIAL_SPEED=0,
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
                               INTENT=1e3,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=180,
-                              ABILITY=0.0001,
+                              ABILITY=0.00005,
                               ABILITY_O=0.002)
 
 

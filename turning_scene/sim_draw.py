@@ -39,7 +39,7 @@ class Sim_Draw():
         self.car3_image = pg.transform.rotate(pg.image.load(asset_loc + "blue_car_sized.png"), self.P.CAR_3.ORIENTATION)
 
         self.coordinates_image = pg.image.load(asset_loc + "coordinates.png")
-        self.origin = np.array([-1.0, 1.0])
+        self.origin = np.array([0, 0])
 
     def draw_frame(self, sim_data, car_num_display, frame):
 

@@ -76,9 +76,9 @@ class DummyVehicle:
     def get_actions(self, FOV):
         if self.who == 1:
             if FOV == 0:
-                actions = 2
+                actions = 0
             elif FOV == 1:
-                actions  = 0
+                actions  = -2
         elif self.who == 2:
             actions = 0
         return actions
@@ -88,47 +88,29 @@ class DummyVehicle:
         path_state = np.array(self.states[-1])
         state = self.path2traj(path_state)
         acci = np.array([action * self.ability])
-        #
-        # vel_0 = vel_self  # type: ndarray # initial vel??
-        # # A = np.array([[1, 0, 0, 0],
-        #               [0, 1, 0, 0],
-        #               [0, 0, 2, 0],
-        #               [0, 0, 2, 6 * pow(T * N, 1)]])
-        # b1 = np.array([state_0, vel_0, acci, 0])
-        #
-        # coeffx = np.linalg.solve(A, b1)
-        # #     a = A.dot(coeffx)
-        # #     b = np.polyval(coeffx, T * N)
-        # velx = []
-        # for t in range(1, N + 1, 1):
-        #     velx.append(
-        #         ((coeffx[3] * 3 * (pow((T * t), 2))) + (coeffx[2] * 2 * (pow((T * t), 1))) + (coeffx[1])))
-        # predict_result_vel = np.column_stack((velx, vely))
-        # A = np.zeros([N, N])
-        # A[np.tril_indices(N, 0)] = 1
-        # predict_result_traj = np.matmul(A, predict_result_vel) + state
         planned_speed = vel_self + acci
-        planned_speed = np.clip(planned_speed,-C.VEHICLE_MAX_SPEED , C.VEHICLE_MAX_SPEED)
+        planned_speed = np.clip(planned_speed, 0, C.VEHICLE_MAX_SPEED)
 
         predict_result_traj = state + planned_speed
         return predict_result_traj, planned_speed
 
     def traj2path(self, traj_state):
         if self.who == 1:
-            if traj_state <= -0.4:
+            if traj_state <= -0.8:
                 path_state = np.array([traj_state[0],0.4])
                 orientation = 0
-            elif traj_state >= 0.6*np.pi -0.4:
+            elif traj_state >= 0.6*np.pi - 0.8:
                 x = 0.4
-                y = 0.6 * np.pi - 0.4 - traj_state + 0.4
+                y = -0.8 - (-0.6 * np.pi + 0.8 + traj_state)
                 orientation = 90
-                path_state = np.array([x , y])
+                path_state = np.array([x, y])
             else:
-                arc_lenth = traj_state[0] + 0.4
+                arc_lenth = traj_state[0] + 0.8
                 orientation = (arc_lenth / (0.6 * np.pi)) * 90
-                y = np.cos(orientation * np.pi / 180)
-                x = np.sin(orientation * np.pi / 180)
-                path_state = np.array([x - 0.4, y - 0.4])
+                orientation = np.clip(orientation,0,90)
+                y = np.cos(orientation * np.pi / 180)  * 1.2
+                x = np.sin(orientation * np.pi / 180)  * 1.2
+                path_state = np.array([x - 0.8, y - 0.8])
         elif self.who == 2:
             path_state = np.array([-traj_state, -1.2])
             orientation = 180
@@ -139,12 +121,12 @@ class DummyVehicle:
     def path2traj(self, path_state):
         if self.who == 1:
             if self.orientation[-1] == 90:
-                traj_state = -0.4 + (-0.4 - path_state[1]) + 0.6 * np.pi
+                traj_state = (-0.8 - path_state[1]) + 0.6 * np.pi -0.8
 
             elif self.orientation[-1] == 0:
                 traj_state = path_state[0]
             else:
-                traj_state = -0.4 + (self.orientation[-1] / 90) * 0.6 * np.pi
+                traj_state = -0.8 + (self.orientation[-1] / 90) * 0.6 * np.pi
         elif self.who == 2:
             traj_state = -path_state[0]
 
@@ -155,27 +137,33 @@ class DummyVehicle:
 
 
     def check_view(self):
-        # self_state = np.array(self.states[-1])
-        # other_state = np.array(self.other_car_1.states[-1])
-        # block_state = np.array(self.other_car_2.states[-1])
-        # x1,y1 = self_state
-        # x2,y2 = other_state
-        # x0,y0 = block_state
-        #
-        # x0 = x0 - C.CAR_LENGTH*0.5
-        # y0 = y0 - C.CAR_WIDTH*0.5
-        #
-        # a = np.divide((y2-y1),(x2-x1))
-        # b = np.divide((y1*x2-y1*x1+x1*y2-x1*y1),(x2-x1))
-        #
-        # if a*x0 + b - y0 <= 0:
-        #     new_FOV = 1
-        # else:
-        #     new_FOV = 0
+        self_state = np.array(self.states[-1])
+        other_state = np.array(self.other_car_1.states[-1])
+        block_state = np.array(self.other_car_2.states[-1])
+        x1,y1 = self_state
+        x2,y2 = other_state
+        x0,y0 = block_state
+
+        xp = x0 + C.CAR_LENGTH*0.5
+        yp = y0 - C.CAR_WIDTH*0.5
+
+        xq = x0 + C.CAR_LENGTH*0.5
+        yq = y0 - C.CAR_WIDTH*0.5
+
+        a = np.divide((y2-y1),(x2-x1))
+        b = np.divide((y1*x2-y1*x1+x1*y2-x1*y1),(x2-x1))
+
+        diff1 = a*xp + b - yp
+        diff2 = a*xq + b - yq
+
+
+        if diff1*diff2 <= 0:
+            new_FOV = 0
+        else:
+            new_FOV = 1
 
 
 
-        new_FOV = 0
         return new_FOV
 
 
