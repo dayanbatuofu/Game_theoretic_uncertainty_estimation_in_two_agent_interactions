@@ -64,7 +64,11 @@ class AutonomousVehicle:
         self.wanted_trajectory_self = []  # what other wants me to do
         self.wanted_trajectory_other = [] # what I want other to do
         self.wanted_states_other = []
-        self.inference_probability = [] # probability density of the inference vectors
+        if self.P_CAR.INTENT == 1:
+            self.inference_probability = [1, 0]  # probability density of the inference vectors
+        else:
+            self.inference_probability = [0, 1]  # probability density of the inference vectors
+
         self.inference_probability_proactive = [] # for proactive and socially aware actions
         self.theta_probability = np.ones(C.THETA_SET.shape)/C.THETA_SET.size
         self.social_gracefulness = []  # collect difference between action and what other wants
@@ -231,21 +235,24 @@ class AutonomousVehicle:
         return trajectory_self, actions_self
 
     def basic_motion(self):
+        s = self
+        o = s.other_car
         theta_self = self.intent
         trials_theta = C.THETA_SET
-        trajectory_probability = np.zeros(C.TRAJECTORY_SET.shape)
+        # theta_other = C.THETA_SET[np.argmax(self.theta_probability)]
+        # trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self, theta_other, s, o)
+        # trajectory_probability = np.zeros(C.TRAJECTORY_SET.shape)
+        trajectory_self = []
+        my_loss_all = []
         for j in range(len(trials_theta)):
             theta_other = trials_theta[j]
-            trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self,
-                                                                                              theta_other, self,
-                                                                                              self.other_car)
-            for i in range(len(C.TRAJECTORY_SET)):
-                t = C.TRAJECTORY_SET[i]
-                trajectory_probability[i] += len(np.where(trajectory_self == t)[0])*self.theta_probability[j]
-        trajectory_probability = trajectory_probability/sum(trajectory_probability)
+            trajectory_s, trajectory_other, my_loss, other_loss_all = self.equilibrium(theta_self, theta_other, s, o)
+            for i in range(len(trajectory_s)):
+                trajectory_self.append(trajectory_s[i])
+            my_loss_all.append(my_loss)
 
-        var = stats.rv_discrete(name='var', values=(C.TRAJECTORY_SET, trajectory_probability))
-        trajectory = np.hstack((var.rvs(size=1), [self.P_CAR.ORIENTATION]))
+
+        trajectory = trajectory_self[np.random.randint(0,len(trajectory_self))]
         return trajectory
 
     def multi_search(self, guess_set):
@@ -458,11 +465,11 @@ class AutonomousVehicle:
         s = self
         who = self.who
         trials_theta_other = C.THETA_SET
-        if who == 1:
-           trials_theta = [1.]
-        else:
-           trials_theta = C.THETA_SET
-        # trials_theta = C.THETA_SET
+        # if who == 1:
+        #    trials_theta = [1.]
+        # else:
+        #    trials_theta = C.THETA_SET
+        trials_theta = C.THETA_SET
         inference_set = []  # T0poODO: need to generalize
         loss_value_set = []
         for theta_self in trials_theta:

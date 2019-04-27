@@ -173,7 +173,7 @@ class CONSTANTS:
                               ABILITY_O=0.002)
         # Car 2
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
-                              INITIAL_POSITION=np.array([3, -1.2]),
+                              INITIAL_POSITION=np.array([4, -1.2]),
                               INITIAL_SPEED=0.025,
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,

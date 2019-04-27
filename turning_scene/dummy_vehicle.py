@@ -72,10 +72,13 @@ class DummyVehicle:
 
     def get_actions(self, FOV):
         if self.who == 1:
-            if FOV == 0:
+            if self.orientation[-1]<90:
+                if FOV == 0:
+                    actions = 1
+                elif FOV == 1:
+                    actions  = -2
+            else:
                 actions = 1
-            elif FOV == 1:
-                actions  = -2
         elif self.who == 2:
             actions = 0
         return actions

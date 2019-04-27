@@ -83,7 +83,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([3, 1]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
-                              INTENT=1,
+                              INTENT=1e3,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
                               ABILITY=0.02,
@@ -95,7 +95,7 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([3, 0]),  # Maybe change to be further down the road?
                               BOUND_X=None,
                               BOUND_Y=np.array([-0.5, 1.5]),
-                              INTENT=1e3,
+                              INTENT=1,
                               COMMON_THETA=np.array([5., 0]),
                               ORIENTATION=0,
                               ABILITY=0.02,
@@ -138,12 +138,11 @@ class CONSTANTS:
                               DESIRED_POSITION=np.array([0, -0.4]),
                               BOUND_X=np.array([-0.4, 0.4]),
                               BOUND_Y=None,
-                              INTENT=1e3,
+                              INTENT=1,
                               COMMON_THETA=np.array([0., -90]),
                               ORIENTATION=-90,
                               ABILITY=0.002,
                               ABILITY_O=0.002)
-
 class MATRICES:
 
     LOWER_TRIANGULAR_MATRIX = np.zeros((CONSTANTS.ACTION_NUMPOINTS, CONSTANTS.ACTION_NUMPOINTS))

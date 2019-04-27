@@ -41,11 +41,10 @@ class AutonomousVehicle:
         self.actions_set_o2 = []
         self.speed_o2 = []
         self.other_car_2 = []
-
+        self.collision = [0]
         self.FOV = [1]  # the vehicle sees the other dummy vehicle
 
     def update(self, frame):
-        who = self.who
         other1 = self.other_car_1
         other2 = self.other_car_2
         self.frame = frame
@@ -54,18 +53,18 @@ class AutonomousVehicle:
         self.track_back = min(C.TRACK_BACK, len(self.states))
 
         new_FOV = self.check_view()
-
+        new_collision = self.check_collision()
         ########## Calculate machine actions here ###########
-        planned_actions = self.get_actions(new_FOV)
+        planned_actions = self.get_actions(new_FOV, new_collision)
 
 
         planned_states_path, planned_speed = self.dynamic(planned_actions)
-        planned_states = self.path2traj(planned_states_path)
-        orientation = 180
+        planned_states, orientation = self.traj2path(planned_states_path,3)
         self.states.append(planned_states)
         self.speed.append(planned_speed)
         self.orientation.append(orientation)
         self.FOV.append(new_FOV)
+        self.collision.append(new_collision)
 
 
     def check_view(self):
@@ -82,11 +81,41 @@ class AutonomousVehicle:
         return new_FOV
 
 
+    def check_collision(self):
+        car1_states = [self.other_car_1.states[-1]]
+        car2_states = [self.other_car_2.states[-1]]
+        car1_speed = np.asarray(self.other_car_1.speed[-1])
+        car2_speed = np.asarray(self.other_car_2.speed[-1])
+        car1_orientation = [self.other_car_1.orientation[-1]]
+        car2_orientation = [self.other_car_2.orientation[-1]]
+        distance = [np.linalg.norm(car1_states[-1]-car2_states[-1])]
 
-    def get_actions(self, FOV):
-        if FOV == 0:
-            actions = -2
-        elif FOV == 1:
+        for i in range(100):
+            state1 = self.path2traj(car1_states[-1],1,car1_orientation[-1])
+            state2 = self.path2traj(car2_states[-1],2,car2_orientation[-1])
+            new_state1,new_orientation1 = self.traj2path(state1+car1_speed, 1)
+            new_state2,new_orientation2 = self.traj2path(state2+car2_speed, 2)
+            car1_orientation.append(new_orientation1)
+            car2_orientation.append(new_orientation2)
+            car1_states.append(new_state1)
+            car2_states.append(new_state2)
+            distance.append(np.linalg.norm(new_state1-new_state2))
+        if np.min(distance) <= 0.9:
+            collision = 1
+        else:
+            collision = 0
+        return collision
+
+
+
+    def get_actions(self, FOV,collision):
+        if collision == 1:
+            if FOV == 0:
+                actions = 2
+
+            elif FOV == 1:
+                actions = -2
+        else:
             actions = -2
         return actions
 
@@ -102,10 +131,49 @@ class AutonomousVehicle:
 
         return predict_result_traj, planned_speed
 
+    def traj2path(self, traj_state, who):
+        if who == 1:
+            if traj_state <= -0.8:
+                path_state = np.array([traj_state[0],0.4])
+                orientation = 0
+            elif traj_state >= 0.6*np.pi - 0.8:
+                x = 0.4
+                y = -0.8 - (-0.6 * np.pi + 0.8 + traj_state)
+                orientation = 90
+                path_state = np.array([x, y])
+            else:
+                arc_lenth = traj_state[0] + 0.8
+                orientation = (arc_lenth / (0.6 * np.pi)) * 90
+                orientation = np.clip(orientation,0,90)
+                y = np.cos(orientation * np.pi / 180)  * 1.2
+                x = np.sin(orientation * np.pi / 180)  * 1.2
+                path_state = np.array([x - 0.8, y - 0.8])
+        elif who == 2:
+            path_state = np.array([-traj_state, -1.2])
+            orientation = 180
 
-    def path2traj(self,traj_state):
-        planned_state = np.array([traj_state, -0.4])
-        return planned_state
+        elif who == 3:
+            path_state = np.array([traj_state, -0.4])
+            orientation = 180
+
+        return path_state, orientation
+
+
+    def path2traj(self, path_state, who, orientation):
+        if who == 1:
+            if orientation == 90:
+                traj_state = (-0.8 - path_state[1]) + 0.6 * np.pi -0.8
+
+            elif orientation == 0:
+                traj_state = path_state[0]
+            else:
+                traj_state = -0.8 + (orientation / 90) * 0.6 * np.pi
+        elif who == 2:
+            traj_state = -path_state[0]
+        elif who == 3:
+            traj_state = path_state[0]
+        return traj_state
+
 
 
 
