@@ -28,10 +28,10 @@ class Main():
 
         # self.sim_out = open("./sim_outputs/output_test.pkl", "wb")c
 
-        # Vehicle Definitions ('aggressive','reactive','passive_aggressive',"berkeley_courtesy")
+        # Vehicle Definitions ('aggressive','reactive','passive_aggressive',"berkeley_courtesy", 'courteous')
         self.car_1 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_1,
-                                       loss_style="passive_aggressive",
+                                       loss_style="courteous",
                                        who=1)  #M
         self.car_2 = AutonomousVehicle(scenario_parameters=self.P,
                                        car_parameters_self=self.P.CAR_2,

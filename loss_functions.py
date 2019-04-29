@@ -38,45 +38,53 @@ class LossFunctions:
         o = s.other_car
         state_s = s.states[-1]
         state_o = s.states_o[-1]
+        loss_total = 0
+        for other_intent, other_intent_p in \
+                zip(s.predicted_theta_other, s.inference_probability):
+            ##############################################################################################
+            # predict how others perceive your action
+            trajectory_other_all, inference_probability = self.other_agent_response(agent=s, action=trajectory, other_agent_intent=other_intent)
+            ##############################################################################################
 
-        ##############################################################################################
-        # predict how others perceive your action
-        trajectory_other_all, inference_probability = self.multi_search_intent(trajectory, s)
-        ##############################################################################################
+        # ##############################################################################################
+        # # predict how others perceive your action
+        # trajectory_other_all, inference_probability = self.multi_search_intent(trajectory, s)
+        # ##############################################################################################
 
-        loss_all = []
-        for trajectory_other in trajectory_other_all:
-            # actions_self = s.interpolate_from_trajectory(trajectory)
-            # actions_other = o.interpolate_from_trajectory(trajectory_other)
-            #
-            # s_other_predict = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
-            # s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
+            loss_all = []
+            for trajectory_other in trajectory_other_all:
+                # actions_self = s.interpolate_from_trajectory(trajectory)
+                # actions_other = o.interpolate_from_trajectory(trajectory_other)
+                #
+                # s_other_predict = np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_other)
+                # s_self_predict = state_s + np.matmul(M.LOWER_TRIANGULAR_MATRIX, actions_self)
 
-            s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s)
-            s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s)
-            D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
-            gap = 1.05  # TODO: generalize this
-            for i in range(s_self_predict.shape[0]):
+                s_other_predict, s_other_predict_vel = self.dynamic(trajectory_other, s)
+                s_self_predict, s_self_predict_vel = self.dynamic(trajectory, s)
+                D = s.collision_box.get_collision_loss(s_self_predict, s_other_predict, o.collision_box) + 1e-12
+                gap = 1.05  # TODO: generalize this
+                for i in range(s_self_predict.shape[0]):
+                    if trajectory[1] == 0:
+                        if s_self_predict[i, 0] <= -gap + 1e-12 or s_self_predict[i, 0] >= gap - 1e-12 or s_other_predict[
+                            i, 1] >= gap - 1e-12 or s_other_predict[i, 1] <= -gap + 1e-12:
+                            D[i] = np.inf
+                    else:
+                        if s_self_predict[i, 1] <= -gap + 1e-12 or s_self_predict[i, 1] >= gap - 1e-12 or s_other_predict[
+                            i, 0] >= gap - 1e-12 or s_other_predict[i, 0] <= -gap + 1e-12:
+                            D[i] = np.inf
+                collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-D + C.CAR_LENGTH ** 2 * 1.5)))
+                # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
+
                 if trajectory[1] == 0:
-                    if s_self_predict[i, 0] <= -gap + 1e-12 or s_self_predict[i, 0] >= gap - 1e-12 or s_other_predict[
-                        i, 1] >= gap - 1e-12 or s_other_predict[i, 1] <= -gap + 1e-12:
-                        D[i] = np.inf
+                    intent_loss = s.intent * np.exp(C.EXPTHETA * (s.P_CAR.DESIRED_POSITION[0] - s_self_predict[-1][0]))
                 else:
-                    if s_self_predict[i, 1] <= -gap + 1e-12 or s_self_predict[i, 1] >= gap - 1e-12 or s_other_predict[
-                        i, 0] >= gap - 1e-12 or s_other_predict[i, 0] <= -gap + 1e-12:
-                        D[i] = np.inf
-            collision_loss = np.sum(np.exp(C.EXPCOLLISION * (-D + C.CAR_LENGTH ** 2 * 1.5)))
-            # collision_loss = autonomous_vehicle.collision_box_s.get_collision_loss(s_self_predict, s_other_predict, autonomous_vehicle.collision_box_o)
+                    intent_loss = s.intent * np.exp(C.EXPTHETA * (-s.P_CAR.DESIRED_POSITION[1] + s_self_predict[-1][1]))
 
-            if trajectory[1] == 0:
-                intent_loss = s.intent * np.exp(C.EXPTHETA * (s.P_CAR.DESIRED_POSITION[0] - s_self_predict[-1][0]))
-            else:
-                intent_loss = s.intent * np.exp(C.EXPTHETA * (-s.P_CAR.DESIRED_POSITION[1] + s_self_predict[-1][1]))
-
-            loss_all.append(collision_loss + intent_loss)
-
-        return sum(np.array(loss_all) * np.array(
-            inference_probability)), trajectory_other_all, inference_probability  # Return weighted sum
+                loss_all.append(collision_loss + intent_loss)
+            loss_total += sum(np.array(loss_all) * np.array(inference_probability)) * other_intent_p
+        return loss_total, trajectory_other_all, inference_probability  # Return weighted sum
+        # return sum(np.array(loss_all) * np.array(
+        #     inference_probability)), trajectory_other_all, inference_probability  # Return weighted sum
 
     def reactive_multisearch(self, guess_self, guess_other, s):
         who = s.who

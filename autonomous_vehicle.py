@@ -238,18 +238,18 @@ class AutonomousVehicle:
         s = self
         o = s.other_car
         theta_self = self.intent
-        trials_theta = C.THETA_SET
-        # theta_other = C.THETA_SET[np.argmax(self.theta_probability)]
-        # trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self, theta_other, s, o)
+        # trials_theta = C.THETA_SET
+        theta_other = C.THETA_SET[np.argmax(self.theta_probability)]
+        trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self, theta_other, s, o)
         # trajectory_probability = np.zeros(C.TRAJECTORY_SET.shape)
-        trajectory_self = []
-        my_loss_all = []
-        for j in range(len(trials_theta)):
-            theta_other = trials_theta[j]
-            trajectory_s, trajectory_other, my_loss, other_loss_all = self.equilibrium(theta_self, theta_other, s, o)
-            for i in range(len(trajectory_s)):
-                trajectory_self.append(trajectory_s[i])
-            my_loss_all.append(my_loss)
+        # trajectory_self = []
+        # my_loss_all = []
+        # for j in range(len(trials_theta)):
+        #     theta_other = trials_theta[j]
+        #     trajectory_s, trajectory_other, my_loss, other_loss_all = self.equilibrium(theta_self, theta_other, s, o)
+        #     for i in range(len(trajectory_s)):
+        #         trajectory_self.append(trajectory_s[i])
+        #     my_loss_all.append(my_loss)
 
 
         trajectory = trajectory_self[np.random.randint(0,len(trajectory_self))]
