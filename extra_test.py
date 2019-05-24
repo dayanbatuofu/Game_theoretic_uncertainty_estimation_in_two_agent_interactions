@@ -6,6 +6,10 @@ import pickle
 import os
 import pygame as pg
 import datetime
+import imageio
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 class Main():
 
@@ -50,7 +54,7 @@ class Main():
             self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
             pg.display.flip()
             # self.capture = True if input("Capture video (y/n): ") else False
-            self.capture = True
+            self.capture = False
             output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             os.makedirs("./sim_outputs/%s" % output_name)
             self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")
@@ -151,7 +155,7 @@ class Main():
             # Compile to video
             # os.system("ffmpeg -f image2 -framerate 1 -i %simg%%03d.jpeg %s/output_video.mp4 " % (self.output_dir, self.output_dir))
             img_list = [self.output_dir+"img"+str(i).zfill(3)+".jpeg" for i in range(self.frame)]
-            import imageio
+
             images = []
             for filename in img_list:
                 images.append(imageio.imread(filename))
@@ -162,18 +166,21 @@ class Main():
             # print("Simulation video output saved to %s." % self.output_dir)
         print("Simulation ended.")
 
-        import matplotlib.pyplot as plt
-        import numpy as np
+
         car_1_theta = np.empty((0, 2))
         car_2_theta = np.empty((0, 2))
         for t in range(self.frame):
             car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t], axis=0), axis=0)
             car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t], axis=0), axis=0)
         plt.subplot(2, 1, 1)
-        plt.plot(range(1,self.frame+1), car_1_theta[:,0], range(1,self.frame+1), car_1_theta[:,1])
+        plt.plot(range(1, self.frame+1), car_1_theta[:, 0], '#1f77b4', alpha = 0.1)
+        plt.plot(range(1, self.frame+1), car_1_theta[:, 1], '#ff7f0e', alpha = 0.1)
         plt.subplot(2, 1, 2)
-        plt.plot(range(1,self.frame+1), car_2_theta[:,0], range(1,self.frame+1), car_2_theta[:,1])
-        plt.show()
+        plt.plot(range(1, self.frame+1), car_2_theta[:, 0], '#1f77b4', alpha = 0.1)
+        plt.plot(range(1, self.frame+1), car_2_theta[:, 1], '#ff7f0e', alpha = 0.1)
+#        plt.show()
 
 if __name__ == "__main__":
-    Main()
+    for i in range(50):
+        Main()
+    plt.show()

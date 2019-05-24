@@ -251,8 +251,8 @@ class AutonomousVehicle:
         #         trajectory_self.append(trajectory_s[i])
         #     my_loss_all.append(my_loss)
 
-
-        trajectory = trajectory_self[np.random.randint(0,len(trajectory_self))]
+        rd_index = np.random.randint(0,len(trajectory_self))
+        trajectory = trajectory_self[rd_index]
         return trajectory
 
     def multi_search(self, guess_set):

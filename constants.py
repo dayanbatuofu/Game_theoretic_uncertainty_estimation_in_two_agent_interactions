@@ -53,11 +53,11 @@ class CONSTANTS:
     EXPTHETA = 1
     EXPCOLLISION = 3
 
-    np.random.seed(1)
+    #np.random.seed(1)
     THETA_SET = np.array([1, 1e3]) #TODO: CHANGE THETA_SET
     TRAJECTORY_SET = np.array([3., 2., 1., 0., -1., -2.])
 
-    COURTESY_CONSTANT = 5.
+    COURTESY_CONSTANT = 0.
 
     class PARAMETERSET_1:
 
