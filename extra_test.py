@@ -1,3 +1,4 @@
+from __future__ import division
 from constants import CONSTANTS as C
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import Sim_Draw
@@ -7,7 +8,7 @@ import os
 import pygame as pg
 import datetime
 import imageio
-
+import scipy.io as io
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -168,19 +169,119 @@ class Main():
 
 
         car_1_theta = np.empty((0, 2))
+        car_1_accuracy = np.empty((0, 1))
         car_2_theta = np.empty((0, 2))
+        car_2_accuracy = np.empty((0, 1))
         for t in range(self.frame):
             car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t], axis=0), axis=0)
             car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t], axis=0), axis=0)
+            if self.car_1.intent == 1:
+                if car_1_theta[t][0] > car_1_theta[t][1]:
+                    car_1_accuracy = np.append(car_1_accuracy, 1)
+                else:
+                    car_1_accuracy = np.append(car_1_accuracy, 0)
+            else:
+                if car_1_theta[t][1] > car_1_theta[t][0]:
+                    car_1_accuracy = np.append(car_1_accuracy, 1)
+                else:
+                    car_1_accuracy = np.append(car_1_accuracy, 0)
+            if self.car_2.intent == 1:
+                if car_2_theta[t][0] > car_2_theta[t][1]:
+                    car_2_accuracy = np.append(car_2_accuracy, 1)
+                else:
+                    car_2_accuracy = np.append(car_2_accuracy, 0)
+            else:
+                if car_2_theta[t][1] > car_2_theta[t][0]:
+                    car_2_accuracy = np.append(car_2_accuracy, 1)
+                else:
+                    car_2_accuracy = np.append(car_2_accuracy, 0)
+        car_1_acc = np.sum(car_1_accuracy) * 0.01
+        car_2_acc = np.sum(car_2_accuracy) * 0.01
         plt.subplot(2, 1, 1)
         plt.plot(range(1, self.frame+1), car_1_theta[:, 0], '#1f77b4', alpha = 0.1)
         plt.plot(range(1, self.frame+1), car_1_theta[:, 1], '#ff7f0e', alpha = 0.1)
         plt.subplot(2, 1, 2)
         plt.plot(range(1, self.frame+1), car_2_theta[:, 0], '#1f77b4', alpha = 0.1)
         plt.plot(range(1, self.frame+1), car_2_theta[:, 1], '#ff7f0e', alpha = 0.1)
+        return car_1_acc, car_2_acc
 #        plt.show()
+    def get_accuracy(self):
+        car_1_theta = np.empty((0, 2))
+        car_1_accuracy = np.empty((0, 1))
+        car_1_tilta = np.empty((0, 1))
+        car_2_theta = np.empty((0, 2))
+        car_2_accuracy = np.empty((0, 1))
+        car_2_tilta = np.empty((0, 1))
+        for t in range(self.frame):
+            car_1_theta = np.append(car_1_theta, np.expand_dims(self.sim_data.car2_theta_probability[t], axis=0), axis=0)
+            car_2_theta = np.append(car_2_theta, np.expand_dims(self.sim_data.car1_theta_probability[t], axis=0), axis=0)
+            car_1_t_theta_1 = self.sim_data.car1_predicted_theta_self[t].count(1)/len(self.sim_data.car1_predicted_theta_self[t])
+            car_1_t_theta_1000 = self.sim_data.car1_predicted_theta_self[t].count(1000)/len(self.sim_data.car1_predicted_theta_self[t])
+            car_2_t_theta_1 = self.sim_data.car2_predicted_theta_self[t].count(1)/len(self.sim_data.car2_predicted_theta_self[t])
+            car_2_t_theta_1000 = self.sim_data.car2_predicted_theta_self[t].count(1000)/len(self.sim_data.car2_predicted_theta_self[t])
+            if self.car_1.intent == 1:
+                if car_1_theta[t][0] > car_1_theta[t][1]:
+                    car_1_accuracy = np.append(car_1_accuracy, 1)
+                else:
+                    car_1_accuracy = np.append(car_1_accuracy, 0)
+
+                if car_1_t_theta_1 >= car_1_t_theta_1000:
+
+                    car_1_tilta = np.append(car_1_tilta, 1)
+                else:
+                    car_1_tilta = np.append(car_1_tilta, 0)
+
+            else:
+                if car_1_theta[t][1] > car_1_theta[t][0]:
+
+                    car_1_accuracy = np.append(car_1_accuracy, 1)
+                else:
+                    car_1_accuracy = np.append(car_1_accuracy, 0)
+
+                if car_1_t_theta_1000 >= car_1_t_theta_1:
+                    car_1_tilta = np.append(car_1_tilta, 1)
+                else:
+                    car_1_tilta = np.append(car_1_tilta, 0)
+
+            if self.car_2.intent == 1:
+                if car_2_theta[t][0] > car_2_theta[t][1]:
+
+                    car_2_accuracy = np.append(car_2_accuracy, 1)
+                else:
+                    car_2_accuracy = np.append(car_2_accuracy, 0)
+
+                if car_2_t_theta_1 >= car_2_t_theta_1000:
+
+                    car_2_tilta = np.append(car_2_tilta, 1)
+                else:
+                    car_2_tilta = np.append(car_2_tilta, 0)
+            else:
+                if car_2_theta[t][1] > car_2_theta[t][0]:
+                    car_2_accuracy = np.append(car_2_accuracy, 1)
+                else:
+                    car_2_accuracy = np.append(car_2_accuracy, 0)
+                if car_2_t_theta_1000 >= car_2_t_theta_1:
+                    car_2_tilta = np.append(car_2_tilta, 1)
+                else:
+                    car_2_tilta = np.append(car_2_tilta, 0)
+        car_1_acc = np.sum(car_1_accuracy) * 0.01
+        car_2_acc = np.sum(car_2_accuracy) * 0.01
+        car_1_t_acc = np.sum(car_1_tilta) * 0.01
+        car_2_t_acc = np.sum(car_2_tilta) * 0.01
+        return car_1_acc, car_2_acc, car_1_t_acc, car_2_t_acc
 
 if __name__ == "__main__":
+    car_1_accuracy = np.empty((0, 1))
+    car_2_accuracy = np.empty((0, 1))
+    car_1_t_accuracy = np.empty((0, 1))
+    car_2_t_accuracy = np.empty((0, 1))
     for i in range(50):
-        Main()
-    plt.show()
+        play_game = Main()
+        car_1_acc, car_2_acc, car_1_tilda, car_2_tilda = play_game.get_accuracy()
+        car_1_accuracy = np.append(car_1_accuracy, car_1_acc)
+        car_2_accuracy = np.append(car_2_accuracy, car_2_acc)
+        car_1_t_accuracy = np.append(car_1_t_accuracy, car_1_tilda)
+        car_2_t_accuracy = np.append(car_2_t_accuracy, car_2_tilda)
+
+    io.savemat('Result.mat',{'car_1_acc': car_1_accuracy, 'car_2_acc': car_2_accuracy, 'car_1_t_acc': car_1_t_accuracy, 'car_2_t_acc': car_2_accuracy})
+    print np.mean(car_1_accuracy), np.mean(car_2_accuracy), np.mean(car_1_t_accuracy), np.mean(car_2_t_accuracy)

@@ -7,6 +7,7 @@ from collision_box import Collision_Box
 from loss_functions import LossFunctions
 from scipy import optimize
 import pygame as pg
+
 from scipy.interpolate import spline
 from scipy import stats
 import time
