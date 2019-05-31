@@ -7,7 +7,6 @@ from collision_box import Collision_Box
 from loss_functions import LossFunctions
 from scipy import optimize
 import pygame as pg
-
 from scipy.interpolate import spline
 from scipy import stats
 import time
@@ -475,8 +474,8 @@ class AutonomousVehicle:
         loss_value_set = []
         for theta_self in trials_theta:
         # for theta_self in [s.intent]:
-        #     if s.who == 1:
-        #         theta_self = s.intent
+            if s.who == 1:
+                theta_self = s.intent
             for theta_other in trials_theta_other:
                 # for theta_other in [1.]:
                 trajectory_self, trajectory_other, my_loss_all, other_loss_all = self.equilibrium(theta_self,

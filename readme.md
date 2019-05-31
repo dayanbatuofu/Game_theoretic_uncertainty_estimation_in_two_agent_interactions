@@ -9,6 +9,7 @@ Contributors: Steven Elliott, Yiwei Wang, Varun Jammula, Yi Ren, Wenlong Zhang, 
     1.  [The influence of driving strategy on interaction dynamics](#drivingstrategy)
     2.  [The importance of empathy in intent decoding](#empathy)
 4. [Driver Simulation Setup](#simulation)
+5. [Instruction of reproduce the results](#instruction)
 
 ## Overview <a name="overview"></a>
 
@@ -170,4 +171,7 @@ controlled_vehicle.py contains the dynamic model of human controlled vehicle.
 Red car was controlled by human.
 <img src="./sim_outputs/output_video.gif" alt="Drawing" style="height: 50px;"/> 
 
-[maxpaper]: ./draft.pdf 
+[maxpaper]: ./draft.pdf
+ 
+## Instruction of reproducing the results <a name="instruction"></a>
+In general, the simulation can be conducted by running main.py. The motion planning methods can be edited by changing $loss\_style$ on line 34 and 38 in main.py. Aggressiveness ($\theta$) of agents are determined on line 129 and 141 of constants.py; acceleration ability ($\alpha$) of agents on line 132 and 144, while $\hat{\alpha}$ on line 133 and 145 of the same file. Courtesy weight ($\beta$) is on line 60 in constants.py. All tables and figures 1-9 of the paper can be reproduced by changing these parameters and run main.py in the root folder. Figure 10 can be reproduced by main.py in /turning\_scene.

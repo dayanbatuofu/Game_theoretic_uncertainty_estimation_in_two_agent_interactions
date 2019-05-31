@@ -139,7 +139,7 @@ class LossFunctions:
         #     print loss_value_set
 
         trajectory_self = trajectory_set[np.where(loss_value_set == np.min(loss_value_set))[0][0]]
-
+        loss_self = np.min(loss_value_set)
         return trajectory_self
 
     def reactive_loss(self, theta_self, trajectory, trajectory_other, probability, s_self, s_self_vel, s_self_acc,
