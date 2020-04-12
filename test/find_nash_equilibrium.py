@@ -1,8 +1,7 @@
-import os
-import argparse
-import pygame as pg
-import datetime
-import pickle
+"""
+Test: Find Nash Equilibrium for two-agent complete information game using optimal control/pytorch
+"""
+
 from constants import CONSTANTS as C
 from environment import Environment
 from inference_model import InferenceModel
@@ -10,27 +9,11 @@ from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import Sim_Draw
 from sim_data import SimData
+import pickle
+import os
+import pygame as pg
+import datetime
 
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--scenario', type=str, choices=['intersection'], default='intersection')  # choose scenario
-parser.add_argument('--sim_duration', type=int, default=100)  # time span for simulation
-parser.add_argument('--dt', type=float, default=1.)  # time step in planning
-# choose inference model: none - complete information
-parser.add_argument('--inference', type=str, choices=['none', 'baseline', 'empathetic'], default='none')
-# choose decision model: complete_information - complete information
-parser.add_argument('--inference', type=str, choices=['none', 'baseline', 'empathetic'], default='none')
-
-parser.add_argument('--tol', type=float, default=1e-3)  # tolerance for ode solver
-parser.add_argument('--adjoint', type=eval, default=True, choices=[True, False])  # method for computing gradient
-parser.add_argument('--nepochs', type=int, default=100)  # number of training epochs
-parser.add_argument('--lr', type=float, default=0.1)  # learning rate
-parser.add_argument('--batch_size', type=int, default=20)  # batch size for training
-parser.add_argument('--test_batch_size', type=int, default=20)  # batch size for validation and test
-parser.add_argument('--save', type=str, default='./experiment1')  # save dir
-parser.add_argument('--debug', action='store_true')
-parser.add_argument('--gpu', type=int, default=0)
-args = parser.parse_args()
 
 class Simulation:
 
@@ -40,19 +23,6 @@ class Simulation:
 
         self.env = env
         self.agents = []
-
-        if C.DRAW:
-            self.sim_draw = Sim_Draw(self.P, C.ASSET_LOCATION)
-            pg.display.flip()
-            # self.capture = True if input("Capture video (y/n): ") else False
-            self.capture = True
-            output_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            os.makedirs("./sim_outputs/%s" % output_name)
-            self.sim_out = open("./sim_outputs/%s/output.pkl" % output_name, "wb")
-
-            if self.capture:
-                self.output_dir = "./sim_outputs/%s/video/" % output_name
-                os.makedirs(self.output_dir)
 
     def create_simulation(self, scenario='intersection'):
 
@@ -80,15 +50,6 @@ class Simulation:
                     # Run simulation
                     agent.update(self)
 
-                    # Update data
-                    self.sim_data.append(agent)
-
-                # # calculate gracefulness
-                # grace = []
-                # for wanted_trajectory_other in self.car_2.wanted_trajectory_other:
-                #     wanted_actions_other = self.car_2.dynamic(wanted_trajectory_other)
-                #     grace.append(1000*(self.car_1.states[-1][0] - wanted_actions_other[0][0]) ** 2)
-                # self.car_1.social_gracefulness.append(sum(grace*self.car_2.inference_probability))
 
             # termination criteria
             if self.env.frame >= self.duration:
