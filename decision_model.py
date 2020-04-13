@@ -6,8 +6,9 @@ import torch as t
 class DecisionModel:
     def __init__(self, model, sim):
         self.sim = sim
-
-        if model == 'complete_information':
+        if model == 'constant_speed':
+            self.plan = self.constant_speed
+        elif model == 'complete_information':
             self.plan = self.complete_information
         elif model == 'reactive_point':
             self.plan = self.reactive_point
@@ -16,6 +17,10 @@ class DecisionModel:
         else:
             # placeholder for future development
             pass
+
+    @staticmethod
+    def constant_speed():
+        return {'action': 0}  # just keep the speed
 
     def complete_information(self, *args):
         # TODO: generalize for n agents
@@ -33,10 +38,6 @@ class DecisionModel:
                 optimizers[i].zero_grad()
                 loss[i].backward()
                 optimizers[i].step()
-
-
-
-
 
     def baseline(self):
         # randomly pick one of the nash equilibrial policy

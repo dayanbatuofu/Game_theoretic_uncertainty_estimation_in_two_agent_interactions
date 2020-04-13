@@ -1,9 +1,8 @@
 from __future__ import division
-from constants import CONSTANTS as C
+from old_files.constants import CONSTANTS as C
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import Sim_Draw
 from sim_data import Sim_Data
-import pickle
 import os
 import pygame as pg
 import datetime

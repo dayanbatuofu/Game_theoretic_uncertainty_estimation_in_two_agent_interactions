@@ -1,17 +1,7 @@
-from constants import CONSTANTS as C
-from constants import MATRICES as M
 import numpy as np
 import scipy
-import bezier
-from sim_data import SimData
-from collision_box import Collision_Box
-from loss_functions import LossFunctions
-from scipy import optimize
+from sim_data import DataUtil
 import pygame as pg
-from scipy.interpolate import spline
-from scipy import stats
-import time
-import matplotlib.pyplot as plt
 
 
 class AutonomousVehicle:
@@ -21,27 +11,17 @@ class AutonomousVehicle:
             Y-Position
     """
     def __init__(self, sim, env, par, inference_model, decision_model, i):
-        self.sim_par = sim.parameters
-        self.env_par = env.parameters  # environment parameters
+        self.sim = sim
+        self.env = env  # environment parameters
         self.car_par = par  # car parameters
         self.inference_model = inference_model
         self.decision_model = decision_model
         self.id = i
-        self.data = SimData()
-
-        # get car image for visualization
-        self.image = pg.transform.rotate(pg.transform.scale(pg.image.load(C.ASSET_LOCATION + self.car_par.SPRITE),
-                                                            (int(C.CAR_WIDTH * C.COORDINATE_SCALE * C.ZOOM),
-                                                             int(C.CAR_LENGTH * C.COORDINATE_SCALE * C.ZOOM))),
-                                         self.car_par.ORIENTATION)
-
-        # self.collision_box = Collision_Box(self.image.get_width() / C.COORDINATE_SCALE / C.ZOOM,
-        #                                    self.image.get_height() / C.COORDINATE_SCALE / C.ZOOM, self.env_par)
 
         # Initialize variables
-        self.state = self.car_par.INITIAL_POSITION
-        self.intent = self.car_par.INTENT
-        self.action = self.car_par.INITIAL_ACTION
+        self.state = self.car_par["initial_state"]  # state is cumulative
+        self.intent = self.car_par["par"]
+        self.action = self.car_par["initial_action"]  # action is cumulative
         self.trajectory = []
         self.planned_actions_set = []
         self.planned_trajectory_set = []
@@ -54,32 +34,35 @@ class AutonomousVehicle:
 
     def update(self, sim):
         other = sim.agents[:self.id]+sim.agents[self.id+1:]  # get all other agents
-        frame = sim.env.frame
+        frame = sim.frame
 
         # take a snapshot of the state at beginning of the frame before agents update their states
-        snapshot = sim.snapshot
+        snapshot = sim.snapshot()
 
         # perform inference
-        inference = self.inference_model.infer()
-        self.data.update(inference)
+        inference = self.inference_model.infer(snapshot, sim)
+        DataUtil.update(self, inference)
 
         # planning
         plan = self.decision_model.plan()
-        self.data.update(plan)
+        DataUtil.update(self, plan)
 
         # update state
-        self.dynamics(plan.action)
+        self.dynamics(plan["action"])
 
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
+        # TODO: add steering
         # define the discrete time dynamical model
         def f(x, u, dt):
-            assert x.shape == 2
-            s, v = x[0], x[1]
-            v_new = v + u*dt
-            s_new = s + u*dt + 0.5*u*dt**2
-            return s_new, v_new
+            sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+            vx_new = vx + u * dt * vx/(np.linalg.norm([vx, vy])+1e-12)
+            vy_new = vy + u * dt * vy/(np.linalg.norm([vx, vy])+1e-12)
+            sx_new = sx + (vx + vx_new) * dt * 0.5
+            sy_new = sy + (vy + vy_new) * dt * 0.5
 
-        self.state = f(self.state, action, self.sim_par.dt)
+            return sx_new, sy_new, vx_new, vy_new
+
+        self.state.append(f(self.state[-1], action, self.sim.dt))
         return
 
 

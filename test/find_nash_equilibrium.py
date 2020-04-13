@@ -2,17 +2,12 @@
 Test: Find Nash Equilibrium for two-agent complete information game using optimal control/pytorch
 """
 
-from constants import CONSTANTS as C
+from old_files.constants import CONSTANTS as C
 from environment import Environment
 from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
-from sim_draw import Sim_Draw
-from sim_data import SimData
-import pickle
-import os
 import pygame as pg
-import datetime
 
 
 class Simulation:
@@ -49,7 +44,6 @@ class Simulation:
 
                     # Run simulation
                     agent.update(self)
-
 
             # termination criteria
             if self.env.frame >= self.duration:

@@ -1,6 +1,3 @@
-from constants import CONSTANTS as C
-import numpy as np
-
 file_name = 'human_stop_immediately.txt'
 file = open(file_name, 'w')
 

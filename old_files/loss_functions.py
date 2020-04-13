@@ -1,11 +1,9 @@
 from numpy.core.multiarray import ndarray
 
-from constants import CONSTANTS as C
-from constants import MATRICES as M
+from old_files.constants import CONSTANTS as C
+from old_files.constants import MATRICES as M
 import bezier
 import numpy as np
-import matplotlib.pyplot as plt
-import time
 
 
 class LossFunctions:

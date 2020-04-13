@@ -1,5 +1,3 @@
-import math
-from constants import CONSTANTS as C
 import numpy as np
 
 class Collision_Box():

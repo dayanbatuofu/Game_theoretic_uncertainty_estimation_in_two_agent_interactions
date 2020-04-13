@@ -1,4 +1,4 @@
-from constants import CONSTANTS as C
+from old_files.constants import CONSTANTS as C
 import numpy as np
 
 file_name = 'human_change_lane_immediately.txt'

@@ -15,6 +15,7 @@ class CarParameters:
         self.ABILITY = ABILITY
         self.ABILITY_O = ABILITY_O
 
+
 class CONSTANTS:
 
     # DISPLAY

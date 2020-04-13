@@ -1,9 +1,7 @@
-from constants import CONSTANTS as C
+from old_files.constants import CONSTANTS as C
 import pygame as pg
-import pygame.gfxdraw
 import numpy as np
 import math
-import os
 
 BLACK       = (  0,  0,  0)
 DARK_CAR1   = (50,50,50)
