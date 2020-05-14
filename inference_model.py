@@ -16,24 +16,47 @@ class InferenceModel:
             pass
         self.sim = sim
 
+        "Yi 5/14"
+        "imported variables from pedestrian prediction"
+        self.q_cache = {}
+        "defining reward for (s, a) pair"
+        self.default_reward = -1
+        self.rewards = np.zeros[s, a]
+        self.rewards.fill(self.default_reward)
+        #TODO: obtain state and action space information
+
     @staticmethod
     def no_inference(agents, sim):
         pass
 
     @staticmethod
-    def baseline_inference(agents, sim):
+    def baseline_inference(self,agents, sim):
         # TODO: implement Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
         """
         for each agent, estimate its par (agent.par) based on its last action (agent.action[-1]),
         system state (agent.state[-1] for all agent), and prior dist. of par
         :return:
         """
-        def q_values():
+        def q_values(self, goal, goal_stuck = False):
             """
             refer to classic.py, car.py
             Calculates hardmax Q-value given state-action pair.
             Q(s,a) = R(s,a)  +V(s')
             """
+            V = value_iter(goal)
+            Q = np.empty([agents.S, agents.A])
+            Q.fill(-np.inf)
+
+            for s in range(agents.S):
+                if s == goal and goal_stuck:
+                    Q[s, agents.A] = 0
+                    continue
+                for a in range(agents.A):
+                    if s == goal and a = Actions.ABSORB:
+                        Q[s, a] = 0
+                    else:
+                        Q[s, a] = self.rewards[s, a] + V[transition(s,a)]
+            return np.copy(Q)
             pass
         def transition_probabilities():
             """
