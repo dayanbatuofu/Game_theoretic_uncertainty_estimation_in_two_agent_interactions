@@ -1,6 +1,7 @@
 import numpy as np
 #from sklearn.processing import normalize   UNCOMMENT WHEN IMPLEMENT
 # TODO pytorch version
+from autonomous_vehicle import AutonomousVehicle
 
 
 class InferenceModel:
@@ -26,6 +27,8 @@ class InferenceModel:
         #"--------------------------------------------------------"
         #TODO: obtain state and action space information
 
+        #importing agents information
+        self.agents = AutonomousVehicle
     @staticmethod
     def no_inference(agents, sim):
         pass
@@ -47,8 +50,23 @@ class InferenceModel:
             refer to classic.py, car.py
             Calculates hardmax Q-value given state-action pair.
             Q(s,a) = R(s,a)  +V(s')
+            Q(s, a) = (s_goal - s_current)/v_next
+            """
+            #Estimating Q value at state s with time to goal from s, assuming agent moves along the y axis:
+            """
+            #Pseudo code
+            s_current = self.agents.state[s_y]
+            s_goal = goal.state[s_y]
+            v_current = self.agents.state[v_y]
+            Q = np.empty([agent.Action]) #size of action available at state s
+            v_next = v_current + agent.Action * dt
+            Q = (s_goal - s_current)/v_next
+            return Q
             """
             #from berkeley code::   CHANGE PARAMETER NAMES
+
+            #Q values using reward and value iteration:
+            """
             V = value_iter(goal)
             Q = np.empty([agents.S, agents.A])
             Q.fill(-np.inf)
@@ -64,10 +82,8 @@ class InferenceModel:
                         Q[s, a] = self.rewards[s, a] + V[transition(s,a)]
             return np.copy(Q)
             pass
-
             """
 
-            """
 
 
         def transition_probabilities():
