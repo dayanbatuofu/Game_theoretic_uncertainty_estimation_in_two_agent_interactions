@@ -1,5 +1,5 @@
 import numpy as np
-#from sklearn.processing import normalize
+#from sklearn.processing import normalize   UNCOMMENT WHEN IMPLEMENT
 # TODO pytorch version
 
 
@@ -16,13 +16,14 @@ class InferenceModel:
             pass
         self.sim = sim
 
-        "Yi 5/14"
-        "imported variables from pedestrian prediction"
+        #"Yi 5/14-------------------------------------------------"
+        #"imported variables from pedestrian prediction"
         self.q_cache = {}
-        "defining reward for (s, a) pair"
+        #"defining reward for (s, a) pair"
         self.default_reward = -1
         self.rewards = np.zeros[s, a]
         self.rewards.fill(self.default_reward)
+        #"--------------------------------------------------------"
         #TODO: obtain state and action space information
 
     @staticmethod
@@ -37,12 +38,17 @@ class InferenceModel:
         system state (agent.state[-1] for all agent), and prior dist. of par
         :return:
         """
+
+
+
+        #All functions below are what were used in Fridovich-Keil et al.'s implementation-----------------------------------------------
         def q_values(self, goal, goal_stuck = False):
             """
             refer to classic.py, car.py
             Calculates hardmax Q-value given state-action pair.
             Q(s,a) = R(s,a)  +V(s')
             """
+            #from berkeley code::   CHANGE PARAMETER NAMES
             V = value_iter(goal)
             Q = np.empty([agents.S, agents.A])
             Q.fill(-np.inf)
@@ -58,13 +64,19 @@ class InferenceModel:
                         Q[s, a] = self.rewards[s, a] + V[transition(s,a)]
             return np.copy(Q)
             pass
+
+            """
+
+            """
+
+
         def transition_probabilities():
             """
             Refer to mdp.py
             :return:
             """
             pass
-        def action_probabilities():
+        def action_probabilities():  #equation 1
             """
             refer to mdp.py
             calculates probability distribution of action given hardmax Q values
@@ -74,6 +86,18 @@ class InferenceModel:
             3. beta: "rationality coefficient"
             => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
             :return:
+            """
+
+            #Pseudocode 
+            """
+                Iterate over Q values where x in u|x = current state{
+                    calculate lambda*Q(x,u,theta) --> store in T
+                }
+
+                //where T is lambda*Q(x,u,theta) for all u|x
+                np.exp(T, out=T)                        //import numpy as np
+                normalize(T, norm='l1', copy=False)     //from sklearn.preprocessing import normalize
+                
             """
             pass
         def traj_probabilities():
