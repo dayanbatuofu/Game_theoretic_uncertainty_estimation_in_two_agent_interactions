@@ -61,7 +61,7 @@ class InferenceModel:
             v_current = self.agents.state[v_y]
             Q = np.empty([agent.Action]) #size of action available at state s
             v_next = v_current + agent.Action * dt
-            Q = (s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
+            Q = -(s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
             return Q
             """
             #Inferring agent's current param based on its last action and state in last time step
@@ -70,7 +70,7 @@ class InferenceModel:
             a_last = self.agents.action[-1]
             x_last = s_last[x]
             v_last = s_last[v]
-            Q = -v_last*dt - np.abs(x_last + v_last- goal) #2D version of Q value from confidence aware paper
+            Q = -v_last*dt - np.abs(x_last + v_last*dt - goal) #2D version of Q value from confidence aware paper
             """
             #from berkeley code::   CHANGE PARAMETER NAMES
 
@@ -90,15 +90,23 @@ class InferenceModel:
                     else:
                         Q[s, a] = self.rewards[s, a] + V[transition(s,a)]
             return np.copy(Q)
-            pass
+            
             """
+            pass
 
 
 
-        def transition_probabilities():
+        def transition_probabilities(self,beta):
             """
             Refer to mdp.py
+            No need since our car transition is deterministic?
             :return:
+            """
+            """
+            #Pseudo code
+            
+            
+            
             """
             pass
         def action_probabilities():  #equation 1
@@ -123,6 +131,14 @@ class InferenceModel:
                 np.exp(T, out=T)                        //import numpy as np
                 normalize(T, norm='l1', copy=False)     //from sklearn.preprocessing import normalize
                 
+            """
+
+            """
+            Yi's notes 5/17
+            #Need to add some filtering for states with no legal action: q = -inf
+            Q = self.q_values()
+            np.exp(Q,out=exp_Q)
+            normalize(exp_Q, norm = 'l1', copy = False)
             """
             pass
         def traj_probabilities():
