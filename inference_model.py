@@ -49,7 +49,11 @@ class InferenceModel:
         system state (agent.state[-1] for all agent), and prior dist. of par
         :return:
         """
-
+        """
+        #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
+        #P(lambda, theta|D(k)) = P(u| x;lambda, theta)P(lambda, theta | D(k-1)) / sum[ P(u|x;lambda', theta') P(lambda', theta' | D(k-1))]
+        #equivalent: P = action_prob * P(k-1)/sum_(lambda,theta)[action_prob * P(k-1)]
+        """
 
 
         #All functions below are what were used in Fridovich-Keil et al.'s implementation-----------------------------------------------
