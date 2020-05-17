@@ -17,18 +17,19 @@ class InferenceModel:
             pass
         self.sim = sim
 
+        # TODO: obtain state and action space information
+        # importing agents information
+        self.agents = AutonomousVehicle
+
         #"Yi 5/14-------------------------------------------------"
         #"imported variables from pedestrian prediction"
         self.q_cache = {}
         #"defining reward for (s, a) pair"
         self.default_reward = -1
-        self.rewards = np.zeros[s, a]
+        self.rewards = np.zeros[self.agents.s, self.agents.a] #Needs fixing
         self.rewards.fill(self.default_reward)
         #"--------------------------------------------------------"
-        #TODO: obtain state and action space information
 
-        #importing agents information
-        self.agents = AutonomousVehicle
     @staticmethod
     def no_inference(agents, sim):
         pass
@@ -45,7 +46,7 @@ class InferenceModel:
 
 
         #All functions below are what were used in Fridovich-Keil et al.'s implementation-----------------------------------------------
-        def q_values(self, goal, goal_stuck = False):
+        def q_values(self, agents,goal, goal_stuck = False):
             """
             refer to classic.py, car.py
             Calculates hardmax Q-value given state-action pair.
@@ -60,8 +61,16 @@ class InferenceModel:
             v_current = self.agents.state[v_y]
             Q = np.empty([agent.Action]) #size of action available at state s
             v_next = v_current + agent.Action * dt
-            Q = (s_goal - s_current)/v_next
+            Q = (s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
             return Q
+            """
+            #Inferring agent's current param based on its last action and state in last time step
+            """
+            s_last = self.agents.state[-1]
+            a_last = self.agents.action[-1]
+            x_last = s_last[x]
+            v_last = s_last[v]
+            Q = -v_last*dt - np.abs(x_last + v_last- goal) #2D version of Q value from confidence aware paper
             """
             #from berkeley code::   CHANGE PARAMETER NAMES
 
