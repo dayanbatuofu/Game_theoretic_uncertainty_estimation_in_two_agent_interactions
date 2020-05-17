@@ -3,7 +3,14 @@ import numpy as np
 # TODO pytorch version
 from autonomous_vehicle import AutonomousVehicle
 
-
+class Actions(IntEnums):
+    #CHANGE THESE NAMES
+    BIG_ACC = 0
+    LIL_ACC = 1
+    NO_ACC = 2
+    LIL_BRAKE = 3
+    BIG_BRAKE = 4
+    
 class InferenceModel:
     def __init__(self, model, sim):
         if model == 'none':
