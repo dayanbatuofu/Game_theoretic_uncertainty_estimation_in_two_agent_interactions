@@ -5,11 +5,11 @@ from autonomous_vehicle import AutonomousVehicle
 
 class Actions(IntEnums):
     #CHANGE THESE NAMES
-    BIG_ACC = 0
-    LIL_ACC = 1
-    NO_ACC = 2
-    LIL_BRAKE = 3
-    BIG_BRAKE = 4
+    BIG_ACC = 5
+    LIL_ACC = 3
+    NO_ACC = 0
+    LIL_BRAKE = -3
+    BIG_BRAKE = -5
     
 class InferenceModel:
     def __init__(self, model, sim):
@@ -56,12 +56,46 @@ class InferenceModel:
         """
 
 
-        #All functions below are what were used in Fridovich-Keil et al.'s implementation-----------------------------------------------
-        def q_values(self, agents,goal, goal_stuck = False):
+        def q_function(self, current_s, action, goal_s):
+            """Calculate Q value 
+
+            Current Implementation:
+                Q is negatively proportional to the time it takes to reach the goal
+
+            Params:
+                current_s [tuple?] -- Current state containing x-state, y-state, 
+                    x-velocity, y-velocity
+                action [IntEnum] -- potential action taken by car 
+                goal_s [tuple?] -- Goal state, same format as current_s
+            """
+
+            u = action
+            sx, sy, vx, vy = current_s[0], current_s[1], current_s[2], current_s[3]
+            if sx == 0 and vx == 0:
+                #Q = FUNCTION MATH HERE USING SY, VY
+            elif sy == 0 and vy == 0:
+                #Q = FUNCTION MATH HERE USING SX, VX
+            else:
+                #Q = FUNCTION FOR 2D MODELS
+            
+            return Q
+
+        def q_values(self, states):
+            #TODO documentation for function
+
+            current_s = states[-1]
+            Q = {}
+            #TODO: IMPORT GOAL.  goal = whatever
+            for a in Actions:
+                Q[a] = self.q_function(current_s, a, goal)
+
+            return Q
+
+
             """
             refer to classic.py, car.py
             Calculates hardmax Q-value given state-action pair.
-            Q(s,a) = R(s,a)  +V(s')
+            Q(s,a) = R(s,a)  +V(s')   #All f
             Q(s, a) = (s_goal - s_current)/v_next
             """
             #Estimating Q value at state s with time to goal from s, assuming agent moves along the y axis:
