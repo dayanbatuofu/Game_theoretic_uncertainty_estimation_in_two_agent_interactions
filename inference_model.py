@@ -56,7 +56,7 @@ class InferenceModel:
         """
 
 
-        def q_function(self, current_s, action, goal_s):
+        def q_function(self, current_s, action, goal_s, dt):
             """Calculate Q value 
 
             Current Implementation:
@@ -67,17 +67,20 @@ class InferenceModel:
                     x-velocity, y-velocity
                 action [IntEnum] -- potential action taken by car 
                 goal_s [tuple?] -- Goal state, same format as current_s
+                dt[int / float] -- discrete time interval
             """
-
+            #Q = -(s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
             u = action
             sx, sy, vx, vy = current_s[0], current_s[1], current_s[2], current_s[3]
             if sx == 0 and vx == 0:
                 #Q = FUNCTION MATH HERE USING SY, VY
+                Q = -(goal_s - sx)/(vx + action * dt)
             elif sy == 0 and vy == 0:
                 #Q = FUNCTION MATH HERE USING SX, VX
+                Q = -(goal_s - sy) / (vy + action * dt)
             else:
                 #Q = FUNCTION FOR 2D MODELS
-            
+                Q = -((goal_s - sy) / (vy + action * dt) + (goal_s - sx)/(vx + action * dt))
             return Q
 
         def q_values(self, states):
