@@ -4,12 +4,12 @@ import numpy as np
 from autonomous_vehicle import AutonomousVehicle
 
 class Actions(IntEnums):
-    #CHANGE THESE NAMES
-    BIG_ACC = 5
-    LIL_ACC = 3
+    #CHANGE THESE NAMES AND CHANGE VALUES TO REALISTIC 
+    BIG_ACC = 2
+    LIL_ACC = 1
     NO_ACC = 0
-    LIL_BRAKE = -3
-    BIG_BRAKE = -5
+    LIL_BRAKE = -1
+    BIG_BRAKE = -2
     
 class InferenceModel:
     def __init__(self, model, sim):
@@ -89,8 +89,9 @@ class InferenceModel:
             current_s = states[-1]
             Q = {}
             #TODO: IMPORT GOAL.  goal = whatever
+            #TODO: IMPORT DT
             for a in Actions:
-                Q[a] = self.q_function(current_s, a, goal)
+                Q[a] = self.q_function(current_s, a, goal, dt)
 
             return Q
 
@@ -171,24 +172,15 @@ class InferenceModel:
 
             #Pseudocode 
             """
-                Iterate over Q values where x in u|x = current state{
-                    calculate lambda*Q(x,u,theta) --> store in T
-                }
-
-                //where T is lambda*Q(x,u,theta) for all u|x
-                np.exp(T, out=T)                        //import numpy as np
-                normalize(T, norm='l1', copy=False)     //from sklearn.preprocessing import normalize
-                
-            """
-
-            """
             Yi's notes 5/17
             #Need to add some filtering for states with no legal action: q = -inf
             Q = self.q_values()
+            #Q * lambda
             np.exp(Q,out=exp_Q)
             normalize(exp_Q, norm = 'l1', copy = False)
             """
             pass
+
         def traj_probabilities():
             """
             refer to mdp.py
