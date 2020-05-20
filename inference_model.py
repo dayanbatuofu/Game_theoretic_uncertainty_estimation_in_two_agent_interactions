@@ -188,6 +188,36 @@ class InferenceModel:
             :return:
             """
             pass
+        def beta_update( betas, traj, priors, goal, k):
+            """
+            refer to beta.py
+            Update belief over set of beta with Baysian update
+            params:
+            traj: for obtaining trajectory up to time step k
+            k: current time step
+            trajectory probabilities: calculates probability of action taken at given state and params
+            :return: Posterior belief over betas
+            """
+            #Psuedo code
+            """
+            if priors is None:
+                priors = np.ones(len(betas)) #uniform priors
+                priors /= len(betas) #normalize
+            if k is not None:
+                traj = traj[-k:]
+            
+            #calculating posteriors
+            post_beta = np.copy(priors)
+            for i,beta in numerate(priors):
+                #multiply by action probability given state and params
+                post_beta[i] *= self.trajectory_probabilities(goal_spec, traj=traj, beta=beta)
+                
+            np.divide(post_beta, np.sum(P_beta), out=post_beta)
+
+            return post_beta
+            
+            """
+            pass
         def value_iter():
             """
             refer to hardmax.py
@@ -195,13 +225,14 @@ class InferenceModel:
             :return:
             """
             pass
-        pass
+
         def transition_helper(g, s, a, alert_illegal = False):
             """
             refer to classic.py, car.py
             defines the transition when action a is taken in state s
             :return:
             """
+            pass
     @staticmethod
     def empathetic_inference():
         """
