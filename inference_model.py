@@ -153,12 +153,10 @@ class InferenceModel:
             """
             """
             #Pseudo code
-            
-            
-            
+     
             """
             pass
-        def action_probabilities():  #equation 1
+        def action_probabilities(self):  #equation 1
             """
             refer to mdp.py
             calculates probability distribution of action given hardmax Q values
@@ -181,14 +179,27 @@ class InferenceModel:
             """
             pass
 
-        def traj_probabilities():
+        def traj_probabilities(self, traj):
             """
             refer to mdp.py
             multiply over action probabilities to obtain trajectory probabilities given (s, a)
+            params:
+            traj: composed of sequence of (s, a) pair
+            p_action: probability of action taken at each state
+            p_traj: probability of action taken accumulated over states, i.e. p_traj = p(a|s1)*p(a|s2)*p(a|s3)*...
             :return:
             """
+            #Pseudo code
+            """
+            p_action = self.action_probabilities()
+            p_traj = 1 #initialize
+            
+            for s, a in traj:
+                p_traj *= p_action
+            return p_traj
+            """
             pass
-        def beta_update( betas, traj, priors, goal, k):
+        def beta_update( self, betas, traj, priors, goal, k):
             """
             refer to beta.py
             Update belief over set of beta with Baysian update
