@@ -199,6 +199,58 @@ class InferenceModel:
             return p_traj
             """
             pass
+        def binary_search():
+            """
+            refer to gradient_descent_shared.py
+            For finding most suited beta corresponding to theta
+            :return:
+            """
+            #Pseudo code
+            #TODO modify for our uses
+            """
+            lo, hi = min_beta, max_beta
+            
+            if guess is None:
+                mid = (lo + hi) / 2
+            else:
+                mid = guess
+
+            if len(traj) == 0:
+                return guess
+
+            for i in xrange(max_iters):
+                assert lo <= mid <= hi
+                grad = compute_grad(g, traj, goal, mid)
+                if verbose:
+                    print u"i={}\t mid={}\t grad={}".format(i, mid, grad)
+
+                if i >= min_iters and abs(grad) < grad_threshold:
+                    break
+
+                if grad > 0:
+                   lo = mid
+                else:
+                    hi = mid
+                if i >= min_iters and hi - lo < beta_threshold:
+                    break
+
+                mid = (lo + hi)/2
+
+            if verbose:
+                print u"final answer: beta=", mid
+            return mid
+            """
+            pass
+        def gradient_ascent():
+            """
+            refer to gradient_descent_shared.py
+            For obtaining local maximum
+            :return:
+            """
+            """
+            
+            """
+            pass
         def beta_update( self, betas, traj, priors, goal, k):
             """
             refer to beta.py
