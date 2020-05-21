@@ -2,15 +2,9 @@ import numpy as np
 #from sklearn.processing import normalize   UNCOMMENT WHEN IMPLEMENT
 # TODO pytorch version
 from autonomous_vehicle import AutonomousVehicle
+import discrete_sets as sets
 
-class Actions(IntEnums):
-    #CHANGE THESE NAMES AND CHANGE VALUES TO REALISTIC 
-    BIG_ACC = 2
-    LIL_ACC = 1
-    NO_ACC = 0
-    LIL_BRAKE = -1
-    BIG_BRAKE = -2
-    
+class Lambdas(FloatEnums)
 class InferenceModel:
     def __init__(self, model, sim):
         if model == 'none':
@@ -90,8 +84,8 @@ class InferenceModel:
             Q = {}
             #TODO: IMPORT GOAL.  goal = whatever
             #TODO: IMPORT DT
-            for a in Actions:
-                Q[a] = self.q_function(current_s, a, goal, dt)
+            for a in sets.ActionsActions:
+                Q[a] = self.q_function(current_s, sets.getActionVal(a), goal, dt)
 
             return Q
 
