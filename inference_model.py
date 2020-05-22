@@ -275,6 +275,24 @@ class InferenceModel:
             
             """
             pass
+        def theta_joint_infer():
+            """
+            refer to destination.py
+            :return:
+            """
+            #TODO: organize all algorithms for joint inference
+            pass
+        def state_infer():
+            """
+            refer to state.py and occupancy.py
+            :return:
+            probability of destination
+            probability of states given correct destination
+            beta / lambda
+            """
+            #TODO organize all algorithms
+            pass
+
         def value_iter():
             """
             refer to hardmax.py
@@ -283,13 +301,6 @@ class InferenceModel:
             """
             pass
 
-        def transition_helper(g, s, a, alert_illegal = False):
-            """
-            refer to classic.py, car.py
-            defines the transition when action a is taken in state s
-            :return:
-            """
-            pass
     @staticmethod
     def empathetic_inference():
         """
