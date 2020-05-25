@@ -1,5 +1,5 @@
 import numpy as np
-#from sklearn.processing import normalize   UNCOMMENT WHEN IMPLEMENT
+from sklearn.processing import normalize
 # TODO pytorch version
 from autonomous_vehicle import AutonomousVehicle
 import discrete_sets as sets
@@ -44,9 +44,18 @@ class InferenceModel:
         :return:
         """
         """
-        #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
+        Important equations implemented here:
+        - Equation 1 (action_probabilities):
+        P(u|x,theta,lambda) = exp(Q*lambda)/sum(exp(Q*lambda)), Q size = action space at state x
+        
+        - Equation 2 (belief_update):
+         #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
         #P(lambda, theta|D(k)) = P(u| x;lambda, theta)P(lambda, theta | D(k-1)) / sum[ P(u|x;lambda', theta') P(lambda', theta' | D(k-1))]
-        #equivalent: P = action_prob * P(k-1)/sum_(lambda,theta)[action_prob * P(k-1)]
+        #equivalent: P = action_prob * P(k-1)/{sum_(lambda,theta)[action_prob * P(k-1)]}
+        
+        - Equation 3 (belief_resample):
+        #resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
+       
         """
 
 
@@ -150,7 +159,7 @@ class InferenceModel:
      
             """
             pass
-        def action_probabilities(self):  #equation 1
+        def action_probabilities(self,lamb):  #equation 1
             """
             refer to mdp.py
             calculates probability distribution of action given hardmax Q values
@@ -162,16 +171,19 @@ class InferenceModel:
             :return:
             """
 
-            #Pseudocode 
-            """
-            Yi's notes 5/17
+
+
+            #TODO: Yi's notes 5/17
             #Need to add some filtering for states with no legal action: q = -inf
             Q = self.q_values()
-            #Q * lambda
-            np.exp(Q,out=exp_Q)
+            exp_Q = np.empty([Q])
+            "Q*lambda"
+            np.multiply(Q,lamb,out = Q)
+            "Q*lambda/(sum(Q*lambda))"
+            np.exp(Q, out=exp_Q)
             normalize(exp_Q, norm = 'l1', copy = False)
-            """
-            pass
+            return exp_Q
+            #pass
 
         def traj_probabilities(self, traj):
             """
@@ -184,15 +196,15 @@ class InferenceModel:
             :return:
             """
             #Pseudo code
-            """
+
             p_action = self.action_probabilities()
             p_traj = 1 #initialize
             
             for s, a in traj:
                 p_traj *= p_action
             return p_traj
-            """
-            pass
+
+            #pass
         def binary_search():
             """
             refer to gradient_descent_shared.py
@@ -245,7 +257,7 @@ class InferenceModel:
             
             """
             pass
-        def beta_update( self, betas, traj, priors, goal, k):
+        def belief_update( self, betas, traj, priors, goal, k):
             """
             refer to beta.py
             Update belief over set of beta with Baysian update
@@ -256,6 +268,7 @@ class InferenceModel:
             :return: Posterior belief over betas
             """
             #Psuedo code
+            #TODO: use the resampled prior from function belief_resample
             """
             if priors is None:
                 priors = np.ones(len(betas)) #uniform priors
@@ -275,6 +288,14 @@ class InferenceModel:
             
             """
             pass
+        def belief_resample(self, prior, epsilon,initial_belief):
+            """
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+            resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
+            return resampled_prior
+
         def theta_joint_infer():
             """
             refer to destination.py
