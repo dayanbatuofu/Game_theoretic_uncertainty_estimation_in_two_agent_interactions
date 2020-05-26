@@ -22,7 +22,7 @@ class InferenceModel:
         # importing agents information
         self.agents = AutonomousVehicle
 
-        #"Yi 5/14-------------------------------------------------"
+        #"--------------------------------------------------------"
         #"imported variables from pedestrian prediction"
         self.q_cache = {}
         #"defining reward for (s, a) pair"
@@ -159,7 +159,7 @@ class InferenceModel:
      
             """
             pass
-        def action_probabilities(self,lamb):  #equation 1
+        def action_probabilities(self,_lambda):  #equation 1
             """
             refer to mdp.py
             calculates probability distribution of action given hardmax Q values
@@ -177,11 +177,14 @@ class InferenceModel:
             #Need to add some filtering for states with no legal action: q = -inf
             Q = self.q_values()
             exp_Q = np.empty([Q])
+
             "Q*lambda"
-            np.multiply(Q,lamb,out = Q)
+            np.multiply(Q,_lambda,out = Q)
+
             "Q*lambda/(sum(Q*lambda))"
             np.exp(Q, out=exp_Q)
             normalize(exp_Q, norm = 'l1', copy = False)
+
             return exp_Q
             #pass
 
@@ -205,7 +208,7 @@ class InferenceModel:
             return p_traj
 
             #pass
-        def binary_search():
+        def binary_search(self, traj,  gradient):
             """
             refer to gradient_descent_shared.py
             For finding most suited beta corresponding to theta
@@ -257,7 +260,7 @@ class InferenceModel:
             
             """
             pass
-        def belief_update( self, betas, traj, priors, goal, k):
+        def belief_update( self, lambdas, traj, priors, goals, k):
             """
             refer to beta.py
             Update belief over set of beta with Baysian update
@@ -269,40 +272,73 @@ class InferenceModel:
             """
             #Psuedo code
             #TODO: use the resampled prior from function belief_resample
-            """
+
             if priors is None:
-                priors = np.ones(len(betas)) #uniform priors
-                priors /= len(betas) #normalize
+                priors = np.ones(len(lambdas)) #assume uniform priors
+                priors /= len(lambdas) #normalize
+
+            #TODO: choose epsilonn
+            resampled_prior = self.belief_resample(priors, epsilon = 0.05) #0.05 is what they used
+
             if k is not None:
                 traj = traj[-k:]
             
             #calculating posteriors
-            post_beta = np.copy(priors)
-            for i,beta in numerate(priors):
+            post_lambda = np.copy(priors)
+            for i,beta in enumerate(priors):
                 #multiply by action probability given state and params
-                post_beta[i] *= self.trajectory_probabilities(goal_spec, traj=traj, beta=beta)
+                post_lambda[i] *= self.trajectory_probabilities(goals, traj=traj, beta=beta)
                 
-            np.divide(post_beta, np.sum(P_beta), out=post_beta)
+            np.divide(post_lambda, np.sum(post_lambda), out=post_lambda) #normalize
 
-            return post_beta
+            return post_lambda
             
-            """
+
             pass
-        def belief_resample(self, prior, epsilon,initial_belief):
+        def belief_resample(self, priors, epsilon):
             """
             Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
             :return: resampled belief P(k-1) on lambda and theta
             """
-            resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
-            return resampled_prior
+            initial_belief = np.ones(len(priors)) / len(priors)
+            resampled_priors = (1 - epsilon)*priors + epsilon * initial_belief
+            return resampled_priors
 
-        def theta_joint_infer():
+        def theta_joint_update(self, thetas, theta_priors, traj,goal, epsilon = 0.05):
             """
             refer to destination.py
-            :return:
+            :return:posterior probabilities of each theta and corresponding lambda maximizing the probability
             """
             #TODO: organize all algorithms for joint inference
+            if theta_priors is None:
+                theta_priors = np.ones(len(thetas))/len(thetas)
+
+            lambdas = np.empty(len(thetas))
+            for i, theta in enumerate(thetas):
+                lambdas[i] = self.binary_search(traj, gradient)
+
+            #TODO: check state and action for one agent case
+            p_action = np.empty([self.agents.s,self.agents.a])
+            for i, (lamb, theta) in enumerate(zip(lambdas, thetas)):
+                p_action[i] = action_probabilities(lamb)
+
+            p_theta = np.copy(theta_priors)
+            p_theta_prime = np.empty(len(thetas))
+
+            "probability of theta"
+            for t,(s, a) in enumerate(traj):
+                if t ==0:
+                    for theta_t in range(len(thetas)):
+                        p_theta_prime[theta_t] = p_action[theta_t,s,a]  * p_theta[theta_t]
+                else:
+                    for theta_t in range(len(thetas)):
+                        for theta_past in range(len(thetas)):
+                            p_theta_prime[theta_t] += p_action[theta_t,s,a]  * p_theta[theta_past]
+            p_theta_prime /= sum(p_theta_prime) #normalize
+
+            #TODO: joint inference with theta and lambda
             pass
+            #return p_theta_prime
         def state_infer():
             """
             refer to state.py and occupancy.py
