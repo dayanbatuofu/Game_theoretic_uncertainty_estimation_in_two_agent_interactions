@@ -260,7 +260,7 @@ class InferenceModel:
             
             """
             pass
-        def belief_update( self, lambdas, traj, priors, goals, k):
+        def lambda_update( self, lambdas, traj, priors, goals, k):
             """
             refer to beta.py
             Update belief over set of beta with Baysian update
@@ -339,7 +339,7 @@ class InferenceModel:
             #TODO: joint inference with theta and lambda
             pass
             #return p_theta_prime
-        def state_infer():
+        def state_probabilities_infer():
             """
             refer to state.py and occupancy.py
             :return:
