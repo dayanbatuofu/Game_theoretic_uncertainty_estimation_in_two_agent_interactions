@@ -162,6 +162,7 @@ class InferenceModel:
         def action_probabilities(self,_lambda):  #equation 1
             """
             refer to mdp.py
+            Noisy-rational model
             calculates probability distribution of action given hardmax Q values
             Uses:
             1. Softmax algorithm
@@ -263,6 +264,7 @@ class InferenceModel:
         def lambda_update( self, lambdas, traj, priors, goals, k):
             """
             refer to beta.py
+            Simple lambda updates without theta joint inference
             Update belief over set of beta with Baysian update
             params:
             traj: for obtaining trajectory up to time step k
@@ -338,16 +340,39 @@ class InferenceModel:
 
             #TODO: joint inference with theta and lambda
             pass
-            #return p_theta_prime
-        def state_probabilities_infer():
+            return p_theta_prime, lambdas
+        def state_probabilities_infer(self, traj, goal, thetas,theta_priors, p_theta,lambdas, T):
             """
             refer to state.py and occupancy.py
+            Infer the state probabilities before observation of lambda and theta.
+            params:
+            T: time horizon for state probabilities inference
             :return:
-            probability of destination
-            probability of states given correct destination
-            beta / lambda
+            probability of theta
+            probability the agent is at each state given correct theta
+            corresponding lambda
             """
-            #TODO organize all algorithms
+            #TODO theta_priors could be None!! Design the function around it!
+            prob_theta, lambdas = self.theta_joint_update(thetas, theta_priors, traj,goal, epsilon = 0.05)
+            # TODO: modify the following sample code:
+            """
+            # Take the weighted sum of the occupancy given each individual destination.
+            D = np.zeros(g.S)
+            D_dests = []  # Only for verbose_return
+            for dest, beta, act_prob, dest_prob in zip(
+                    dests, betas, act_probs, dest_probs):
+                D_dest = infer_simple(g, init_state, dest, T, beta=beta,
+                        action_prob=act_prob)
+                if verbose_return:
+                    D_dests.append(np.copy(D_dest))
+                np.multiply(D_dest, dest_prob, out=D_dest)
+                np.add(D, D_dest, out=D)
+
+            if not verbose_return:
+                return D
+            else:
+                return D, D_dests, dest_probs, betas
+            """
             pass
 
         def value_iter():
