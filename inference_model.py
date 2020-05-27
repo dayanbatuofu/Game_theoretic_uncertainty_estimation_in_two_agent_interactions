@@ -21,7 +21,7 @@ class InferenceModel:
         # TODO: obtain state and action space information
         # importing agents information
         self.agents = AutonomousVehicle
-
+        self.initial_state = AutonomousVehicle.initial_state #TODO: import this!
         #"--------------------------------------------------------"
         #"imported variables from pedestrian prediction"
         self.q_cache = {}
@@ -341,10 +341,11 @@ class InferenceModel:
             #TODO: joint inference with theta and lambda
             pass
             return p_theta_prime, lambdas
-        def state_probabilities_infer(self, traj, goal, thetas,theta_priors, p_theta,lambdas, T):
+        def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
             """
             refer to state.py and occupancy.py
             Infer the state probabilities before observation of lambda and theta.
+            Equation 4: P(x(k+1);lambda, theta) = P(u(k)|x(k);lambda,theta) * P(x(k),lambda, theta)
             params:
             T: time horizon for state probabilities inference
             :return:
@@ -353,26 +354,27 @@ class InferenceModel:
             corresponding lambda
             """
             #TODO theta_priors could be None!! Design the function around it!
-            prob_theta, lambdas = self.theta_joint_update(thetas, theta_priors, traj,goal, epsilon = 0.05)
+            p_theta, lambdas = self.theta_joint_update(thetas, theta_priors, traj,goal, epsilon = 0.05)
             # TODO: modify the following sample code:
-            """
-            # Take the weighted sum of the occupancy given each individual destination.
-            D = np.zeros(g.S)
-            D_dests = []  # Only for verbose_return
-            for dest, beta, act_prob, dest_prob in zip(
-                    dests, betas, act_probs, dest_probs):
-                D_dest = infer_simple(g, init_state, dest, T, beta=beta,
-                        action_prob=act_prob)
-                if verbose_return:
-                    D_dests.append(np.copy(D_dest))
-                np.multiply(D_dest, dest_prob, out=D_dest)
-                np.add(D, D_dest, out=D)
 
-            if not verbose_return:
-                return D
-            else:
-                return D, D_dests, dest_probs, betas
-            """
+
+            def infer_simple(self, T):
+                p_state = np.zeros([T+1, self.states])
+                p_state[0][self.initial_state] = 1 #start with prob of 1 at starting point
+                p_action = self.baseline_inference.action_probabilities()
+                for t in range(1, T + 1):
+                    p = p_state[t - 1]
+                    p_prime = p_state[t]
+                    p_prime *= p_action #TODO: check this calculation! Maybe need p_action for each time step
+                return p_state
+
+            # Take the weighted sum of the occupancy given each individual destination.
+            # iterate through multiple thetas
+            for theta, lamb, p_action, p_theta in zip(thetas, lambdas, p_actions, p_theta):
+                p_state = infer_simple(T)
+                np.multiply(p_state, p_theta, out=p_state)
+                #TODO: I am confused... need to check back for how to calculate p_state in our case
+
             pass
 
         def value_iter():
