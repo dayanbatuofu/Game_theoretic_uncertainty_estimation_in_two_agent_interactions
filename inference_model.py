@@ -86,10 +86,15 @@ class InferenceModel:
                 Q = -((goal_s - sy) / (vy + action * dt) + (goal_s - sx)/(vx + action * dt))
             return Q
 
-        def q_values(self, states):
+        def q_values(self, state):
             #TODO documentation for function
+            """
 
-            current_s = states[-1]
+            :param self:
+            :param states:
+            :return:
+            """
+            #current_s = states[-1]
             Q = {}
             #TODO: IMPORT GOAL.  goal = whatever
             #TODO: IMPORT DT
@@ -98,13 +103,6 @@ class InferenceModel:
 
             return Q
 
-
-            """
-            refer to classic.py, car.py
-            Calculates hardmax Q-value given state-action pair.
-            Q(s,a) = R(s,a)  +V(s')   #All f
-            Q(s, a) = (s_goal - s_current)/v_next
-            """
             #Estimating Q value at state s with time to goal from s, assuming agent moves along the y axis:
             """
             #Pseudo code
@@ -125,27 +123,6 @@ class InferenceModel:
             Q = -v_last*dt - np.abs(x_last + v_last*dt - goal) #2D version of Q value from confidence aware paper
             """
             #from berkeley code::   CHANGE PARAMETER NAMES
-
-            #Q values using reward and value iteration:
-            """
-            V = value_iter(goal)
-            Q = np.empty([agents.S, agents.A])
-            Q.fill(-np.inf)
-
-            for s in range(agents.S):
-                if s == goal and goal_stuck:
-                    Q[s, agents.A] = 0
-                    continue
-                for a in range(agents.A):
-                    if s == goal and a = Actions.ABSORB:
-                        Q[s, a] = 0
-                    else:
-                        Q[s, a] = self.rewards[s, a] + V[transition(s,a)]
-            return np.copy(Q)
-            
-            """
-            pass
-
 
 
         def transition_probabilities(self,beta):
@@ -171,22 +148,49 @@ class InferenceModel:
             => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
             :return:
             """
+            #TODO: Check this modification so that action probability is calculated for states within a time horizon
+            #-----pseudo code: append all states reachable within time T----
+            states = self.states #TODO: import a state to start from
+            actions = self.actions
+            state_list = []
+            dt = self.sim.dt
+            def get_s_prime(_states, _actions):
+                _s_prime = []
+                def calc_state(x, u, dt):
+                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                    vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                    vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                    sx_new = sx + (vx + vx_new) * dt * 0.5
+                    sy_new = sy + (vy + vy_new) * dt * 0.5
+
+                    return sx_new, sy_new, vx_new, vy_new
+
+                for s in _states:
+                    for a in _actions:
+                        _s_prime.append(calc_state(s, a, dt)) #maybe use AutonomousVehicle.dynamics(action)?
+                return _s_prime
+            states = self.initial_state
+            for t in range(1, T):
+                s_prime = get_s_prime(states, actions) #separate pos and speed!
+                state_list.append(s_prime)
+                state = s_prime  # get s prime for the new states
+            #-----end of pseudo code------
 
 
-
-            #TODO: Yi's notes 5/17
             #Need to add some filtering for states with no legal action: q = -inf
-            Q = self.q_values()
-            exp_Q = np.empty([Q])
+            exp_Q_list = np.empty(len(state_list)) #create an array of exp_Q recording for each state
+            for s in state_list:
+                Q = self.q_values(s)
+                exp_Q = np.empty([Q])
 
-            "Q*lambda"
-            np.multiply(Q,_lambda,out = Q)
+                "Q*lambda"
+                np.multiply(Q,_lambda,out = Q)
 
-            "Q*lambda/(sum(Q*lambda))"
-            np.exp(Q, out=exp_Q)
-            normalize(exp_Q, norm = 'l1', copy = False)
-
-            return exp_Q
+                "Q*lambda/(sum(Q*lambda))"
+                np.exp(Q, out=exp_Q)
+                normalize(exp_Q, norm = 'l1', copy = False)
+                exp_Q_list..append*(exp_Q)
+            return exp_Q_list #array of exp_Q for an array of states
             #pass
 
         def traj_probabilities(self, traj):
@@ -346,6 +350,7 @@ class InferenceModel:
             refer to state.py and occupancy.py
             Infer the state probabilities before observation of lambda and theta.
             Equation 4: P(x(k+1);lambda, theta) = P(u(k)|x(k);lambda,theta) * P(x(k),lambda, theta)
+                                                = action_probabilities * p_state(t-1)
             params:
             T: time horizon for state probabilities inference
             :return:
