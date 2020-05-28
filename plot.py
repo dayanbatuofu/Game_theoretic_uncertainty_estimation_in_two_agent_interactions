@@ -3,7 +3,7 @@ from inference_model import InferenceModel
 from autonomous_vehicle import AutonomousVehicle
 import numpy as np
 
-class Plot:
+class ContourPlot:
     def __init__(self):
         #TODO: import state information, fill in the args
         self.states = AutonomousVehicle()

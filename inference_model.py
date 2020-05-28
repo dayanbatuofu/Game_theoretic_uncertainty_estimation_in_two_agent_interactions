@@ -124,18 +124,6 @@ class InferenceModel:
             """
             #from berkeley code::   CHANGE PARAMETER NAMES
 
-
-        def transition_probabilities(self,beta):
-            """
-            Refer to mdp.py
-            No need since our car transition is deterministic?
-            :return:
-            """
-            """
-            #Pseudo code
-     
-            """
-            pass
         def action_probabilities(self,_lambda):  #equation 1
             """
             refer to mdp.py
@@ -189,7 +177,7 @@ class InferenceModel:
                 "Q*lambda/(sum(Q*lambda))"
                 np.exp(Q, out=exp_Q)
                 normalize(exp_Q, norm = 'l1', copy = False)
-                exp_Q_list..append*(exp_Q)
+                exp_Q_list.append*(exp_Q)
             return exp_Q_list #array of exp_Q for an array of states
             #pass
 
@@ -205,7 +193,7 @@ class InferenceModel:
             """
             #Pseudo code
 
-            p_action = self.action_probabilities()
+            p_action = self.action_probabilities(_lambda)
             p_traj = 1 #initialize
             
             for s, a in traj:
@@ -213,59 +201,9 @@ class InferenceModel:
             return p_traj
 
             #pass
-        def binary_search(self, traj,  gradient):
-            """
-            refer to gradient_descent_shared.py
-            For finding most suited beta corresponding to theta
-            :return:
-            """
-            #Pseudo code
-            #TODO modify for our uses
-            """
-            lo, hi = min_beta, max_beta
-            
-            if guess is None:
-                mid = (lo + hi) / 2
-            else:
-                mid = guess
 
-            if len(traj) == 0:
-                return guess
-
-            for i in xrange(max_iters):
-                assert lo <= mid <= hi
-                grad = compute_grad(g, traj, goal, mid)
-                if verbose:
-                    print u"i={}\t mid={}\t grad={}".format(i, mid, grad)
-
-                if i >= min_iters and abs(grad) < grad_threshold:
-                    break
-
-                if grad > 0:
-                   lo = mid
-                else:
-                    hi = mid
-                if i >= min_iters and hi - lo < beta_threshold:
-                    break
-
-                mid = (lo + hi)/2
-
-            if verbose:
-                print u"final answer: beta=", mid
-            return mid
-            """
-            pass
-        def gradient_ascent():
-            """
-            refer to gradient_descent_shared.py
-            For obtaining local maximum
-            :return:
-            """
-            """
-            
-            """
-            pass
         def lambda_update( self, lambdas, traj, priors, goals, k):
+            #This function is not in use!
             """
             refer to beta.py
             Simple lambda updates without theta joint inference
@@ -283,7 +221,7 @@ class InferenceModel:
                 priors = np.ones(len(lambdas)) #assume uniform priors
                 priors /= len(lambdas) #normalize
 
-            #TODO: choose epsilonn
+            #TODO: choose epsilon
             resampled_prior = self.belief_resample(priors, epsilon = 0.05) #0.05 is what they used
 
             if k is not None:
@@ -310,18 +248,34 @@ class InferenceModel:
             resampled_priors = (1 - epsilon)*priors + epsilon * initial_belief
             return resampled_priors
 
-        def theta_joint_update(self, thetas, theta_priors, traj,goal, epsilon = 0.05):
+        def theta_joint_update(self, thetas, theta_priors, lambdas, traj,goal, epsilon = 0.05):
             """
             refer to destination.py
             :return:posterior probabilities of each theta and corresponding lambda maximizing the probability
             """
-            #TODO: organize all algorithms for joint inference
+
             if theta_priors is None:
                 theta_priors = np.ones(len(thetas))/len(thetas)
 
-            lambdas = np.empty(len(thetas))
-            for i, theta in enumerate(thetas):
-                lambdas[i] = self.binary_search(traj, gradient)
+            #TODO: enumerate through all the lambdas instead of searching!
+            suited_lambdas = np.empty(len(thetas))
+            L = len(lambdas)
+            #scores = np.empty(len(lambdas))
+            def compute_score(self, traj, _lambda, L):
+                scores = np.empty(L)
+                p_a = self.action_probabilities(_lambda)
+                for i, (s, a) in enumerate(traj): #pp score calculation method
+                    scores[i] = p_a[s, a]
+                log_scores = np.log(scores)
+                return np.sum(log_scores)
+
+            for i, theta in enumerate(thetas):#get a best suited lambda for each theta
+                #lambdas[i] = self.binary_search(traj, gradient)
+                score_list = []
+                for j, lamb in enumerate(lambdas):
+                    score_list.append(compute_score(traj, lamb, L))
+                max_lambda_j = np.argmax(score_list)
+                suited_lambdas[i] = lambdas[max_lambda_j]  #recording the best suited lambda for corresponding theta[i]
 
             #TODO: check state and action for one agent case
             p_action = np.empty([self.agents.s,self.agents.a])
@@ -331,7 +285,7 @@ class InferenceModel:
             p_theta = np.copy(theta_priors)
             p_theta_prime = np.empty(len(thetas))
 
-            "probability of theta"
+            "joint inference update for (lambda, theta)"
             for t,(s, a) in enumerate(traj):
                 if t ==0:
                     for theta_t in range(len(thetas)):
@@ -341,11 +295,12 @@ class InferenceModel:
                         for theta_past in range(len(thetas)):
                             p_theta_prime[theta_t] += p_action[theta_t,s,a]  * p_theta[theta_past]
             p_theta_prime /= sum(p_theta_prime) #normalize
+            #TODO: use equation 3 to resample from initial belief
 
-            #TODO: joint inference with theta and lambda
             pass
             return p_theta_prime, lambdas
         def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
+            #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
             """
             refer to state.py and occupancy.py
             Infer the state probabilities before observation of lambda and theta.
@@ -379,6 +334,7 @@ class InferenceModel:
                 p_state = infer_simple(T)
                 np.multiply(p_state, p_theta, out=p_state)
                 #TODO: I am confused... need to check back for how to calculate p_state in our case
+
 
             pass
 
