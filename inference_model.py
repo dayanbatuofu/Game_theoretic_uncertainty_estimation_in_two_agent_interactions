@@ -259,6 +259,8 @@ class InferenceModel:
             :return:posterior probabilities of each theta and corresponding lambda maximizing the probability
             """
 
+            #theta_init = np.ones(len(thetas))/len(thetas) #initial belief of theta
+
             if theta_priors is None:
                 theta_priors = np.ones(len(thetas))/len(thetas)
 
@@ -288,6 +290,7 @@ class InferenceModel:
                 p_action[i] = action_probabilities(lamb)
 
             p_theta = np.copy(theta_priors)
+            p_theta = self.belief_resample(p_theta, epsilon == 0.05) #resample from uniform belief
             p_theta_prime = np.empty(len(thetas))
 
             "joint inference update for (lambda, theta)"
@@ -301,10 +304,13 @@ class InferenceModel:
                             p_theta_prime[theta_t] += p_action[theta_t,s,a]  * p_theta[theta_past]
             p_theta_prime /= sum(p_theta_prime) #normalize
             assert np.sum(p_theta_prime) == 1 #check if it is properly normalized
+
             #TODO: use equation 3 to resample from initial belief
 
             pass
-            return p_theta_prime, lambdas
+            return p_theta_prime, suited_lambdas
+
+
         def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
             #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
             """
