@@ -74,16 +74,17 @@ class InferenceModel:
             """
             #Q = -(s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
             u = action
+            delta = 1 #to prevent denominator from becoming zero
             sx, sy, vx, vy = current_s[0], current_s[1], current_s[2], current_s[3]
             if sx == 0 and vx == 0:
                 #Q = FUNCTION MATH HERE USING SY, VY
-                Q = -(goal_s - sx)/(vx + action * dt)
+                Q = -(goal_s - sx)/(vx + action * dt + delta)
             elif sy == 0 and vy == 0:
                 #Q = FUNCTION MATH HERE USING SX, VX
-                Q = -(goal_s - sy) / (vy + action * dt)
+                Q = -(goal_s - sy) / (vy + action * dt + delta)
             else:
                 #Q = FUNCTION FOR 2D MODELS
-                Q = -((goal_s - sy) / (vy + action * dt) + (goal_s - sx)/(vx + action * dt))
+                Q = -((goal_s - sy) / (vy + action * dt + delta) + (goal_s - sx)/(vx + action * dt + delta))
             return Q
 
         def q_values(self, state):
@@ -167,7 +168,7 @@ class InferenceModel:
 
             #Need to add some filtering for states with no legal action: q = -inf
             exp_Q_list = np.empty(len(state_list)) #create an array of exp_Q recording for each state
-            for s in state_list:
+            for i, s in enumerate(state_list):
                 Q = self.q_values(s)
                 exp_Q = np.empty([Q])
 
@@ -177,11 +178,13 @@ class InferenceModel:
                 "Q*lambda/(sum(Q*lambda))"
                 np.exp(Q, out=exp_Q)
                 normalize(exp_Q, norm = 'l1', copy = False)
-                exp_Q_list.append*(exp_Q)
+                exp_Q_list[i] = exp_Q
             return exp_Q_list #array of exp_Q for an array of states
+            #TODO: check data type! make sure the data can be easily accessed(2D array with 2 for loops?)
             #pass
 
-        def traj_probabilities(self, traj):
+        def traj_probabilities(self, traj, _lambda):
+            #TODO: think about how trajectory is generated
             """
             refer to mdp.py
             multiply over action probabilities to obtain trajectory probabilities given (s, a)
@@ -195,10 +198,11 @@ class InferenceModel:
 
             p_action = self.action_probabilities(_lambda)
             p_traj = 1 #initialize
-            
-            for s, a in traj:
+            p_states = np.empty(len(traj))
+            for i, (s, a) in enumerate(traj):
                 p_traj *= p_action
-            return p_traj
+                p_states[i] = p_traj #5/28 update: add probability at each state to a list
+            return p_states
 
             #pass
 
@@ -241,6 +245,7 @@ class InferenceModel:
             pass
         def belief_resample(self, priors, epsilon):
             """
+            Equation 3
             Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
             :return: resampled belief P(k-1) on lambda and theta
             """
@@ -295,6 +300,7 @@ class InferenceModel:
                         for theta_past in range(len(thetas)):
                             p_theta_prime[theta_t] += p_action[theta_t,s,a]  * p_theta[theta_past]
             p_theta_prime /= sum(p_theta_prime) #normalize
+            assert np.sum(p_theta_prime) == 1 #check if it is properly normalized
             #TODO: use equation 3 to resample from initial belief
 
             pass
@@ -339,6 +345,7 @@ class InferenceModel:
             pass
 
         def value_iter():
+            #Not in use
             """
             refer to hardmax.py
             Calculate V where ith entry is the value of starting at state s till i
