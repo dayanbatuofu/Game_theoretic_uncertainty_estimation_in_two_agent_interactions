@@ -22,6 +22,8 @@ class InferenceModel:
         # importing agents information
         self.agents = AutonomousVehicle
         self.initial_state = AutonomousVehicle.initial_state #TODO: import this!
+        self.goal = sim.goal #CHECK THIS
+
         #"--------------------------------------------------------"
         #"imported variables from pedestrian prediction"
         self.q_cache = {}
@@ -124,27 +126,22 @@ class InferenceModel:
             Q = -v_last*dt - np.abs(x_last + v_last*dt - goal) #2D version of Q value from confidence aware paper
             """
             #from berkeley code::   CHANGE PARAMETER NAMES
-
-        def action_probabilities(self,_lambda):  #equation 1
+        def get_state_list(self, T):
             """
-            refer to mdp.py
-            Noisy-rational model
-            calculates probability distribution of action given hardmax Q values
-            Uses:
-            1. Softmax algorithm
-            2. Q-value given state action pair (s, a)
-            3. beta: "rationality coefficient"
-            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            calculate an array of state (T x S at depth T)
+            :param self:
             :return:
             """
-            #TODO: Check this modification so that action probability is calculated for states within a time horizon
-            #-----pseudo code: append all states reachable within time T----
-            states = self.states #TODO: import a state to start from
+            # TODO: Check this modification so that action probability is calculated for states within a time horizon
+            # -----pseudo code: append all states reachable within time T----
+            states = self.states  # TODO: import a state to start from
             actions = self.actions
-            state_list = []
+            #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
             dt = self.sim.dt
+
             def get_s_prime(_states, _actions):
                 _s_prime = []
+
                 def calc_state(x, u, dt):
                     sx, sy, vx, vy = x[0], x[1], x[2], x[3]
                     vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
@@ -156,35 +153,54 @@ class InferenceModel:
 
                 for s in _states:
                     for a in _actions:
-                        _s_prime.append(calc_state(s, a, dt)) #maybe use AutonomousVehicle.dynamics(action)?
+                        _s_prime.append(calc_state(s, a, dt))
                 return _s_prime
-            states = self.initial_state
-            for t in range(1, T):
-                s_prime = get_s_prime(states, actions) #separate pos and speed!
-                state_list.append(s_prime)
+
+            states = self.initial_state  # or use current state
+            i = 0  # row counter
+            state_list = np.zeros([T, actions * T])
+            for t in range(0, T):
+                s_prime = get_s_prime(states, actions)  # separate pos and speed!
+                state_list[i] = s_prime
                 state = s_prime  # get s prime for the new states
-            #-----end of pseudo code------
-
-
+                i += 1  # move onto next row
+            return state_list
+            # -----end of pseudo code------
+        def action_probabilities(self,state,_lambda):  #equation 1
+            """
+            refer to mdp.py
+            Noisy-rational model
+            calculates probability distribution of action given hardmax Q values
+            Uses:
+            1. Softmax algorithm
+            2. Q-value given state action pair (s, a)
+            3. beta: "rationality coefficient"
+            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            :return:
+            """
             #Need to add some filtering for states with no legal action: q = -inf
-            exp_Q_list = np.empty(len(state_list)) #create an array of exp_Q recording for each state
-            for i, s in enumerate(state_list):
-                Q = self.q_values(s)
-                exp_Q = np.empty([Q])
+            #exp_Q_list = np.zeros(shape=state_list) #create an array of exp_Q recording for each state
+            #for i, s in enumerate(state_list):
+            Q = self.q_values(state)
+            exp_Q = np.empty(shape=Q)
 
-                "Q*lambda"
-                np.multiply(Q,_lambda,out = Q)
+            "Q*lambda"
+            np.multiply(Q,_lambda,out = Q)
 
-                "Q*lambda/(sum(Q*lambda))"
-                np.exp(Q, out=exp_Q)
-                normalize(exp_Q, norm = 'l1', copy = False)
-                exp_Q_list[i] = exp_Q
-            return exp_Q_list #array of exp_Q for an array of states
+            "Q*lambda/(sum(Q*lambda))"
+            np.exp(Q, out=exp_Q)
+            normalize(exp_Q, norm = 'l1', copy = False)
+
+            return exp_Q
+            #exp_Q_list[i] = exp_Q
+
+            #return exp_Q_list #array of exp_Q for an array of states
             #TODO: check data type! make sure the data can be easily accessed(2D array with 2 for loops?)
-            #pass
 
-        def traj_probabilities(self, traj, _lambda):
+
+        def traj_probabilities(self,  _lambda):
             #TODO: think about how trajectory is generated
+            #TODO: Modify this so that state distribution is calculated for future 1 time step
             """
             refer to mdp.py
             multiply over action probabilities to obtain trajectory probabilities given (s, a)
@@ -196,15 +212,23 @@ class InferenceModel:
             """
             #Pseudo code
 
-            p_action = self.action_probabilities(_lambda)
+            #p_action = action_probabilities(_lambda)
             p_traj = 1 #initialize
-            p_states = np.empty(len(traj))
-            for i, (s, a) in enumerate(traj):
-                p_traj *= p_action
-                p_states[i] = p_traj #5/28 update: add probability at each state to a list
+            T = self.T #TODO: predefined time horizon
+            state_list = get_state_list(T) #get list of state given curr_state/init_state from self._init_
+            p_states = np.zeros(shape=state_list)
+
+            for row in p_states:
+                if row == 0: #first row has the initial state so prob is 1
+                    p_states[0, 0] = p_traj
+                else:
+                    #TODO: generalize for more than 1 time step!
+                    for i in row: #calculate prob for subsequent states
+                        p_action = action_probabilities(state_list[0, 0], _lambda)
+                        p_states[row, i] = p_traj * p_action[i]
+
             return p_states
 
-            #pass
 
         def lambda_update( self, lambdas, traj, priors, goals, k):
             #This function is not in use!
@@ -218,14 +242,11 @@ class InferenceModel:
             trajectory probabilities: calculates probability of action taken at given state and params
             :return: Posterior belief over betas
             """
-            #Psuedo code
-            #TODO: use the resampled prior from function belief_resample
 
             if priors is None:
                 priors = np.ones(len(lambdas)) #assume uniform priors
                 priors /= len(lambdas) #normalize
 
-            #TODO: choose epsilon
             resampled_prior = self.belief_resample(priors, epsilon = 0.05) #0.05 is what they used
 
             if k is not None:
@@ -240,7 +261,6 @@ class InferenceModel:
             np.divide(post_lambda, np.sum(post_lambda), out=post_lambda) #normalize
 
             return post_lambda
-            
 
             pass
         def belief_resample(self, priors, epsilon):
@@ -264,13 +284,13 @@ class InferenceModel:
             if theta_priors is None:
                 theta_priors = np.ones(len(thetas))/len(thetas)
 
-            #TODO: enumerate through all the lambdas instead of searching!
             suited_lambdas = np.empty(len(thetas))
             L = len(lambdas)
             #scores = np.empty(len(lambdas))
+            #TODO: how to get recorded traj for evaluation?
             def compute_score(self, traj, _lambda, L):
                 scores = np.empty(L)
-                p_a = self.action_probabilities(_lambda)
+                p_a = action_probabilities(_lambda) #TODO: this take in state too now
                 for i, (s, a) in enumerate(traj): #pp score calculation method
                     scores[i] = p_a[s, a]
                 log_scores = np.log(scores)
@@ -287,14 +307,15 @@ class InferenceModel:
             #TODO: check state and action for one agent case
             p_action = np.empty([self.agents.s,self.agents.a])
             for i, (lamb, theta) in enumerate(zip(lambdas, thetas)):
-                p_action[i] = action_probabilities(lamb)
+                p_action[i] = action_probabilities(lamb) #TODO: now this takes in state as well
 
             p_theta = np.copy(theta_priors)
+            "re-sampling from initial distribution"
             p_theta = self.belief_resample(p_theta, epsilon == 0.05) #resample from uniform belief
             p_theta_prime = np.empty(len(thetas))
 
             "joint inference update for (lambda, theta)"
-            for t,(s, a) in enumerate(traj):
+            for t,(s, a) in enumerate(traj): #FIX TRAJ
                 if t ==0:
                     for theta_t in range(len(thetas)):
                         p_theta_prime[theta_t] = p_action[theta_t,s,a]  * p_theta[theta_t]
@@ -305,14 +326,12 @@ class InferenceModel:
             p_theta_prime /= sum(p_theta_prime) #normalize
             assert np.sum(p_theta_prime) == 1 #check if it is properly normalized
 
-            #TODO: use equation 3 to resample from initial belief
-
-            pass
             return p_theta_prime, suited_lambdas
 
 
         def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
             #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
+            #Not in use
             """
             refer to state.py and occupancy.py
             Infer the state probabilities before observation of lambda and theta.
@@ -367,7 +386,21 @@ class InferenceModel:
         """
         # TODO: implement proposed
 
-        # predicted_intent_other, predicted_intent_self, predicted_policy_other, predicted_policy_self
+        # variables: predicted_intent_other: BH hat, predicted_intent_self: BM tilde,
+        # predicted_policy_other: QH hat, predicted_policy_self: QM tilde
+        #TODO: import Q pairs from Nash Equilibrium computed with RL
+        def h_action_prob(self):
+            pass
+        def m_action_prob(self):
+            pass
+        def q_pair_prob(self):
+            pass
+        def beta_pair_prob(self):
+            pass
+        def beta_pair_given_q(self):
+            pass
+        def state_prob(self):
+            pass
         pass
 
     @staticmethod
