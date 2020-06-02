@@ -21,16 +21,16 @@ class InferenceModel:
         # TODO: obtain state and action space information
         # importing agents information
         self.agents = AutonomousVehicle
-        self.initial_state = AutonomousVehicle.initial_state #TODO: import this!
+        self.curr_state = AutonomousVehicle.state #cumulative #TODO: import this!
         self.goal = sim.goal #CHECK THIS
 
         #"--------------------------------------------------------"
-        #"imported variables from pedestrian prediction"
+        "imported variables from pedestrian prediction"
         self.q_cache = {}
         #"defining reward for (s, a) pair"
-        self.default_reward = -1
-        self.rewards = np.zeros[self.agents.s, self.agents.a] #Needs fixing
-        self.rewards.fill(self.default_reward)
+        #self.default_reward = -1
+        #self.rewards = np.zeros[self.agents.s, self.agents.a] #Needs fixing
+        #self.rewards.fill(self.default_reward)
         #"--------------------------------------------------------"
 
     @staticmethod
@@ -230,39 +230,39 @@ class InferenceModel:
             return p_states
 
 
-        def lambda_update( self, lambdas, traj, priors, goals, k):
-            #This function is not in use!
-            """
-            refer to beta.py
-            Simple lambda updates without theta joint inference
-            Update belief over set of beta with Baysian update
-            params:
-            traj: for obtaining trajectory up to time step k
-            k: current time step
-            trajectory probabilities: calculates probability of action taken at given state and params
-            :return: Posterior belief over betas
-            """
-
-            if priors is None:
-                priors = np.ones(len(lambdas)) #assume uniform priors
-                priors /= len(lambdas) #normalize
-
-            resampled_prior = self.belief_resample(priors, epsilon = 0.05) #0.05 is what they used
-
-            if k is not None:
-                traj = traj[-k:]
-            
-            #calculating posteriors
-            post_lambda = np.copy(priors)
-            for i,beta in enumerate(priors):
-                #multiply by action probability given state and params
-                post_lambda[i] *= self.trajectory_probabilities(goals, traj=traj, beta=beta)
-                
-            np.divide(post_lambda, np.sum(post_lambda), out=post_lambda) #normalize
-
-            return post_lambda
-
-            pass
+        # def lambda_update( self, lambdas, traj, priors, goals, k):
+        #     #This function is not in use! But it is a good reference for update algorithm
+        #     """
+        #     refer to beta.py
+        #     Simple lambda updates without theta joint inference
+        #     Update belief over set of beta with Baysian update
+        #     params:
+        #     traj: for obtaining trajectory up to time step k
+        #     k: current time step
+        #     trajectory probabilities: calculates probability of action taken at given state and params
+        #     :return: Posterior belief over betas
+        #     """
+        #
+        #     if priors is None:
+        #         priors = np.ones(len(lambdas)) #assume uniform priors
+        #         priors /= len(lambdas) #normalize
+        #
+        #     resampled_prior = self.belief_resample(priors, epsilon = 0.05) #0.05 is what they used
+        #
+        #     if k is not None:
+        #         traj = traj[-k:]
+        #
+        #     #calculating posteriors
+        #     post_lambda = np.copy(priors)
+        #     for i,beta in enumerate(priors):
+        #         #multiply by action probability given state and params
+        #         post_lambda[i] *= self.trajectory_probabilities(goals, traj=traj, beta=beta)
+        #
+        #     np.divide(post_lambda, np.sum(post_lambda), out=post_lambda) #normalize
+        #
+        #     return post_lambda
+        #
+        #     pass
         def belief_resample(self, priors, epsilon):
             """
             Equation 3
@@ -278,7 +278,7 @@ class InferenceModel:
             refer to destination.py
             :return:posterior probabilities of each theta and corresponding lambda maximizing the probability
             """
-
+            #TODO: simplify the code and reduce the redundant calculation
             #theta_init = np.ones(len(thetas))/len(thetas) #initial belief of theta
 
             if theta_priors is None:
@@ -287,11 +287,11 @@ class InferenceModel:
             suited_lambdas = np.empty(len(thetas))
             L = len(lambdas)
             #scores = np.empty(len(lambdas))
-            #TODO: how to get recorded traj for evaluation?
+            #TODO: how to get recorded traj for evaluation(Maybe AutonomousVehicle.state?)?
             def compute_score(self, traj, _lambda, L):
                 scores = np.empty(L)
-                p_a = action_probabilities(_lambda) #TODO: this take in state too now
                 for i, (s, a) in enumerate(traj): #pp score calculation method
+                    p_a = action_probabilities(s, _lambda)  # get probability of action in each state given a lambda
                     scores[i] = p_a[s, a]
                 log_scores = np.log(scores)
                 return np.sum(log_scores)
@@ -305,9 +305,11 @@ class InferenceModel:
                 suited_lambdas[i] = lambdas[max_lambda_j]  #recording the best suited lambda for corresponding theta[i]
 
             #TODO: check state and action for one agent case
-            p_action = np.empty([self.agents.s,self.agents.a])
-            for i, (lamb, theta) in enumerate(zip(lambdas, thetas)):
-                p_action[i] = action_probabilities(lamb) #TODO: now this takes in state as well
+            #Instead of iterating we calculate action prob right before calculating p_theta_prime!
+            #p_action = np.empty([thetas, traj, self.agents.a]) #storing 3D info of [thetas, states, actions]
+            #for i, (lamb, theta) in enumerate(zip(lambdas, thetas)):
+            #    for s, a in traj:
+            #        p_action[i] = action_probabilities(s, lamb)
 
             p_theta = np.copy(theta_priors)
             "re-sampling from initial distribution"
@@ -315,13 +317,16 @@ class InferenceModel:
             p_theta_prime = np.empty(len(thetas))
 
             "joint inference update for (lambda, theta)"
-            for t,(s, a) in enumerate(traj): #FIX TRAJ
-                if t ==0:
-                    for theta_t in range(len(thetas)):
-                        p_theta_prime[theta_t] = p_action[theta_t,s,a]  * p_theta[theta_t]
-                else:
-                    for theta_t in range(len(thetas)):
-                        for theta_past in range(len(thetas)):
+            for t,(s, a) in enumerate(traj): #enumerate through past traj#TODO: CHECK PAST TRAJ FROM CLASS AV
+
+                if t ==0: #initially there's only one state and not past
+                    for theta_t in range(len(thetas)): #cycle through list of thetas
+                        p_action = action_probabilities(s, suited_lambdas[theta_t]) #1D array
+                        p_theta_prime[theta_t] = p_action[a]  * p_theta[theta_t]
+                else: #for state action pair that is not at time zero
+                    for theta_t in range(len(thetas)): #cycle through theta at time t or K
+                        p_action = action_probabilities(s, suited_lambdas[theta_t]) #1D array
+                        for theta_past in range(len(thetas)): #cycle through theta probability from past time K-1
                             p_theta_prime[theta_t] += p_action[theta_t,s,a]  * p_theta[theta_past]
             p_theta_prime /= sum(p_theta_prime) #normalize
             assert np.sum(p_theta_prime) == 1 #check if it is properly normalized
@@ -329,45 +334,45 @@ class InferenceModel:
             return p_theta_prime, suited_lambdas
 
 
-        def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
-            #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
-            #Not in use
-            """
-            refer to state.py and occupancy.py
-            Infer the state probabilities before observation of lambda and theta.
-            Equation 4: P(x(k+1);lambda, theta) = P(u(k)|x(k);lambda,theta) * P(x(k),lambda, theta)
-                                                = action_probabilities * p_state(t-1)
-            params:
-            T: time horizon for state probabilities inference
-            :return:
-            probability of theta
-            probability the agent is at each state given correct theta
-            corresponding lambda
-            """
-            #TODO theta_priors could be None!! Design the function around it!
-            p_theta, lambdas = self.theta_joint_update(thetas, theta_priors, traj,goal, epsilon = 0.05)
-            # TODO: modify the following sample code:
-
-
-            def infer_simple(self, T):
-                p_state = np.zeros([T+1, self.states])
-                p_state[0][self.initial_state] = 1 #start with prob of 1 at starting point
-                p_action = self.baseline_inference.action_probabilities()
-                for t in range(1, T + 1):
-                    p = p_state[t - 1]
-                    p_prime = p_state[t]
-                    p_prime *= p_action #TODO: check this calculation! Maybe need p_action for each time step
-                return p_state
-
-            # Take the weighted sum of the occupancy given each individual destination.
-            # iterate through multiple thetas
-            for theta, lamb, p_action, p_theta in zip(thetas, lambdas, p_actions, p_theta):
-                p_state = infer_simple(T)
-                np.multiply(p_state, p_theta, out=p_state)
-                #TODO: I am confused... need to check back for how to calculate p_state in our case
-
-
-            pass
+        # def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
+        #     #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
+        #     #Not in use
+        #     """
+        #     refer to state.py and occupancy.py
+        #     Infer the state probabilities before observation of lambda and theta.
+        #     Equation 4: P(x(k+1);lambda, theta) = P(u(k)|x(k);lambda,theta) * P(x(k),lambda, theta)
+        #                                         = action_probabilities * p_state(t-1)
+        #     params:
+        #     T: time horizon for state probabilities inference
+        #     :return:
+        #     probability of theta
+        #     probability the agent is at each state given correct theta
+        #     corresponding lambda
+        #     """
+        #     #TODO theta_priors could be None!! Design the function around it!
+        #     p_theta, lambdas = self.theta_joint_update(thetas, theta_priors, traj,goal, epsilon = 0.05)
+        #     # TODO: modify the following sample code:
+        #
+        #
+        #     def infer_simple(self, T):
+        #         p_state = np.zeros([T+1, self.states])
+        #         p_state[0][self.initial_state] = 1 #start with prob of 1 at starting point
+        #         p_action = self.baseline_inference.action_probabilities()
+        #         for t in range(1, T + 1):
+        #             p = p_state[t - 1]
+        #             p_prime = p_state[t]
+        #             p_prime *= p_action #TODO: check this calculation! Maybe need p_action for each time step
+        #         return p_state
+        #
+        #     # Take the weighted sum of the occupancy given each individual destination.
+        #     # iterate through multiple thetas
+        #     for theta, lamb, p_action, p_theta in zip(thetas, lambdas, p_actions, p_theta):
+        #         p_state = infer_simple(T)
+        #         np.multiply(p_state, p_theta, out=p_state)
+        #         #TODO: I am confused... need to check back for how to calculate p_state in our case
+        #
+        #
+        #     pass
 
         def value_iter():
             #Not in use
