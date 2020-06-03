@@ -181,7 +181,7 @@ class InferenceModel:
             #Need to add some filtering for states with no legal action: q = -inf
             #exp_Q_list = np.zeros(shape=state_list) #create an array of exp_Q recording for each state
             #for i, s in enumerate(state_list):
-            Q = self.q_values(state)
+            Q = q_values(state)
             exp_Q = np.empty(shape=Q)
 
             "Q*lambda"
@@ -387,19 +387,83 @@ class InferenceModel:
     def empathetic_inference():
         """
         When QH also depends on xM,uM
-        :return:
+        :return:P(beta_h, beta_m_hat | D(k))
         """
         # TODO: implement proposed
 
         # variables: predicted_intent_other: BH hat, predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat, predicted_policy_self: QM tilde
         #TODO: import Q pairs from Nash Equilibrium computed with RL
-        def h_action_prob(self):
+        def h_action_prob(self, state, _lambda_h):
+            # TODO: documentation
+            """
+            Calculate H's action probability based on the Q values from Nash Equilibrium (QH,QM)eq
+            :param self:
+            :return: H's action probabilities correspond to each action available at state s
+            """
+            # TODO: consider how q value from nash equilibrium is imported
+            #Pseudo code, need confirmation:
+            q = self.q_h_eq #get q values for H from nash equilibrium
+            #reusing q variable to save storage
+            "p_action_h = exp(q*lambda)/sum(exp(q*lambda))"
+            np.multiply(q, _lambda_h, out = q)
+            np.exp(q, out = q)
+            normalize(q, norm = 'l1', copy = False)
+
+
             pass
-        def m_action_prob(self):
+            return q
+        def m_action_prob(self, state, _lambda_m):
+            # TODO: documentation
+            """
+            Calculate M's action probability based on the Q values obtained from Nash Equilibrium (QH,QM)eq
+            :param self:
+            :return: M's action probabilities correspond to each action available at state s
+            """
+            # Pseudo code, need confirmation:
+            #TODO: consider how q value from nash equilibrium is imported
+            q = self.q_m_eq  # get q values for H from nash equilibrium
+            # reusing q variable to save storage
+            "p_action_h = exp(q*lambda)/sum(exp(q*lambda))"
+            np.multiply(q, _lambda_m, out=q)
+            np.exp(q, out=q)
+            normalize(q, norm='l1', copy=False)
+
             pass
-        def q_pair_prob(self):
+            return q
+        def q_pair_prob(self, prior ,q_pairs, state, lambda_h):
+            #TODO: documentation
+            """
+            Calculates Q function pairs probabilities for use in beta pair probabilities calculation,
+            since each beta pair may map to multiple Q function/value pair.
+
+            :requires: p_action_h, p_pair_prob(k-1) or prior, q_pairs
+            :param:
+            self:
+            q_pairs: all Q function pairs (QH, QM)
+            p_action_h
+            p_q2
+
+            :return:
+            """
+            #TODO: code is still in work
+            if prior is None:
+                prior = np.ones(q_pairs)/len(q_pairs) #TODO:: assuming uniform prior?
+
+            p_action_h = h_action_prob(state, lambda_h)
+            p_q2 = np.empty(q_pairs)
+
+            #TODO:: I'm assuming a 2D array of q pairs is imported, needs confirmation!!!
+            #TODO: also I need to confirm if this is calculation is correct
+            "Calculating probability of each Q pair"
+            for i,q_h in enumerate(q_pairs): #rows
+                for j,q_m in enumerate(q_h): #cols
+                    p_q2[i, j] = p_action_h[i] *prior[i, j] #action prob corresponds to H's Q so it's "i"
+
+            p_q2 /= sum(p_q2) #normalize
+            assert sum(p_q2) == 1 #check if properly normalized
             pass
+            return p_q2
         def beta_pair_prob(self):
             pass
         def beta_pair_given_q(self):
