@@ -25,7 +25,7 @@ class InferenceModel:
         self.goal = sim.goal #CHECK THIS
 
         #"--------------------------------------------------------"
-        "imported variables from pedestrian prediction"
+        "Some reference variables from pedestrian prediction"
         self.q_cache = {}
         #"defining reward for (s, a) pair"
         #self.default_reward = -1
@@ -133,7 +133,7 @@ class InferenceModel:
             :return:
             """
             # TODO: Check this modification so that action probability is calculated for states within a time horizon
-            # -----pseudo code: append all states reachable within time T----
+            # Code: append all states reachable within time T----
             states = self.states  # TODO: import a state to start from
             actions = self.actions
             #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
@@ -165,7 +165,7 @@ class InferenceModel:
                 state = s_prime  # get s prime for the new states
                 i += 1  # move onto next row
             return state_list
-            # -----end of pseudo code------
+            # -----end of code------
         def action_probabilities(self,state,_lambda):  #equation 1
             """
             refer to mdp.py
@@ -389,6 +389,15 @@ class InferenceModel:
         When QH also depends on xM,uM
         :return:P(beta_h, beta_m_hat | D(k))
         """
+        #TODO: documentation
+        """
+        Equation 6
+        Equation 7
+        Equation 8
+        Equation 9
+        Equation 10
+        Equation 11
+        """
         # TODO: implement proposed
 
         # variables: predicted_intent_other: BH hat, predicted_intent_self: BM tilde,
@@ -434,6 +443,7 @@ class InferenceModel:
         def q_pair_prob(self, prior ,q_pairs, state, lambda_h):
             #TODO: documentation
             """
+            Equation 6
             Calculates Q function pairs probabilities for use in beta pair probabilities calculation,
             since each beta pair may map to multiple Q function/value pair.
 
@@ -464,10 +474,39 @@ class InferenceModel:
             assert sum(p_q2) == 1 #check if properly normalized
             pass
             return p_q2
+        def prob_beta_given_q(self, beta_D_prior, beta_H, beta_M):
+            """
+            Equation 8: using Bayes rule
+            Calculates probability of beta pair (Bh, BM_hat) given Q pair (QH, QM): P(Bh, BM_hat | QH, QM),
+            for beta_pair_prob formula.
+            :param self:
+            :return:
+            """
+            # TODO: code is still in work
+            #TODO: check betas
+            if beta_D_prior is None:
+                prior = np.ones([beta_H, beta_M]) / len([beta_H, beta_M])  # TODO:: assuming uniform prior?
+            "import prob of beta pair given D(k-1)"
+
+            "calculate prob of beta pair given Q pair"
+
+            pass
         def beta_pair_prob(self):
+            """
+            Equation 7
+            Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
+            :param self:
+            :return:
+            """
+            #TODO: This code is still in work
+            "importing prob of Q pair given observation D(k)"
+
+            "importing prob of beta pair given Q pair"
+
+            "Calculate prob of beta pair given D(k) by summing over Q pair"
+
             pass
-        def beta_pair_given_q(self):
-            pass
+
         def state_prob(self):
             pass
         pass
