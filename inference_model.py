@@ -4,7 +4,8 @@ from sklearn.processing import normalize
 from autonomous_vehicle import AutonomousVehicle
 import discrete_sets as sets
 
-class Lambdas(FloatEnums)
+class Lambdas(FloatEnums):
+
 class InferenceModel:
     def __init__(self, model, sim):
         if model == 'none':
@@ -23,7 +24,8 @@ class InferenceModel:
         self.agents = AutonomousVehicle
         self.curr_state = AutonomousVehicle.state #cumulative #TODO: import this!
         self.goal = sim.goal #CHECK THIS
-
+        self.traj = AutonomousVehicle.planned_trajectory_set #TODO: check if this is right!
+        self.T = 1 #one step look ahead/ Time Horizon
         #"--------------------------------------------------------"
         "Some reference variables from pedestrian prediction"
         self.q_cache = {}
@@ -89,7 +91,7 @@ class InferenceModel:
                 Q = -((goal_s - sy) / (vy + action * dt + delta) + (goal_s - sx)/(vx + action * dt + delta))
             return Q
 
-        def q_values(self, state):
+        def q_values(self, state, goal):
             #TODO documentation for function
             """
 
@@ -102,30 +104,20 @@ class InferenceModel:
             #TODO: IMPORT GOAL.  goal = whatever
             #TODO: IMPORT DT
             for a in sets.ActionsActions:
-                Q[a] = self.q_function(current_s, sets.getActionVal(a), goal, dt)
+                Q[a] = self.q_function(state, sets.getActionVal(a), goal, self.dt) #TODO: check dt
 
             return Q
 
-            #Estimating Q value at state s with time to goal from s, assuming agent moves along the y axis:
-            """
-            #Pseudo code
-            s_current = self.agents.state[s_y]
-            s_goal = goal.state[s_y]
-            v_current = self.agents.state[v_y]
-            Q = np.empty([agent.Action]) #size of action available at state s
-            v_next = v_current + agent.Action * dt
-            Q = -(s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
-            return Q
-            """
+            ##from PP code::   CHANGE PARAMETER NAMES
             #Inferring agent's current param based on its last action and state in last time step
-            """
-            s_last = self.agents.state[-1]
-            a_last = self.agents.action[-1]
-            x_last = s_last[x]
-            v_last = s_last[v]
-            Q = -v_last*dt - np.abs(x_last + v_last*dt - goal) #2D version of Q value from confidence aware paper
-            """
-            #from berkeley code::   CHANGE PARAMETER NAMES
+            #"""
+            #s_last = self.agents.state[-1]
+            #a_last = self.agents.action[-1]
+            #x_last = s_last[x]
+            #v_last = s_last[v]
+            #Q = -v_last*dt - np.abs(x_last + v_last*dt - goal) #2D version of Q value from confidence aware paper
+            #"""
+
         def get_state_list(self, T):
             """
             calculate an array of state (T x S at depth T)
@@ -133,7 +125,7 @@ class InferenceModel:
             :return:
             """
             # TODO: Check this modification so that action probability is calculated for states within a time horizon
-            # Code: append all states reachable within time T----
+            # ---Code: append all states reachable within time T----
             states = self.states  # TODO: import a state to start from
             actions = self.actions
             #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
@@ -165,7 +157,8 @@ class InferenceModel:
                 state = s_prime  # get s prime for the new states
                 i += 1  # move onto next row
             return state_list
-            # -----end of code------
+            # -------end of code--------
+
         def action_probabilities(self,state,_lambda):  #equation 1
             """
             refer to mdp.py
@@ -181,7 +174,7 @@ class InferenceModel:
             #Need to add some filtering for states with no legal action: q = -inf
             #exp_Q_list = np.zeros(shape=state_list) #create an array of exp_Q recording for each state
             #for i, s in enumerate(state_list):
-            Q = q_values(state)
+            Q = q_values(state) #TODO: check function var
             exp_Q = np.empty(shape=Q)
 
             "Q*lambda"
@@ -201,6 +194,7 @@ class InferenceModel:
         def traj_probabilities(self,  _lambda):
             #TODO: think about how trajectory is generated
             #TODO: Modify this so that state distribution is calculated for future 1 time step
+            #TODO: What does summarizing over x(k) and u(k) do?
             """
             refer to mdp.py
             multiply over action probabilities to obtain trajectory probabilities given (s, a)
@@ -228,7 +222,7 @@ class InferenceModel:
                         p_states[row, i] = p_traj * p_action[i]
 
             return p_states
-
+        #TODO: implement equation 5!
 
         # def lambda_update( self, lambdas, traj, priors, goals, k):
         #     #This function is not in use! But it is a good reference for update algorithm
@@ -333,8 +327,15 @@ class InferenceModel:
 
             return p_theta_prime, suited_lambdas
 
+        "------------------------------"
+        "executing the above functions!"
+        "------------------------------"
+        # TODO: call theta joint inference function and check necessary variables
+        #return theta_joint_update(thetas=self.thetas, theta_priors=theta_priors,
+        #                          lambdas=self.lambdas, traj=traj, goal=self.goal, epsilon = 0.05)
 
-        # def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
+        "functions for references, not in use:"
+            # def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
         #     #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
         #     #Not in use
         #     """
@@ -374,14 +375,15 @@ class InferenceModel:
         #
         #     pass
 
-        def value_iter():
-            #Not in use
-            """
-            refer to hardmax.py
-            Calculate V where ith entry is the value of starting at state s till i
-            :return:
-            """
-            pass
+        # def value_iter():
+        #     #Not in use
+        #     """
+        #     refer to hardmax.py
+        #     Calculate V where ith entry is the value of starting at state s till i
+        #     :return:
+        #     """
+        #     pass
+
 
     @staticmethod
     def empathetic_inference():
@@ -398,12 +400,18 @@ class InferenceModel:
         Equation 10
         Equation 11
         """
-        # TODO: implement proposed
-
+        #----------------------------#
+        # TODO: implement proposed:
         # variables: predicted_intent_other: BH hat, predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat, predicted_policy_self: QM tilde
+        #----------------------------#
+
         #TODO: import Q pairs from Nash Equilibrium computed with RL
-        def h_action_prob(self, state, _lambda_h):
+        #TODO: how will betas arrays (lambda1, theta1), ... be constructed?
+        #TODO: THREE total priors needed to store: p(betas|D(k-1)) and p(Q pairs|D(k-1)) and P(x(k)|Qh,Qm)
+        #NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
+        #TODO: for a set of NE iterate through them using the below functions!
+        def h_action_prob(self, state, _lambda_h, q_values_h):
             # TODO: documentation
             """
             Calculate H's action probability based on the Q values from Nash Equilibrium (QH,QM)eq
@@ -413,16 +421,18 @@ class InferenceModel:
             # TODO: consider how q value from nash equilibrium is imported
             #Pseudo code, need confirmation:
             q = self.q_h_eq #get q values for H from nash equilibrium
+
             #reusing q variable to save storage
             "p_action_h = exp(q*lambda)/sum(exp(q*lambda))"
             np.multiply(q, _lambda_h, out = q)
             np.exp(q, out = q)
             normalize(q, norm = 'l1', copy = False)
 
-
+            # TODO: CONSIDER if there are more than 1 set of Qs: maybe just implement them in outer scope
             pass
             return q
-        def m_action_prob(self, state, _lambda_m):
+
+        def m_action_prob(self, state, _lambda_m, q_values_m):
             # TODO: documentation
             """
             Calculate M's action probability based on the Q values obtained from Nash Equilibrium (QH,QM)eq
@@ -431,6 +441,7 @@ class InferenceModel:
             """
             # Pseudo code, need confirmation:
             #TODO: consider how q value from nash equilibrium is imported
+
             q = self.q_m_eq  # get q values for H from nash equilibrium
             # reusing q variable to save storage
             "p_action_h = exp(q*lambda)/sum(exp(q*lambda))"
@@ -438,8 +449,10 @@ class InferenceModel:
             np.exp(q, out=q)
             normalize(q, norm='l1', copy=False)
 
+            # TODO: CONSIDER if there are more than 1 set of Qs
             pass
             return q
+
         def q_pair_prob(self, prior ,q_pairs, state, lambda_h):
             #TODO: documentation
             """
@@ -487,11 +500,11 @@ class InferenceModel:
             if beta_D_prior is None:
                 prior = np.ones([beta_H, beta_M]) / len([beta_H, beta_M])  # TODO:: assuming uniform prior?
             "import prob of beta pair given D(k-1)"
-
+            p_betas_prev = beta_pair_prob()
             "calculate prob of beta pair given Q pair"
 
             pass
-        def beta_pair_prob(self):
+        def beta_pair_prob(self, beta_H, beta_M, q_pairs):
             """
             Equation 7
             Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
@@ -500,16 +513,161 @@ class InferenceModel:
             """
             #TODO: This code is still in work
             "importing prob of Q pair given observation D(k)"
-
+            p_q2 = q_pair_prob()
             "importing prob of beta pair given Q pair"
-
+            p_betas_q = prob_beta_given_q()
             "Calculate prob of beta pair given D(k) by summing over Q pair"
+            p_betas = np.copy(p_betas_q)
+            r = len(q_pairs)
+            c = len(q_pairs[0])#for iterating through q pairs
+            for p in range(r):
+                for q in range(c):
+                    p_beta = p_betas[p, q]
+                    for i in range(r):
+                        for j in range(c):
+                            #if p_betas[p,q] == p_beta:
+                            if (i, j) == (0,0): #first element
+                                p_betas[p, q] = p_beta * p_q2[i, j]
+                            p_betas[p,q] += p_beta * p_q2[i,j]
+            pass
+            return p_betas
+        def get_state_list_h(self, T):
+            """
+            calculate an array of state (T x S at depth T)
+            :param self:
+            :return:
+            """
+            # TODO: Check this modification so that action probability is calculated for states within a time horizon
+            # ---Code: append all states reachable within time T----
+            states = self.states  # TODO: import a state to start from
+            actions = self.actions
+            #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
+            dt = self.sim.dt
+
+            # TODO: MODIFY for calculating state list for agent M
+            def get_s_prime(_states, _actions):
+                _s_prime = []
+
+                def calc_state(x, u, dt):
+                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                    vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                    vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                    sx_new = sx + (vx + vx_new) * dt * 0.5
+                    sy_new = sy + (vy + vy_new) * dt * 0.5
+
+                    return sx_new, sy_new, vx_new, vy_new
+
+                for s in _states:
+                    for a in _actions:
+                        _s_prime.append(calc_state(s, a, dt))
+                return _s_prime
+
+            states = self.initial_state  # or use current state
+            i = 0  # row counter
+            state_list = np.zeros([T, actions * T])
+            for t in range(0, T):
+                s_prime = get_s_prime(states, actions)  # separate pos and speed!
+                state_list[i] = s_prime
+                state = s_prime  # get s prime for the new states
+                i += 1  # move onto next row
+            return state_list
+            # -------end of code--------
+        def get_state_list_m(self, T):
+            """
+            calculate an array of state (T x S at depth T)
+            :param self:
+            :return:
+            """
+            # TODO: Check this modification so that action probability is calculated for states within a time horizon
+            # ---Code: append all states reachable within time T----
+            states = self.states  # TODO: import a state to start from
+            actions = self.actions
+            #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
+            dt = self.sim.dt
+            #TODO: MODIFY for calculating state list for agent M
+            def get_s_prime(_states, _actions):
+                _s_prime = []
+
+                def calc_state(x, u, dt):
+                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                    vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                    vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                    sx_new = sx + (vx + vx_new) * dt * 0.5
+                    sy_new = sy + (vy + vy_new) * dt * 0.5
+
+                    return sx_new, sy_new, vx_new, vy_new
+
+                for s in _states:
+                    for a in _actions:
+                        _s_prime.append(calc_state(s, a, dt))
+                return _s_prime
+
+            states = self.initial_state  # or use current state
+            i = 0  # row counter
+            state_list = np.zeros([T, actions * T])
+            for t in range(0, T):
+                s_prime = get_s_prime(states, actions)  # separate pos and speed!
+                state_list[i] = s_prime
+                state = s_prime  # get s prime for the new states
+                i += 1  # move onto next row
+            return state_list
+            # -------end of code--------
+        def get_state_list():
+            h_states = get_state_list_h(self.T)
+            m_states = get_state_list_m(self.T)
+            states = np.empty([len(h_states),len(m_states)])
+            for i in len(h_states):
+                for j in len(m_states):
+                    states[i,j] = (h_states[i],m_states[j]) #TODO: Check states data type in sim
+            return states
+        def state_prob(self, curr_state,Qh,Qm):
+            """
+            Equation 11 (includes 9 and 10)
+            Calculates state probabilities given past observation D(k)
+            :param self:
+            :return:
+            """
+            state_list = get_state_list(self.T) #CHECK Universal Time Horizon!!!!
+            def p_action_pair(state, _lambda):
+                """
+                This implementation only considers current given state! Implement outside for iterating through states
+                Equation 10: p(uh,um|x(k);Qh,Qm)
+                Computes joint probabilities of H and M's action prob
+                :return:
+                """
+                #TODO: consider if the state contains 2 agents information!
+                p_action_h = h_action_prob(state, _lambda,q_values_h=q_value_h) #1D arrays
+                p_action_m = m_action_prob(state, _lambda,q_values_m=q_value_m)
+                p_a2 = np.zeros([p_action_h,p_action_m])
+                for ah in p_action_h:
+                    for am in p_action_m:
+                        p_a2[ah,am] = p_action_h[ah]*p_action_m[am]
+                return p_a2
+                #pass
+            def state_prob_q(prior):
+                """
+                Equation 9
+                :return:
+                """
+                "import p(uh,um|x(k);Qh,Qm)"
+                p_a2 = p_action_pair()
+                "import prior p(x(k)|Qh,Qm)"
+                #TODO: do we need to check if prior is available?
+                #p_state_prev = state_prob_q() #previous
+                "In the case where transition is deterministic, and prior P(x(k)) is 1 as it is already observed:"
+                "And time horizon T = 1"
+                return p_a2 #P(x(k+1)|Q2) is solely determined by p(uh,um|x(k),Q2)
+                #pass
+            p_actions_list =
+            "Import Q pair prob from Equation 6"
+
+            "Call the function state prob q"
+
+            "calculate state probabilities given past observation D(k)"
+
 
             pass
-
-        def state_prob(self):
-            pass
-        pass
+        pass #end of empathetic inference
 
     @staticmethod
     def less_inference():

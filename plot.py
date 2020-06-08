@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from inference_model import InferenceModel
 from autonomous_vehicle import AutonomousVehicle
+from sim_data import DataUtil
 import numpy as np
 
 class ContourPlot:
@@ -8,6 +9,7 @@ class ContourPlot:
         #TODO: import state information, fill in the args
         self.states = AutonomousVehicle()
         self.p_state = InferenceModel.baseline_inference().state_probabilities_infer()
+        self.sim = DataUtil
 
     def contour_plot(self):
         """
@@ -23,7 +25,7 @@ class ContourPlot:
         fig,(ax1, ax2, ax3, ...) = plt.subplots(nrows = 2) #plot separately for different thetas
         
         #------
-        #plot 1
+        #plot 1: distribution with the pair (lambda1, theta1)
         #------
         ax1.contour(x, y, z, levels = 10, linewidths = 1,colors = 'k' )
         #TODO: modify the params
