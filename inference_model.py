@@ -308,7 +308,7 @@ class InferenceModel:
             #        p_action[i] = action_probabilities(s, lamb)
 
             p_theta = np.copy(theta_priors)
-            "re-sampling from initial distribution"
+            "re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
             p_theta = self.belief_resample(p_theta, epsilon == 0.05) #resample from uniform belief
             p_theta_prime = np.empty(len(thetas))
 
@@ -453,6 +453,16 @@ class InferenceModel:
             pass
             return q
 
+        def belief_resample(self, priors, epsilon):
+            """
+            Equation 3
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+            initial_belief = np.ones(len(priors)) / len(priors)
+            resampled_priors = (1 - epsilon)*priors + epsilon * initial_belief
+            return resampled_priors
+
         def q_pair_prob(self, prior ,q_pairs, state, lambda_h):
             #TODO: documentation
             """
@@ -472,6 +482,10 @@ class InferenceModel:
             #TODO: code is still in work
             if prior is None:
                 prior = np.ones(q_pairs)/len(q_pairs) #TODO:: assuming uniform prior?
+
+            #TODO: resample from initial belief!
+            "resample from initial/uniform distribution"
+            prior = self.belief_resample(prior, epsilon=0.05)
 
             p_action_h = h_action_prob(state, lambda_h)
             p_q2 = np.empty(q_pairs)
@@ -504,15 +518,7 @@ class InferenceModel:
             "calculate prob of beta pair given Q pair"
 
             pass
-        def belief_resample(self, priors, epsilon):
-            """
-            Equation 3
-            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
-            :return: resampled belief P(k-1) on lambda and theta
-            """
-            initial_belief = np.ones(len(priors)) / len(priors)
-            resampled_priors = (1 - epsilon)*priors + epsilon * initial_belief
-            return resampled_priors
+
 
         def beta_pair_prob(self, beta_H, beta_M, q_pairs):
             """
@@ -527,6 +533,10 @@ class InferenceModel:
             "importing prob of beta pair given Q pair"
             p_betas_q = prob_beta_given_q()
             "Calculate prob of beta pair given D(k) by summing over Q pair"
+
+            # TODO: resample from initial belief! HOW??? (no prior is used!)
+            "resample from initial/uniform distribution"
+
             p_betas = np.copy(p_betas_q)
             r = len(q_pairs)
             c = len(q_pairs[0])#for iterating through q pairs
