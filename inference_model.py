@@ -483,7 +483,6 @@ class InferenceModel:
             if prior is None:
                 prior = np.ones(q_pairs)/len(q_pairs) #TODO:: assuming uniform prior?
 
-            #TODO: resample from initial belief!
             "resample from initial/uniform distribution"
             prior = self.belief_resample(prior, epsilon=0.05)
 
@@ -502,6 +501,7 @@ class InferenceModel:
             pass
             return p_q2
         def prob_beta_given_q(self, beta_D_prior, beta_H, beta_M):
+            #TODO: this is a placeholder, needs to be implemented
             """
             Equation 8: using Bayes rule
             Calculates probability of beta pair (Bh, BM_hat) given Q pair (QH, QM): P(Bh, BM_hat | QH, QM),
@@ -531,26 +531,27 @@ class InferenceModel:
             "importing prob of Q pair given observation D(k)"
             p_q2 = q_pair_prob()
             "importing prob of beta pair given Q pair"
-            p_betas_q = prob_beta_given_q()
+            p_betas_q = prob_beta_given_q() #does not return anything yet
             "Calculate prob of beta pair given D(k) by summing over Q pair"
 
             # TODO: resample from initial belief! HOW??? (no prior is used!)
             "resample from initial/uniform distribution"
 
-            p_betas = np.copy(p_betas_q)
+            p_betas_d = np.zeros(p_betas_q)
             r = len(q_pairs)
             c = len(q_pairs[0])#for iterating through q pairs
             for p in range(r):
                 for q in range(c):
-                    p_beta = p_betas[p, q]
+                    p_beta_q = p_betas_q[p, q]
                     for i in range(r):
                         for j in range(c):
                             #if p_betas[p,q] == p_beta:
                             if (i, j) == (0,0): #first element
-                                p_betas[p, q] = p_beta * p_q2[i, j]
-                            p_betas[p,q] += p_beta * p_q2[i,j]
+                                p_betas_d[p, q] = p_beta_q * p_q2[i, j]
+                            p_betas_d[p,q] += p_beta_q * p_q2[i,j]
             pass
-            return p_betas
+            return p_betas_d
+
         def get_state_list_h(self, T):
             """
             calculate an array of state (T x S at depth T)
@@ -697,7 +698,7 @@ class InferenceModel:
             p_q2 = q_pair_prob()
             "Call the function: state prob q"
             p_state_q = state_prob_q()
-            "calculate state probabilities given past observation D(k)"
+            "Equation 11: calculate state probabilities given past observation D(k)"
             p_s = np.multiply(p_q2,p_state_q)
 
             return p_s #size of uH x uM
