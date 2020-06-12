@@ -15,11 +15,13 @@ class TestInference:
         self.dt = 1
 
         "dummy data"
-        self.curr_state = [(-20, 0, 0, 0), (0, -20, 0, 0)] #sx, sy, vx, vy
+        self.curr_state = [(-20, 0, 3, 0), (0, -20, 0, 0)] #sx, sy, vx, vy
         self.goal = [0, 20]
         self.actions = [-2, -0.5, 0, 2] #accelerations (m/s^2)
         self.lambdas = [0.01, 0.1, 1, 10] #range?
         self.thetas = [1, 1000] #range?
+        self.traj = [(((-20, 0, 0, 0), (0, -20, 0, 0)), (2, 2))] #recordings of past states
+        self.h_traj = [((-20, 0, 0, 0), 2)]
     def baseline_inference(self):
 
         def q_function( current_s, action, goal_s, dt):
@@ -138,11 +140,13 @@ class TestInference:
             i = 0  # row counter
             #L = len(actions)*T
             #state_list = np.zeros([T, L])
-            state_list = {}
+            state_list = {} #use dict to keep track of time step
+            #state_list = []
             #state_list.append(state) #ADDING the current state!
             for t in range(0, T):
                 s_prime = get_s_prime(state, actions)  # separate pos and speed!
                 state_list[i] = s_prime
+                #state_list.append(s_prime)
                 state = s_prime  # get s prime for the new states
                 i += 1  # move onto next row
             return state_list
@@ -189,10 +193,137 @@ class TestInference:
             #return exp_Q_list #array of exp_Q for an array of states
             #TODO: check data type! make sure the data can be easily accessed(2D array with 2 for loops?)
 
+        def traj_probabilities(state, _lambda):
+            #TODO: think about how trajectory is generated
+            #TODO: Modify this so that state distribution is calculated for future 1 time step
+            #TODO: What does summarizing over x(k) and u(k) do?
+            """
+            refer to mdp.py
+            multiply over action probabilities to obtain trajectory probabilities given (s, a)
+            params:
+            traj: composed of sequence of (s, a) pair
+            p_action: probability of action taken at each state
+            p_traj: probability of action taken accumulated over states, i.e. p_traj = p(a|s1)*p(a|s2)*p(a|s3)*...
+            :return:
+            """
+            #Pseudo code
 
+            #p_action = action_probabilities(_lambda)
+            p_traj = 1 #initialize
+            T = self.T #TODO: predefined time horizon
+            state_list = get_state_list(state, T) #get list of state given curr_state/init_state from self._init_
+            #p_states = np.zeros(shape=state_list)
+            p_states = []
+
+            # for row in p_states:
+            #     if row == 0: #first row has the initial state so prob is 1
+            #         p_states[0, 0] = p_traj
+            #     else:
+            #         #TODO: generalize for more than 1 time step!
+            #         for i in row: #calculate prob for subsequent states
+            #             p_action = action_probabilities(state_list[0, 0], _lambda)
+            #             #p_action = action_probabilities(state, _lambda)
+            #             p_states[row, i] = p_traj * p_action[i]
+            for i in range(len(state_list)):
+                p_states.append(action_probabilities(state,_lambda)) #1 step look ahead only depends on action prob
+                #transition is deterministic -> 1, prob state(k) = 1
+
+            return state_list, p_states
+
+        def belief_resample(priors, epsilon):
+            """
+            Equation 3
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+            initial_belief = np.ones(len(priors)) / len(priors)
+            resampled_priors = (1 - epsilon)*priors + epsilon * initial_belief
+            return resampled_priors
+
+        def theta_joint_update(thetas,  lambdas, traj, goal, epsilon=0.05,theta_priors=None):
+            """
+            refer to destination.py
+            :return:posterior probabilities of each theta and corresponding lambda maximizing the probability
+            """
+            #TODO: simplify the code and reduce the redundant calculation
+            #theta_init = np.ones(len(thetas))/len(thetas) #initial belief of theta
+
+            if theta_priors is None:
+                theta_priors = np.ones(len(thetas))/len(thetas)
+
+            suited_lambdas = np.empty(len(thetas))
+            L = len(lambdas)
+
+            "processing traj data, in the case that datas of 2 agents are stored together in tupples:"
+            # traj_state = []
+            # traj_action = []
+            # for i, traj_t in enumerate(traj):
+            #     traj_state.append(traj_t[0])
+            #     traj_action.append(traj_t[1])
+            # h_states = []
+            # h_actions = []
+            # for j, s_t in enumerate(traj_state):
+            #     h_states.append(traj_state[0])
+            # for k, a_t in enumerate(traj_action):
+            #     h_actions.append(traj_action[0])
+
+            #scores = np.empty(len(lambdas))
+            #TODO: how to get recorded traj for evaluation(Maybe AutonomousVehicle.state?)?
+            def compute_score(traj, _lambda, L):
+                #scores = np.empty(L)
+                scores = []
+                for i, (s, a) in enumerate(traj): #pp score calculation method
+                    print("--i, (s, a), lambda:", i, (s, a), _lambda)
+                    p_a = action_probabilities(s, _lambda)  # get probability of action in each state given a lambda
+                    #scores[i] = p_a[s, a]
+                    print("-p_a[a]:", p_a[a])
+                    #scores[i] = p_a[a]
+                    scores.append(p_a[a])
+                print("scores:", scores)
+                log_scores = np.log(scores)
+                return np.sum(log_scores)
+
+            "executing compute_score to get the best suited lambdas"
+            for i, theta in enumerate(thetas):#get a best suited lambda for each theta
+                #lambdas[i] = self.binary_search(traj, gradient)
+                score_list = []
+                for j, lamb in enumerate(lambdas):
+                    score_list.append(compute_score(traj, lamb, L))
+                max_lambda_j = np.argmax(score_list)
+                suited_lambdas[i] = lambdas[max_lambda_j]  #recording the best suited lambda for corresponding theta[i]
+                print("theta being analyzed:", theta, "best lambda:", lambdas[max_lambda_j])
+            #Instead of iterating we calculate action prob right before calculating p_theta_prime!
+            #p_action = np.empty([thetas, traj, self.agents.a]) #storing 3D info of [thetas, states, actions]
+            #for i, (lamb, theta) in enumerate(zip(lambdas, thetas)):
+            #    for s, a in traj:
+            #        p_action[i] = action_probabilities(s, lamb)
+
+            p_theta = np.copy(theta_priors)
+            "re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
+            p_theta = belief_resample(p_theta, epsilon == 0.05) #resample from uniform belief
+            p_theta_prime = np.empty(len(thetas))
+
+            "joint inference update for (lambda, theta)"
+            for t,(s, a) in enumerate(traj): #enumerate through past traj#TODO: CHECK PAST TRAJ FROM CLASS AV
+                if t == 0: #initially there's only one state and not past
+                    for theta_t in range(len(thetas)): #cycle through list of thetas
+                        p_action = action_probabilities(s, suited_lambdas[theta_t]) #1D array
+                        p_theta_prime[theta_t] = p_action[a]  * p_theta[theta_t]
+                else: #for state action pair that is not at time zero
+                    for theta_t in range(len(thetas)): #cycle through theta at time t or K
+                        p_action = action_probabilities(s, suited_lambdas[theta_t]) #1D array
+                        for theta_past in range(len(thetas)): #cycle through theta probability from past time K-1
+                            p_theta_prime[theta_t] += p_action[a]  * p_theta[theta_past]
+            p_theta_prime /= sum(p_theta_prime) #normalize
+            assert np.sum(p_theta_prime) == 1 #check if it is properly normalized
+
+            return p_theta_prime, suited_lambdas
         #pass
+        "testing the functions: return the following when baseline is called"
         #return q_values(self.curr_state[0], self.goal)
         #return get_state_list(self.curr_state[0], self.T)
-        return action_probabilities(self.curr_state[0], self.lambdas[0])
+        return action_probabilities(self.curr_state[0], self.lambdas[3])
+        #return traj_probabilities(self.curr_state[0], self.lambdas[0])
+        #return theta_joint_update(self.thetas, lambdas=self.lambdas, traj = self.h_traj, goal=self.goal,epsilon=0.05, theta_priors=None)
 test = TestInference(1,1)
 print(test.baseline_inference())
