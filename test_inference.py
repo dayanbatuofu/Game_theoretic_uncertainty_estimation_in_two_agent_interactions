@@ -15,13 +15,13 @@ class TestInference:
         self.dt = 1
 
         "dummy data"
-        self.curr_state = [(-20, 0, 3, 0), (0, -20, 0, 0)] #sx, sy, vx, vy
-        self.goal = [0, 20]
-        self.actions = [-2, -0.5, 0, 2] #accelerations (m/s^2)
+        self.curr_state = [(-20, 0, 0, 0), (0, -20, 0, 0)] #sx, sy, vx, vy
+        self.goal = [(0, 20), (20, 0)] #goal for both H and M
+        self.actions = [-2, -0.5, 0, 0.5, 2] #accelerations (m/s^2)
         self.lambdas = [0.01, 0.1, 1, 10] #range?
         self.thetas = [1, 1000] #range?
         self.traj = [(((-20, 0, 0, 0), (0, -20, 0, 0)), (2, 2))] #recordings of past states
-        self.h_traj = [((-20, 0, 0, 0), 2)]
+        self.h_traj = [((-20, 0, 0, 0), 0)]
     def baseline_inference(self):
 
         def q_function( current_s, action, goal_s, dt):
@@ -41,22 +41,47 @@ class TestInference:
             u = action
             delta = 1 #to prevent denominator from becoming zero
             sx, sy, vx, vy = current_s[0], current_s[1], current_s[2], current_s[3]
-            #TODO: how to determine which direction or axis the agent is moving on!
+            #TODO: implement a variable for filtering which agent we are looking at (agent = H or M) to choose goal!
             if sx == 0 and vx == 0:
                 #Q = FUNCTION MATH HERE USING SY, VY
                 print("Y direction movement detected")
                 goal_s = goal_s[0]
-                Q = -(goal_s - sy) / (vy + action * dt + delta)
+                next_v = vy + action * dt
+                "Deceleration only leads to 0 velocity!"
+                if next_v < 0.0:
+                    #let v_next = 0
+                    Q = -(goal_s - sy) / delta
+                else:
+                    Q = -(goal_s - sy) / (vy + action * dt + delta)
             elif sy == 0 and vy == 0:
                 #Q = FUNCTION MATH HERE USING SX, VX
-                print("Y direction movement detected")
+                print("X direction movement detected")
                 goal_s = goal_s[1]
-                Q = -(goal_s - sx) / (vx + action * dt + delta)
+                next_v = vx + action * dt
+                "Deceleration only leads to 0 velocity!"
+                if next_v < 0.0:
+                    # let v_next = 0
+                    Q = -(goal_s - sx) / delta
+                else:
+                    Q = -(goal_s - sx) / (vx + action * dt + delta)
             else:
                 #Q = FUNCTION FOR 2D MODELS
                 goal_x = goal_s[0]
                 goal_y = goal_s[1]
-                Q = -((goal_y - sy) / (vy + action * dt + delta) + (goal_x - sx)/(vx + action * dt + delta))
+                next_vx = vx + action * dt
+                next_vy = vy + action * dt
+
+                "Deceleration only leads to 0 velocity!"
+                if next_vx < 0:
+                    if next_vy < 0: #both are negative
+                        Q = -((goal_y - sy) / delta + (goal_x - sx) / delta)
+                    else: #only vx is negative
+                        Q = -((goal_y - sy) / (vy + action * dt + delta) + (goal_x - sx)/delta)
+                elif next_vy < 0:#only vy is negative
+                    Q = -((goal_y - sy) / delta + (goal_x - sx) / (vx + action * dt + delta))
+                else: #both are non negative
+                    Q = -((goal_y - sy) / (vy + action * dt + delta) + (goal_x - sx) / (vx + action * dt + delta))
+                #TODO: add a cieling for how fast they can go
             return Q
 
         def q_values(state, goal):
@@ -106,23 +131,32 @@ class TestInference:
 
                 def calc_state(x, u, dt):
                     sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    #TODO: what if we started out having zero velocity?
+                    "Deceleration only leads to zero velocity!"
                     if sx == 0 and vx == 0: #y axis movement
                         vx_new = vx #+ u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
                         vy_new = vy + u * dt #* vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vy_new < 0:
+                            vy_new = 0
                         sx_new = sx #+ (vx + vx_new) * dt * 0.5
                         sy_new = sy + (vy + vy_new) * dt * 0.5
                     elif sy == 0 and vy == 0: #x axis movement
                         vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
                         vy_new = vy #+ u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vx_new < 0:
+                            vx_new = 0
                         sx_new = sx + (vx + vx_new) * dt * 0.5
                         sy_new = sy #+ (vy + vy_new) * dt * 0.5
                     else: #TODO: assume x axis movement for single agent case!!
                         vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
                         vy_new = vy #+ u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vx_new < 0:
+                            vx_new = 0
                         sx_new = sx + (vx + vx_new) * dt * 0.5
                         sy_new = sy #+ (vy + vy_new) * dt * 0.5
+
+                    # TODO: add a cieling for how fast they can go
                     return sx_new, sy_new, vx_new, vy_new
+
                 #Cases where only one state is in states:
                 #if len(_states) == 1:
                 for a in _actions:
@@ -167,7 +201,7 @@ class TestInference:
             #Need to add some filtering for states with no legal action: q = -inf
             #exp_Q_list = np.zeros(shape=state_list) #create an array of exp_Q recording for each state
             #for i, s in enumerate(state_list):
-            Q = q_values(state, self.goal) #TODO: check function var
+            Q = q_values(state, self.goal[0]) #TODO: maybe import goal through args?
             print("Q values array:", Q)
             #exp_Q = np.empty(len(Q))
             exp_Q = []
@@ -320,10 +354,10 @@ class TestInference:
             return p_theta_prime, suited_lambdas
         #pass
         "testing the functions: return the following when baseline is called"
-        #return q_values(self.curr_state[0], self.goal)
+        #return q_values(self.curr_state[0], self.goal[0])
         #return get_state_list(self.curr_state[0], self.T)
-        return action_probabilities(self.curr_state[0], self.lambdas[3])
+        #return action_probabilities(self.curr_state[0], self.lambdas[1])
         #return traj_probabilities(self.curr_state[0], self.lambdas[0])
-        #return theta_joint_update(self.thetas, lambdas=self.lambdas, traj = self.h_traj, goal=self.goal,epsilon=0.05, theta_priors=None)
+        return theta_joint_update(self.thetas, lambdas=self.lambdas, traj=self.h_traj, goal=self.goal[0], epsilon=0.05, theta_priors=None)
 test = TestInference(1,1)
 print(test.baseline_inference())
