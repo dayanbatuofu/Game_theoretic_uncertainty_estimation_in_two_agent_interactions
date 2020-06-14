@@ -1,6 +1,8 @@
 import numpy as np
 #from sklearn.processing import normalize
 from autonomous_vehicle import AutonomousVehicle
+import matplotlib.pyplot as plt
+
 class TestInference:
 
     def __init__(self,model,sim):
@@ -21,7 +23,7 @@ class TestInference:
         self.lambdas = [0.01, 0.1, 1, 10] #range?
         self.thetas = [1, 1000] #range?
         self.traj = [(((-20, 0, 0, 0), (0, -20, 0, 0)), (2, 2))] #recordings of past states
-        self.h_traj = [((-20, 0, 0, 0), 0)]
+        self.h_traj = [((-20, 0, 0, 0), 0)] #traj of H agent only
     def baseline_inference(self):
 
         def q_function( current_s, action, goal_s, dt):
@@ -358,6 +360,59 @@ class TestInference:
         #return get_state_list(self.curr_state[0], self.T)
         #return action_probabilities(self.curr_state[0], self.lambdas[1])
         #return traj_probabilities(self.curr_state[0], self.lambdas[0])
-        return theta_joint_update(self.thetas, lambdas=self.lambdas, traj=self.h_traj, goal=self.goal[0], epsilon=0.05, theta_priors=None)
+        #return theta_joint_update(self.thetas, lambdas=self.lambdas, traj=self.h_traj, goal=self.goal[0], epsilon=0.05, theta_priors=None)
+
+        return traj_probabilities(self.curr_state[0], self.lambdas[0])
+
+    def test_plot(self, states, p_states):
+        """
+
+        :param states: takes in list of states (sx, sy, vx, vy)i
+        :param p_states: takes in list of probabilities correspond to the list of states
+        :return: contour plot
+        """
+        """
+        x = self.states[pos]
+        y = self.states[speed]
+        z = self.p_state
+        fig,(ax1, ax2, ax3, ...) = plt.subplots(nrows = 2) #plot separately for different thetas
+
+        #------
+        #plot 1: distribution with the pair (lambda1, theta1)
+        #------
+        ax1.contour(x, y, z, levels = 10, linewidths = 1,colors = 'k' )
+        #TODO: modify the params
+        cntr1 = ax1.contourf(xi, yi, zi, levels=14, cmap="RdBu_r")
+        fig.colorbar(cntr1, ax=ax1)
+        ax1.plot(x, y, 'ko', ms=3)
+        ax1.set(xlim=(-2, 2), ylim=(-2, 2))
+        ax1.set_title('state probability distribution with theta 1')
+        """
+        x = []
+        y = []
+        z = []
+
+        "testing purposes"
+        for s in states:
+            x.append(s[0])
+            y.append(s[1])
+        plt.scatter(x, y)
+        plt.show()
+
+        "Plotting contour"
+        # for s in states:
+        #     x.append((s[0], s[1]))
+        #     y.append((s[1], s[2]))
+        # z = p_states
+
+        # fig, ax1 = plt.subplot(nrows = 2)
+        # ax1.contour(x, y, z, levels=10)
+        # #cntr1 = ax1.contourf()
+        # ax1.plot(x, y, 'ko', ms=3)
+        # ax1.set(xlim=(-20, 20), ylim=(0, 20))
+        # ax1.set_title('state probability distribution with theta 1')
+
+
 test = TestInference(1,1)
-print(test.baseline_inference())
+print("prinnting baseline:", test.baseline_inference()[0][0], test.baseline_inference()[1])
+test.test_plot(test.baseline_inference()[0][0], test.baseline_inference()[1])
