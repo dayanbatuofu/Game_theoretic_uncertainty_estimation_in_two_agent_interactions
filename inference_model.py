@@ -2,9 +2,10 @@ import numpy as np
 from sklearn.processing import normalize
 # TODO pytorch version
 from autonomous_vehicle import AutonomousVehicle
+from environment import Environment
 import discrete_sets as sets
 
-class Lambdas(FloatEnums):
+#class Lambdas(FloatEnums):
 
 class InferenceModel:
     def __init__(self, model, sim):
@@ -19,13 +20,30 @@ class InferenceModel:
             pass
         self.sim = sim
 
-        # TODO: obtain state and action space information
-        # importing agents information
+        "importing agents information"
         self.agents = AutonomousVehicle
-        self.curr_state = AutonomousVehicle.state #cumulative #TODO: import this!
-        self.goal = sim.goal #CHECK THIS
-        self.traj = AutonomousVehicle.planned_trajectory_set #TODO: check if this is right!
+        #TODO: CHECK this!
+        self.curr_state_h = self.sim.agents[0].state[-1]
+        self.curr_state_m = self.sim.agents[1].state[-1]
+        self.actions = [-2, -0.5, 0, 0.5, 2]  # accelerations (m/s^2)
+
+        "trajectory"
+        self.traj_h = self.sim.agents[0].state
+        self.traj_m = self.sim.agents[1].state #TODO: Check!
+        # self.traj = AutonomousVehicle.planned_trajectory_set
+
+        "goal states"
+        #self.goal = Environment.car_par["desired_state"]
+        self.goal = sim.car_par["desired_state"] #TODO: CHECK THIS
+
         self.T = 1 #one step look ahead/ Time Horizon
+
+        "parameters(theta and lambda)"
+        # self.thetas = sim.thetas #TODO: CHECK
+        # self.lambdas = sim.lambdas #TODO: CHECK
+        self.lambdas = [0.01, 0.1, 1, 10]  # range?
+        self.thetas = [1, 1000]  # range?
+
         #"--------------------------------------------------------"
         "Some reference variables from pedestrian prediction"
         self.q_cache = {}

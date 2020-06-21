@@ -2,6 +2,7 @@ import numpy as np
 #from sklearn.processing import normalize
 from autonomous_vehicle import AutonomousVehicle
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class TestInference:
 
@@ -393,10 +394,15 @@ class TestInference:
         z = []
 
         "testing purposes"
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
         for s in states:
             x.append(s[0])
             y.append(s[1])
-        plt.scatter(x, y)
+        z = p_states
+        #plt.scatter(x, y)
+        ax.scatter(x, y, z, zdir='z')
+        plt.xlim(-20, 20)
         plt.show()
 
         "Plotting contour"
