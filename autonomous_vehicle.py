@@ -1,3 +1,6 @@
+"""
+python 3.6 or up is required
+"""
 import numpy as np
 import scipy
 from sim_data import DataUtil

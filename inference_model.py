@@ -1,14 +1,13 @@
 import numpy as np
-from sklearn.processing import normalize
+#from sklearn.processing import normalize
 # TODO pytorch version
 from autonomous_vehicle import AutonomousVehicle
-from environment import Environment
 import discrete_sets as sets
 
 #class Lambdas(FloatEnums):
 
 class InferenceModel:
-    def __init__(self, model, sim):
+    def __init__(self, model, sim): #model = inference type, sim = simulation class
         if model == 'none':
             self.infer = self.no_inference
         elif model == 'baseline':
@@ -18,27 +17,56 @@ class InferenceModel:
         else:
             # placeholder for future development
             pass
+
+        "---simulation info---"
         self.sim = sim
+        self.agents = sim.agents
+        self.n_agents = sim.n_agents
+        self.frame = sim.frame
+        self.T = 1  # one step look ahead/ Time Horizon
+        self.dt = sim.dt
+        self.car_par = sim.env.car_par
+        # for i in range(self.n_agents):
+        #     if i == 1:
+        #         self.h_car_par = sim.env.car_par[i]
+        #     if i == 2:
+        #         self.m_car_par = sim.env.car_par[i]
 
-        "importing agents information"
-        self.agents = AutonomousVehicle
-        #TODO: CHECK this!
-        self.curr_state_h = self.sim.agents[0].state[-1]
-        self.curr_state_m = self.sim.agents[1].state[-1]
-        self.actions = [-2, -0.5, 0, 0.5, 2]  # accelerations (m/s^2)
+        #TODO: generalize instead of doing 0 = H and 1 = M!!!!
+        "---Agent info---"
+        "importing initial agents information"
+        #self.initial_state = [self.h_car_par["initial_state"], self.m_car_par["initial_state"]]
+        self.initial_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
+        if self.frame == 0: #no agent info yet
+            #self.curr_state = self.car_par["initial_state"]
+            #self.actions = self.car_par["initial_action"]
+            self.curr_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
+            self.traj_h = self.curr_state[0]
+            self.traj_m = self.curr_state[1]
 
-        "trajectory"
-        self.traj_h = self.sim.agents[0].state
-        self.traj_m = self.sim.agents[1].state #TODO: Check!
+        else:
+            "importing agents information from Autonomous Vehicle (sim.agents)"
+            for i in range(self.n_agents):
+                if i == 1:
+                    self.curr_state_h = self.sim.agents[i].state[-1]
+                if i == 2:
+                    self.curr_state_m = self.sim.agents[i].state[-1]
+            self.curr_state = self.sim.agents.state[-1]
+
+            #TODO: how to import actions?
+            self.actions = [-2, -0.5, 0, 0.5, 2]  # accelerations (m/s^2)
+
+            "trajectory"
+            self.traj_h = self.sim.agents[0].state
+            self.traj_m = self.sim.agents[1].state
         # self.traj = AutonomousVehicle.planned_trajectory_set
+        "---end of agent info---"
 
-        "goal states"
+        "---goal states---"
         #self.goal = Environment.car_par["desired_state"]
-        self.goal = sim.car_par["desired_state"] #TODO: CHECK THIS
+        self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]] 
 
-        self.T = 1 #one step look ahead/ Time Horizon
-
-        "parameters(theta and lambda)"
+        "---parameters(theta and lambda)---"
         # self.thetas = sim.thetas #TODO: CHECK
         # self.lambdas = sim.lambdas #TODO: CHECK
         self.lambdas = [0.01, 0.1, 1, 10]  # range?

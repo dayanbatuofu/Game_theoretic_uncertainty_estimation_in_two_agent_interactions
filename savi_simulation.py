@@ -30,10 +30,10 @@ class Simulation:
         car_parameter = self.env.car_par
         if self.n_agents == 2:
             # simulations with 2 cars
-            inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self)
-                                                     for i in range(n_agents)]
-            decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self)
-                                                   for i in range(n_agents)]
+            #Note that variable annotation is not supported in python 3.5
+
+            inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self) for i in range(n_agents)]
+            decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self) for i in range(n_agents)]
 
             # define agents
             self.agents = [AutonomousVehicle(sim=self, env=self.env, par=car_parameter[i],
