@@ -18,7 +18,7 @@ class InferenceModel:
             # placeholder for future development
             pass
 
-        "---simulation info---"
+        "---simulation info: only the static variables!---"
         self.sim = sim
         self.agents = sim.agents
         self.n_agents = sim.n_agents
@@ -31,40 +31,48 @@ class InferenceModel:
         #         self.h_car_par = sim.env.car_par[i]
         #     if i == 2:
         #         self.m_car_par = sim.env.car_par[i]
-
+        self.theta_priors = None
+        self.actions = [-2.0, -0.5, 0.0, 0.5, 2.0]  # accelerations (m/s^2)
         #TODO: generalize instead of doing 0 = H and 1 = M!!!!
         "---Agent info---"
-        "importing initial agents information"
-        #self.initial_state = [self.h_car_par["initial_state"], self.m_car_par["initial_state"]]
-        self.initial_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
-        if self.frame == 0: #no agent info yet
-            #self.curr_state = self.car_par["initial_state"]
-            #self.actions = self.car_par["initial_action"]
-            self.curr_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
-            self.traj_h = self.curr_state[0]
-            self.traj_m = self.curr_state[1]
+        # "importing initial agents information"
+        # self.initial_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
+        # if self.frame == 0: #no agent info yet
+        #     self.actions = [self.car_par[0]["initial_action"],self.car_par[1]["initial_action"]]
+        #     self.curr_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
+        #     self.traj_h = [self.curr_state[0], self.actions[0]]
+        #     self.traj_m = [self.curr_state[1], self.actions[1]]
+        #     self.traj = [[self.curr_state[0], self.curr_state[1]],[self.actions[0], self.actions[1]]]
 
-        else:
-            "importing agents information from Autonomous Vehicle (sim.agents)"
-            for i in range(self.n_agents):
-                if i == 1:
-                    self.curr_state_h = self.sim.agents[i].state[-1]
-                if i == 2:
-                    self.curr_state_m = self.sim.agents[i].state[-1]
-            self.curr_state = self.sim.agents.state[-1]
+        # else:
+        #     "importing agents information from Autonomous Vehicle (sim.agents)"
+        #     for i in range(self.n_agents):
+        #         if i == 0:
+        #             self.curr_state_h = self.sim.agents[i].state[-1]
+        #         if i == 1:
+        #             self.curr_state_m = self.sim.agents[i].state[-1]
+        #     self.curr_state = self.sim.agents.state[-1]
+        #
 
-            #TODO: how to import actions?
-            self.actions = [-2, -0.5, 0, 0.5, 2]  # accelerations (m/s^2)
-
-            "trajectory"
-            self.traj_h = self.sim.agents[0].state
-            self.traj_m = self.sim.agents[1].state
-        # self.traj = AutonomousVehicle.planned_trajectory_set
-        "---end of agent info---"
+        #     self.actions = [-2, -0.5, 0, 0.5, 2]  # accelerations (m/s^2)
+        #
+        #     "trajectory: need to process and combine past states and actions together"
+        #     self.states_h = self.sim.agents[0].state
+        #     self.states_m = self.sim.agents[1].state
+        #     self.past_actions_h = sim.agents[0].action
+        #     self.past_actions_m = sim.agents[1].action
+        #     self.traj = []
+        #     self.traj_h = []
+        #     for i in range(self.frame):
+        #         self.traj.append([[self.states_h[i],self.states_m[i]],
+        #                           [self.past_actions_h[i], self.past_actions_m[i]]])
+        #         self.traj_h.append([self.states_h[i], self.past_actions_h[i]])
+        # # self.traj = AutonomousVehicle.planned_trajectory_set
+        # "---end of agent info---"
 
         "---goal states---"
         #self.goal = Environment.car_par["desired_state"]
-        self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]] 
+        self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]]
 
         "---parameters(theta and lambda)---"
         # self.thetas = sim.thetas #TODO: CHECK
@@ -74,26 +82,27 @@ class InferenceModel:
 
         #"--------------------------------------------------------"
         "Some reference variables from pedestrian prediction"
-        self.q_cache = {}
+        #self.q_cache = {}
         #"defining reward for (s, a) pair"
         #self.default_reward = -1
         #self.rewards = np.zeros[self.agents.s, self.agents.a] #Needs fixing
         #self.rewards.fill(self.default_reward)
         #"--------------------------------------------------------"
 
-    @staticmethod
-    def no_inference(agents, sim):
-        pass
+    #@staticmethod
+    def no_inference(self, agents, sim):
+        #pass
+        print("frame {}".format(sim.frame))
+        return
 
-    @staticmethod
-    def baseline_inference(self,agents, sim):
+    #@staticmethod
+    def baseline_inference(self, agents, sim):
         # TODO: implement Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
         """
         for each agent, estimate its par (agent.par) based on its last action (agent.action[-1]),
         system state (agent.state[-1] for all agent), and prior dist. of par
-        :return:
-        """
-        """
+        :return: #TODO: check what to return
+
         Important equations implemented here:
         - Equation 1 (action_probabilities):
         P(u|x,theta,lambda) = exp(Q*lambda)/sum(exp(Q*lambda)), Q size = action space at state x
@@ -107,6 +116,21 @@ class InferenceModel:
         #resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
        
         """
+        #TODO: import all the agent information through sim
+        "importing agents information from Autonomous Vehicle (sim.agents)"
+        curr_state_h = sim.agents[0].state[-1]
+
+        "trajectory: need to process and combine past states and actions together"
+        states_h = sim.agents[0].state
+        past_actions_h = sim.agents[0].action
+        traj_h = []
+
+        for i in range(sim.frame):
+            traj_h.append([states_h[i], past_actions_h[i]])
+        if sim.frame == 0:
+            traj_h.append([states_h[0], past_actions_h[0]])
+        "---end of agent info---"
+
 
         def q_function(current_s, action, goal_s, dt):
             """Calculate Q value
@@ -117,9 +141,11 @@ class InferenceModel:
             Params:
                 current_s [tuple?] -- Current state containing x-state, y-state,
                     x-velocity, y-velocity
-                action [IntEnum] -- potential action taken by car
-                goal_s [tuple?] -- Goal state, same format as current_s
+                action [IntEnum] -- potential action taken by agent H
+                goal_s [tuple?] -- Goal state, with the format (sx, sy)
                 dt[int / float] -- discrete time interval
+            Returns:
+                Q: an array of values correspond to each possible action a in state s
             """
             # Q = -(s_goal - s_current)/v_next #estimates time required to reach goal with current state and chosen action
             u = action
@@ -174,7 +200,9 @@ class InferenceModel:
 
             :param self:
             :param states:
-            :return:
+            return:
+
+
             """
             print("q_values function is being called,{0}, {1}".format(state, goal))
             # current_s = states[-1]
@@ -368,7 +396,8 @@ class InferenceModel:
 
             if theta_priors is None:
                 theta_priors = np.ones(len(thetas)) / len(thetas)
-
+            print("theta priors: {}".format(theta_priors))
+            print("traj: {}".format(traj))
             suited_lambdas = np.empty(len(thetas))
             L = len(lambdas)
 
@@ -394,11 +423,16 @@ class InferenceModel:
                 for i, (s, a) in enumerate(traj):  # pp score calculation method
                     print("--i, (s, a), lambda:", i, (s, a), _lambda)
                     p_a = action_probabilities(s, _lambda)  # get probability of action in each state given a lambda
+                    for j in range(len(self.actions)):
+                        if a == self.actions[j]:
+                            a_i = j #TODO: is there a way to fix this index issue with p_a?
+                        else:
+                            print("WARNING! NO CORRESPONDING ACTION FOUND!")
                     # scores[i] = p_a[s, a]
-                    print("-p_a[a]:", p_a[a])
+                    print("-p_a[a]:", p_a[a_i])
                     # scores[i] = p_a[a]
-                    scores.append(p_a[a])
-                print("scores:", scores)
+                    scores.append(p_a[a_i])
+                print("scores at frame {}:".format(self.frame), scores)
                 log_scores = np.log(scores)
                 return np.sum(log_scores)
 
@@ -427,23 +461,33 @@ class InferenceModel:
                 if t == 0:  # initially there's only one state and not past
                     for theta_t in range(len(thetas)):  # cycle through list of thetas
                         p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-                        p_theta_prime[theta_t] = p_action[a] * p_theta[theta_t]
+                        for j in range(len(self.actions)):
+                            if a == self.actions[j]:
+                                a_i = j #TODO: is there a way to fix this index issue with p_a?
+                            else:
+                                print("WARNING! NO CORRESPONDING ACTION FOUND!")
+                        p_theta_prime[theta_t] = p_action[a_i] * p_theta[theta_t]
                 else:  # for state action pair that is not at time zero
                     for theta_t in range(len(thetas)):  # cycle through theta at time t or K
                         p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
                         for theta_past in range(len(thetas)):  # cycle through theta probability from past time K-1
-                            p_theta_prime[theta_t] += p_action[a] * p_theta[theta_past]
+                            for j in range(len(self.actions)):
+                                if a == self.actions[j]:
+                                    a_i = j
+                            p_theta_prime[theta_t] += p_action[a_i] * p_theta[theta_past]
             p_theta_prime /= sum(p_theta_prime)  # normalize
             assert np.sum(p_theta_prime) == 1  # check if it is properly normalized
-
+            print("p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
             return p_theta_prime, suited_lambdas
 
         "------------------------------"
         "executing the above functions!"
         "------------------------------"
         # TODO: call theta joint inference function and check necessary variables
-        return theta_joint_update(thetas=self.thetas, theta_priors=self.theta_priors,
-                                  lambdas=self.lambdas, traj=self.traj, goal=self.goal, epsilon=0.05)
+        joint_prob = theta_joint_update(thetas=self.thetas, theta_priors=self.theta_priors,
+                                        lambdas=self.lambdas, traj=traj_h, goal=self.goal, epsilon=0.05)
+        self.theta_priors = joint_prob[0]
+        return joint_prob #TODO: CHECK WHAT TO RETURN (what's the key!)
         # def lambda_update( self, lambdas, traj, priors, goals, k):
         #     #This function is not in use! But it is a good reference for update algorithm
         #     """

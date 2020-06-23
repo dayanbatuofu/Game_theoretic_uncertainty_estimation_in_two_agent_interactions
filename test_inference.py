@@ -288,6 +288,7 @@ class TestInference:
             if theta_priors is None:
                 theta_priors = np.ones(len(thetas))/len(thetas)
 
+
             suited_lambdas = np.empty(len(thetas))
             L = len(lambdas)
 
@@ -305,7 +306,7 @@ class TestInference:
             #     h_actions.append(traj_action[0])
 
             #scores = np.empty(len(lambdas))
-            #TODO: how to get recorded traj for evaluation(Maybe AutonomousVehicle.state?)?
+            #TODO: state and action are separately record in sim! fix this
             def compute_score(traj, _lambda, L):
                 #scores = np.empty(L)
                 scores = []

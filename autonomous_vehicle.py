@@ -40,7 +40,7 @@ class AutonomousVehicle:
         frame = sim.frame
 
         # take a snapshot of the state at beginning of the frame before agents update their states
-        snapshot = sim.snapshot()
+        snapshot = sim.snapshot() #snapshot = agent.copy() => snapshot taken before updating
 
         # perform inference
         inference = self.inference_model.infer(snapshot, sim)
