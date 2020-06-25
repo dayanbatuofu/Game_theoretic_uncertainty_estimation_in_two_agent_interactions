@@ -1,3 +1,7 @@
+"""
+Perform inference on other agent
+"""
+
 import numpy as np
 #from sklearn.processing import normalize
 # TODO pytorch version
@@ -24,16 +28,17 @@ class InferenceModel:
         self.n_agents = sim.n_agents
         self.frame = sim.frame
         self.T = 1  # one step look ahead/ Time Horizon
-        self.dt = sim.dt
+        self.dt = sim.dt #default is 1s: assigned in main.py
         self.car_par = sim.env.car_par
+
+        self.past_scores = {} #score for each lambda #TODO: record past scores for time/frame k-1
         # for i in range(self.n_agents):
         #     if i == 1:
         #         self.h_car_par = sim.env.car_par[i]
         #     if i == 2:
         #         self.m_car_par = sim.env.car_par[i]
         self.theta_priors = None
-        self.actions = [-2.0, -0.5, 0.0, 0.5, 2.0]  # accelerations (m/s^2)
-        #TODO: generalize instead of doing 0 = H and 1 = M!!!!
+        self.action_set = [-1, -0.2, 0.0, 0.1, 0.5]  # accelerations (m/s^2) #TODO: give appropriate actions
         "---Agent info---"
         # "importing initial agents information"
         # self.initial_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
@@ -68,15 +73,12 @@ class InferenceModel:
         #                           [self.past_actions_h[i], self.past_actions_m[i]]])
         #         self.traj_h.append([self.states_h[i], self.past_actions_h[i]])
         # # self.traj = AutonomousVehicle.planned_trajectory_set
-        # "---end of agent info---"
+        "---end of agent info---"
 
         "---goal states---"
-        #self.goal = Environment.car_par["desired_state"]
         self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]]
 
         "---parameters(theta and lambda)---"
-        # self.thetas = sim.thetas #TODO: CHECK
-        # self.lambdas = sim.lambdas #TODO: CHECK
         self.lambdas = [0.01, 0.1, 1, 10]  # range?
         self.thetas = [1, 1000]  # range?
 
@@ -130,7 +132,7 @@ class InferenceModel:
         if sim.frame == 0:
             traj_h.append([states_h[0], past_actions_h[0]])
         "---end of agent info---"
-
+        self.frame = sim.frame #updating curr frame
 
         def q_function(current_s, action, goal_s, dt):
             """Calculate Q value
@@ -208,7 +210,7 @@ class InferenceModel:
             # current_s = states[-1]
             # Q = {} #dict type
             Q = []  # list type
-            actions = self.actions  # TODO: check that actions are imported in init
+            actions = self.action_set  # TODO: check that actions are imported in init
             for a in actions:  # sets: file for defining sets
                 # Q[a] = q_function(state, a, goal, self.dt)  #dict type
                 Q.append(q_function(state, a, goal, self.dt))  # list type
@@ -234,7 +236,7 @@ class InferenceModel:
             # TODO: Check this modification so that action probability is calculated for states within a time horizon
             # ---Code: append all states reachable within time T----
             # states = self.states  # TODO: import a state to start from
-            actions = self.actions
+            actions = self.action_set
             # T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
             dt = self.dt  # TODO: confirm where dt is defined
 
@@ -314,25 +316,25 @@ class InferenceModel:
             # exp_Q_list = np.zeros(shape=state_list) #create an array of exp_Q recording for each state
             # for i, s in enumerate(state_list):
             Q = q_values(state, self.goal[0])  # TODO: maybe import goal through args?
-            print("Q values array:", Q)
+            #print("Q values array:", Q)
             # exp_Q = np.empty(len(Q))
             exp_Q = []
 
             "Q*lambda"
             # np.multiply(Q,_lambda,out = Q)
             Q = [q * _lambda for q in Q]
-            print("Q*lambda:", Q)
+            #print("Q*lambda:", Q)
 
             "Q*lambda/(sum(Q*lambda))"
             # np.exp(Q, out=Q)
             for q in Q:
                 exp_Q.append(np.exp(q))
-            print("exp_Q:", exp_Q)
+            #print("exp_Q:", exp_Q)
 
             "normalizing"
             # normalize(exp_Q, norm = 'l1', copy = False)
             exp_Q /= sum(exp_Q)
-
+            print("exp_Q normalized:", exp_Q)
             return exp_Q
             # exp_Q_list[i] = exp_Q
 
@@ -396,7 +398,7 @@ class InferenceModel:
 
             if theta_priors is None:
                 theta_priors = np.ones(len(thetas)) / len(thetas)
-            print("theta priors: {}".format(theta_priors))
+            print("-----theta priors: {}".format(theta_priors))
             print("traj: {}".format(traj))
             suited_lambdas = np.empty(len(thetas))
             L = len(lambdas)
@@ -416,40 +418,52 @@ class InferenceModel:
             #     h_actions.append(traj_action[0])
 
             # scores = np.empty(len(lambdas))
-            # TODO: how to get recorded traj for evaluation(Maybe AutonomousVehicle.state?)?
+            # TODO: should we record scores for past traj?
             def compute_score(traj, _lambda, L):
                 # scores = np.empty(L)
                 scores = []
                 for i, (s, a) in enumerate(traj):  # pp score calculation method
-                    print("--i, (s, a), lambda:", i, (s, a), _lambda)
+                    #print("--i, (s, a), lambda:", i, (s, a), _lambda)
                     p_a = action_probabilities(s, _lambda)  # get probability of action in each state given a lambda
-                    for j in range(len(self.actions)):
-                        if a == self.actions[j]:
-                            a_i = j #TODO: is there a way to fix this index issue with p_a?
-                        else:
-                            print("WARNING! NO CORRESPONDING ACTION FOUND!")
                     # scores[i] = p_a[s, a]
-                    print("-p_a[a]:", p_a[a_i])
+                    #print("-p_a[a]:", p_a[a_i])
                     # scores[i] = p_a[a]
+                    a_i = self.action_set.index(a)
                     scores.append(p_a[a_i])
                 print("scores at frame {}:".format(self.frame), scores)
                 log_scores = np.log(scores)
                 return np.sum(log_scores)
 
-            "executing compute_score to get the best suited lambdas"
+            def get_last_score(traj, _lambda, L): #add score to existing list of score
+                p_a = action_probabilities(traj[-1][0], _lambda)
+                a = traj[-1][1]
+                a_i = self.action_set.index(a)
+                if _lambda in self.past_scores: #add to existing list
+                    scores = self.past_scores[_lambda]
+                    scores.append(p_a[a_i])
+                else:
+                    self.past_scores[_lambda] = [p_a[a_i]]
+                    scores = self.past_scores[_lambda]
+                log_scores = np.log(scores)
+                return np.sum(log_scores)
+
+            "executing compute_score/get_last_score to get the best suited lambdas"
             for i, theta in enumerate(thetas):  # get a best suited lambda for each theta
-                # lambdas[i] = self.binary_search(traj, gradient)
                 score_list = []
                 for j, lamb in enumerate(lambdas):
-                    score_list.append(compute_score(traj, lamb, L))
+                    #score_list.append(compute_score(traj, lamb, L))
+                    score_list.append(get_last_score(traj, lamb, L))
+                    #l = str(lamb)
+                    # if lamb in self.past_scores: #add to current list
+                    #     self.past_scores[lamb].append(get_last_score(traj, lamb, L))
+                    # else: #create a list
+                    #     self.past_scores[lamb] = [get_last_score(traj, lamb, L)]
                 max_lambda_j = np.argmax(score_list)
+                #max_lambda_j = np.argmax(self.past_scores)
                 suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
-                print("theta being analyzed:", theta, "best lambda:", lambdas[max_lambda_j])
+                #print("theta being analyzed:", theta, "best lambda:", lambdas[max_lambda_j])
+
             # Instead of iterating we calculate action prob right before calculating p_theta_prime!
-            # p_action = np.empty([thetas, traj, self.agents.a]) #storing 3D info of [thetas, states, actions]
-            # for i, (lamb, theta) in enumerate(zip(lambdas, thetas)):
-            #    for s, a in traj:
-            #        p_action[i] = action_probabilities(s, lamb)
 
             p_theta = np.copy(theta_priors)
             "re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
@@ -457,37 +471,35 @@ class InferenceModel:
             p_theta_prime = np.empty(len(thetas))
 
             "joint inference update for (lambda, theta)"
+            #TODO: optimize calculation to increase speed
             for t, (s, a) in enumerate(traj):  # enumerate through past traj#TODO: CHECK PAST TRAJ FROM CLASS AV
                 if t == 0:  # initially there's only one state and not past
                     for theta_t in range(len(thetas)):  # cycle through list of thetas
                         p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-                        for j in range(len(self.actions)):
-                            if a == self.actions[j]:
-                                a_i = j #TODO: is there a way to fix this index issue with p_a?
-                            else:
-                                print("WARNING! NO CORRESPONDING ACTION FOUND!")
+                        a_i = self.action_set.index(a)
                         p_theta_prime[theta_t] = p_action[a_i] * p_theta[theta_t]
                 else:  # for state action pair that is not at time zero
                     for theta_t in range(len(thetas)):  # cycle through theta at time t or K
                         p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
                         for theta_past in range(len(thetas)):  # cycle through theta probability from past time K-1
-                            for j in range(len(self.actions)):
-                                if a == self.actions[j]:
-                                    a_i = j
+                            a_i = self.action_set.index(a)
                             p_theta_prime[theta_t] += p_action[a_i] * p_theta[theta_past]
             p_theta_prime /= sum(p_theta_prime)  # normalize
             assert np.sum(p_theta_prime) == 1  # check if it is properly normalized
-            print("p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
-            return p_theta_prime, suited_lambdas
+            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
+            return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
 
         "------------------------------"
         "executing the above functions!"
         "------------------------------"
-        # TODO: call theta joint inference function and check necessary variables
-        joint_prob = theta_joint_update(thetas=self.thetas, theta_priors=self.theta_priors,
+        #calling functions for baseline inference
+        joint_probability = theta_joint_update(thetas=self.thetas, theta_priors=self.theta_priors,
                                         lambdas=self.lambdas, traj=traj_h, goal=self.goal, epsilon=0.05)
-        self.theta_priors = joint_prob[0]
-        return joint_prob #TODO: CHECK WHAT TO RETURN (what's the key!)
+        #take a snapshot of the theta prob for next time step
+        self.theta_priors = joint_probability['predicted_intent_other'][0]
+        return joint_probability #TODO: CHECK WHAT TO RETURN
+
+
         # def lambda_update( self, lambdas, traj, priors, goals, k):
         #     #This function is not in use! But it is a good reference for update algorithm
         #     """
@@ -521,7 +533,6 @@ class InferenceModel:
         #     return post_lambda
         #
         #     pass
-
 
 
         "functions for references, not in use:"
@@ -575,8 +586,8 @@ class InferenceModel:
         #     pass
 
 
-    @staticmethod
-    def empathetic_inference():
+    #@staticmethod
+    def empathetic_inference(self, agent, sim):
         """
         When QH also depends on xM,uM
         :return:P(beta_h, beta_m_hat | D(k))
@@ -595,7 +606,10 @@ class InferenceModel:
         # variables: predicted_intent_other: BH hat, predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat, predicted_policy_self: QM tilde
         #----------------------------#
+        #TODO: get necessary agent info:
+        "---agent info---"
 
+        "---end of agent info---"
         #TODO: import Q pairs from Nash Equilibrium computed with RL
         #TODO: how will betas arrays (lambda1, theta1), ... be constructed?
         #TODO: THREE total priors needed to store: p(betas|D(k-1)) and p(Q pairs|D(k-1)) and P(x(k)|Qh,Qm)
@@ -754,7 +768,7 @@ class InferenceModel:
             # TODO: Check this modification so that action probability is calculated for states within a time horizon
             # ---Code: append all states reachable within time T----
             states = self.states  # TODO: import a state to start from
-            actions = self.actions
+            actions = self.action_set
             #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
             dt = self.sim.dt
 
@@ -798,7 +812,7 @@ class InferenceModel:
             # TODO: Check this modification so that action probability is calculated for states within a time horizon
             # ---Code: append all states reachable within time T----
             states = self.states  # TODO: import a state to start from
-            actions = self.actions
+            actions = self.action_set
             #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
             dt = self.sim.dt
             #TODO: MODIFY for calculating state list for agent M

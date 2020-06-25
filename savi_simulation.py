@@ -76,6 +76,8 @@ class Simulation:
                 self.vis.draw_frame()  # Draw frame
                 # if self.capture:
                 #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+                #TODO: add occupancy plot (Yi)
+
 
                 for event in pg.event.get():
                     if event.type == pg.QUIT:
