@@ -516,6 +516,11 @@ class InferenceModel:
         def marginal_prob(p_state_beta, p_theta):
             """
             Calculates the marginal probability P(x(k+1) | D(k))
+            General procedure:
+            1. P(lambda, theta) is calculated first and best lambda is obtained
+            2. P(x(k+1) | lambda, theta) is calculated with the best lambda from previous step
+            3. Calculate P(x(k+1) | D(k)) by multiplying the results from first 2 steps together, with
+               the same lambda #TODO: need confirmation!
             :param
                 p_state_beta: P(x(k+1)|lambda, theta)
                 p_theta: P(lambda, theta), the joint probability of theta and corresponding lambda
@@ -523,27 +528,35 @@ class InferenceModel:
                 p_state_D: P(x(k+1) | D(k)), the marginal probability of agent being in state x(k+1)
                            given observation D(k)
             """
-            
+
             #TODO: calculate marginal prob
             "get look up table for P(lambda, theta)"
-            #TODO: calculate prob for beta (a table instead of just for 2 thetas)
+            #TODO: calculate prob for beta (a table instead of just for 2 thetas???)
 
             "calculate marginal"
             p_state_D = np.zeros(len(p_state_beta))
             for i in range(p_state_beta):
-                for j in range(p_theta):
-                    p_state_D[i] = p_state_beta[i] * p_theta[j]
+                for j in range(p_theta): #TODO: multiply by the p_theta with the corresponding lambda????
+                    if j == 0:
+                        p_state_D[i] = p_state_beta[i] * p_theta[j]
+                    else:
+                        p_state_D[i] += p_state_beta[i] * p_theta[j]
 
             return p_state_D
 
         "------------------------------"
         "executing the above functions!"
         "------------------------------"
-        #calling functions for baseline inference
+
+        "#calling functions for baseline inference"
         joint_probability = theta_joint_update(thetas=self.thetas, theta_priors=self.theta_priors,
                                                lambdas=self.lambdas, traj=traj_h, goal=self.goal, epsilon=0.05)
-        #take a snapshot of the theta prob for next time step
+
+        "#take a snapshot of the theta prob for next time step"
         self.theta_priors = joint_probability['predicted_intent_other'][0]
+
+        "calculate the marginal state distribution / prediction" #TODO: implement function once completed
+
         return joint_probability #TODO: CHECK WHAT TO RETURN
 
 
