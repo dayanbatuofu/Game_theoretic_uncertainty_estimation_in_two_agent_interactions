@@ -513,7 +513,7 @@ class InferenceModel:
             print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
             return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
 
-        def marginal_prob(p_state_beta, p_theta):
+        def marginal_prob(state, p_theta, best_lambdas):
             """
             Calculates the marginal probability P(x(k+1) | D(k))
             General procedure:
@@ -525,22 +525,23 @@ class InferenceModel:
                 p_state_beta: P(x(k+1)|lambda, theta)
                 p_theta: P(lambda, theta), the joint probability of theta and corresponding lambda
             :return:
-                p_state_D: P(x(k+1) | D(k)), the marginal probability of agent being in state x(k+1)
+                p_state_D: P(x(k+1) | D(k)), the marginal distribution of agent being in state x(k+1)
                            given observation D(k)
             """
+            lamb1, lamb2 = best_lambdas
+            p_state_beta1 = traj_probabilities(state, lamb1)
+            p_state_beta2 = traj_probabilities(state, lamb2)
 
-            #TODO: calculate marginal prob
+            #TODO: generalize for more than 1 step look ahead?
             "get look up table for P(lambda, theta)"
             #TODO: calculate prob for beta (a table instead of just for 2 thetas???)
 
             "calculate marginal"
-            p_state_D = np.zeros(len(p_state_beta))
-            for i in range(p_state_beta):
-                for j in range(p_theta): #TODO: multiply by the p_theta with the corresponding lambda????
-                    if j == 0:
-                        p_state_D[i] = p_state_beta[i] * p_theta[j]
-                    else:
-                        p_state_D[i] += p_state_beta[i] * p_theta[j]
+            p_state_D = np.zeros(len(p_state_beta1))
+            for i in range(len(p_state_D)):
+                #TODO: multiply by the p_theta with the corresponding lambda????
+                p_state_D[i] = p_state_beta1 * p_theta[0]
+                p_state_D[i] += p_state_beta2 * p_theta[1]
 
             return p_state_D
 
@@ -556,6 +557,8 @@ class InferenceModel:
         self.theta_priors = joint_probability['predicted_intent_other'][0]
 
         "calculate the marginal state distribution / prediction" #TODO: implement function once completed
+        best_lambdas = joint_probability['predicted_intent_other'][1]
+        #marginal_state = marginal_prob(traj_probabilities(self.curr_state,), self.theta_priors)
 
         return joint_probability #TODO: CHECK WHAT TO RETURN
 
