@@ -22,6 +22,7 @@ class DataUtil:
                'wanted_action_self',  # most favorable other's future state traj by self
                'inference_probability',  # inference probabilities
                'gracefulness',  # TODO: check definition
+               'predicted_policy_other' #TODO: temporary used for state distribution
                ]
 
         if data:
