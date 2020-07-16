@@ -53,20 +53,19 @@ class VisUtils:
         # render 10 times for each step
         steps = 10
 
-        #TODO: test drawing state distribution
         "--dummy data--"
         black = (0, 0, 0)
-        red = (255, 0, 0)
-        r = pg.Color.r
+        #red = (255, 0, 0)
+        #r = pg.Color.r
         p_state = (0.25, [0, 0, 0, 0]) #[p_state, (sx, sy, vx, vy)]
         sx = p_state[1][0]
         sy = p_state[1][1]
-        pos1 = (sx, sy)
-        pos2 = self.c2p(pos1)
+        #pos1 = (sx, sy)
+        pos2 = self.c2p((sx, sy))
         # def draw_circle( pos, color, radius):
         #     pg.draw.circle(self.screen, color, pos, radius) #surface,  color, (x, y),radius>=1
         #draw_circle(pos1, red, 10)
-        print('IMPORTED p state: ', self.p_state_H[-1])
+        #print('IMPORTED p state: ', self.p_state_H[-1])
         "--end of dummy data--"
 
         for k in range(1, steps+1):
@@ -88,9 +87,9 @@ class VisUtils:
             # # Annotations
             # font = pg.font.SysFont("Arial", 30)
 
-            "drawing map of state distribution"
+            "drawing the map of state distribution"
             pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
-            self.draw_prob()
+            self.draw_prob() #calling function to draw with data from inference
 
             pg.display.flip()
             pg.display.update()
@@ -147,22 +146,21 @@ class VisUtils:
                 #print("X, Y: ", x, y)
                 nx, ny = self.c2p((x, y))
                 p_s = p_state_Dk[i]
+                #TODO: change the range of color! (we will have different distribution)
+                #TODO: continuous distribution of color?
+                "plot different colors base on their probabilities"
                 if p_s > 0.22:
-                    pg.draw.circle(self.screen, red, (nx, ny), 4) #(surface, color, pos, radius)
+                    pg.draw.circle(self.screen, red, (nx, ny), 6) #(surface, color, pos, radius)
                 elif 0.21 < p_s <= 0.22:
-                    pg.draw.circle(self.screen, orange, (nx, ny), 4)
+                    pg.draw.circle(self.screen, orange, (nx, ny), 6)
                 elif 0.20 < p_s <= 0.21:
-                    pg.draw.circle(self.screen, yellow, (nx, ny), 4)
+                    pg.draw.circle(self.screen, yellow, (nx, ny), 6)
                 elif 0.19 < p_s <= 0.2:
-                    pg.draw.circle(self.screen, green, (nx, ny), 4)
+                    pg.draw.circle(self.screen, green, (nx, ny), 6)
                 elif 0.18 < p_s <= 0.19:
-                    pg.draw.circle(self.screen, blue, (nx, ny), 4)
+                    pg.draw.circle(self.screen, blue, (nx, ny), 6)
                 else:
-                    pg.draw.circle(self.screen, purple, (nx, ny), 4)
-        # sx = p_state[1][0]
-        # sy = p_state[1][1]
-        # pos1 = (sx, sy)
-        # pos2 = self.c2p(pos1)
+                    pg.draw.circle(self.screen, purple, (nx, ny), 6)
 
         #pg.draw.circle()
 
