@@ -6,6 +6,7 @@ import numpy as np
 import math
 from inference_model import InferenceModel
 from autonomous_vehicle import AutonomousVehicle
+import time
 
 LIGHT_GREY = (230, 230, 230)
 
@@ -13,32 +14,63 @@ LIGHT_GREY = (230, 230, 230)
 class VisUtils:
 
     def __init__(self, sim):
-        self.screen_width = 5
-        self.screen_height = 5
-        self.asset_location = "assets/"
-        self.fps = 24  # max framework
-        self.coordinate_scale = 100
-        self.zoom = 0.3
-
+        "for drawing state distribution"
         self.sim = sim
         self.env = sim.env
-        self.p_state_H = sim.agents[1].predicted_policy_other #get the last prediction
+        self.p_state_H = sim.agents[1].predicted_policy_other  # get the last prediction
 
-        "initialize pygame"
-        pg.init()
-        self.screen = pg.display.set_mode((self.screen_width * self.coordinate_scale,
-                                           self.screen_height * self.coordinate_scale))
 
-        img_width = int(self.env.car_width * self.coordinate_scale * self.zoom)
-        img_height = int(self.env.car_length * self.coordinate_scale * self.zoom)
+        if sim.decision_type == 'baseline':
+            self.screen_width = 50
+            self.screen_height = 50
+            self.coordinate_scale = 20
+            self.zoom = 0.7
+            self.asset_location = "assets/"
 
-        "loading car image into pygame"
-        self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
-                                              + self.sim.agents[i].car_par["sprite"]), (img_width, img_height)),
-                                              -self.sim.agents[i].car_par["orientation"])
-                          for i in range(self.sim.n_agents)]
+            img_width = int(self.env.car_width * self.coordinate_scale * self.zoom)
+            img_height = int(self.env.car_length * self.coordinate_scale * self.zoom)
 
-        self.origin = np.array([1.0, -1.0])
+            "initialize pygame"
+            pg.init()
+            self.screen = pg.display.set_mode((self.screen_width * self.coordinate_scale,
+                                               self.screen_height * self.coordinate_scale))
+            # self.car1_image = pg.transform.rotate(pg.image.load(self.asset_location + self.sim.agents[0].car_par["sprite"]),
+            #                                       -self.sim.agents[0].car_par["orientation"])
+            #
+            # self.car2_image = pg.transform.rotate(pg.image.load(self.asset_location+ self.sim.agents[1].car_par["sprite"]),
+            #                                       -self.sim.agents[1].car_par["orientation"])
+            self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
+                                                                                   + self.sim.agents[i].car_par["sprite"]),
+                                                                     (img_width, img_height)),
+                                                  -self.sim.agents[i].car_par["orientation"])
+                              for i in range(self.sim.n_agents)]
+
+            self.origin = np.array([-15.0, 15.0])
+        else:
+            self.screen_width = 5
+            self.screen_height = 5
+            self.asset_location = "assets/"
+            self.fps = 24  # max framework
+            self.coordinate_scale = 100
+            self.zoom = 0.3
+
+            "initialize pygame"
+            pg.init()
+            self.screen = pg.display.set_mode((self.screen_width * self.coordinate_scale,
+                                               self.screen_height * self.coordinate_scale))
+
+            img_width = int(self.env.car_width * self.coordinate_scale * self.zoom)
+            img_height = int(self.env.car_length * self.coordinate_scale * self.zoom)
+
+            "loading car image into pygame"
+            self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
+                                                                                   + self.sim.agents[i].car_par[
+                                                                                       "sprite"]),
+                                                                     (img_width, img_height)),
+                                                  -self.sim.agents[i].car_par["orientation"])
+                              for i in range(self.sim.n_agents)]
+
+            self.origin = np.array([1.0, -1.0])
 
         "Draw Axis Lines"
         self.screen.fill((255, 255, 255))
@@ -51,7 +83,7 @@ class VisUtils:
         frame = self.sim.frame
 
         # render 10 times for each step
-        steps = 10
+        steps = 20
 
         "--dummy data--"
         black = (0, 0, 0)
@@ -67,32 +99,52 @@ class VisUtils:
         #draw_circle(pos1, red, 10)
         #print('IMPORTED p state: ', self.p_state_H[-1])
         "--end of dummy data--"
-
-        for k in range(1, steps+1):
-            self.screen.fill((255, 255, 255))
-            self.draw_axes()
-            # Draw Images
+        if frame == 0:
+            print("do nothing")
             for i in range(self.sim.n_agents):
-                "getting pos of agent"
-                pos_old = np.array(self.sim.agents[i].state[frame-1][:2])
-                pos_new = np.array(self.sim.agents[i].state[frame][:2])
+                pos = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
                 "smooth out the movement between each step"
-                pos = pos_old * (1 - k * 1./steps) + pos_new * (k * 1./steps)
+                #pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
                 "transform pos"
                 pixel_pos_car = self.c2p(pos)
                 size_car = self.car_image[i].get_size()
                 self.screen.blit(self.car_image[i],
-                                 (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
-
-            # # Annotations
-            # font = pg.font.SysFont("Arial", 30)
-
+                                (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
             "drawing the map of state distribution"
             pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
-            self.draw_prob() #calling function to draw with data from inference
+            self.draw_prob()  # calling function to draw with data from inference
 
             pg.display.flip()
             pg.display.update()
+        else:
+            for k in range(1, steps + 1):
+                self.screen.fill((255, 255, 255))
+                self.draw_axes()
+                # Draw Images
+                for i in range(self.sim.n_agents):
+                    "getting pos of agent"
+                    pos_old = np.array(self.sim.agents[i].state[frame - 1][:2])
+                    pos_new = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
+                    "smooth out the movement between each step"
+                    pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
+                    "transform pos"
+                    pixel_pos_car = self.c2p(pos)
+                    size_car = self.car_image[i].get_size()
+                    self.screen.blit(self.car_image[i],
+                                     (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
+                    if self.sim.decision_type == "baseline":
+                        time.sleep(0.2)
+                # # Annotations
+                # font = pg.font.SysFont("Arial", 30)
+
+                "drawing the map of state distribution"
+                pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
+                self.draw_prob() #calling function to draw with data from inference
+
+                pg.display.flip()
+                pg.display.update()
+
+
 
     def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize

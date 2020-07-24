@@ -1,5 +1,5 @@
 """
-python 3.6 or up is required
+python 3.6 and up is required
 """
 import numpy as np
 import scipy
@@ -34,6 +34,9 @@ class AutonomousVehicle:
         self.predicted_intent_self = []
         self.predicted_policy_other = []
         self.predicted_policy_self = []
+        #if sim.decision_type == 'baseline':
+        self.min_speed = 0.1
+        self.max_speed = 30
 
     def update(self, sim):
         other = sim.agents[:self.id]+sim.agents[self.id+1:]  # get all other agents
@@ -48,21 +51,48 @@ class AutonomousVehicle:
 
         # planning
         plan = self.decision_model.plan()
-        DataUtil.update(self, plan)
+
 
         # update state
-        self.dynamics(plan["action"])
+        action = plan["action"]
+        if self.sim.decision_type == "baseline":
+            action = action[self.id]
+            plan = {"action": plan["action"][self.id]}
+        DataUtil.update(self, plan)
+        self.dynamics(action)
 
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
         # TODO: add steering
         # define the discrete time dynamical model
         def f(x, u, dt):
-            sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-            vx_new = vx + u * dt * vx/(np.linalg.norm([vx, vy])+1e-12)
-            vy_new = vy + u * dt * vy/(np.linalg.norm([vx, vy])+1e-12)
-            sx_new = sx + (vx + vx_new) * dt * 0.5
-            sy_new = sy + (vy + vy_new) * dt * 0.5
 
+            if self.id == 0:
+                sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                sx_new = sx + (vx + vx_new) * dt * 0.5
+                sy_new = sy + (vy + vy_new) * dt * 0.5
+                if vy_new < 0:
+                    vy_new = -self.min_speed
+                vy_new = max(min(vy_new, self.max_speed), self.min_speed)
+            elif self.id == 1:
+                sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                u = -u #flipped direction
+                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                #vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                vy_new = vy
+                sx_new = sx + (vx + vx_new) * dt * 0.5
+                sy_new = sy
+                if vx_new > 0:
+                    vx_new = -self.min_speed
+                vx_new = -max(min(abs(vx_new), self.max_speed), self.min_speed)
+            else:
+                sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                sx_new = sx + (vx + vx_new) * dt * 0.5
+                sy_new = sy + (vy + vy_new) * dt * 0.5
+            print("ID:", self.id, "action:", u, "old vel:", vx, vy, "new vel:", vx_new, vy_new)
             return sx_new, sy_new, vx_new, vy_new
 
         self.state.append(f(self.state[-1], action, self.sim.dt))

@@ -8,7 +8,7 @@ from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import VisUtils
-
+from models import constants as C #for terminal state check (car length)
 
 class Simulation:
 
@@ -22,7 +22,8 @@ class Simulation:
         self.end = False
         self.clock = pg.time.Clock()
         self.frame = 0
-
+        self.decision_type = decision_type[0]
+        #print("decision type:", decision_type)
         self.env = env
         self.agents = []
 
@@ -67,8 +68,20 @@ class Simulation:
                     agent.update(self)  # Run simulation
 
             # termination criteria
-            if self.frame >= self.duration:
-                break
+            if self.decision_type == 'baseline':
+                x_ego = self.agents[0].state[-1][1] #sy_M
+                x_other = self.agents[1].state[-1][0] #sx_H
+                if self.frame >= self.duration:
+                    break
+                # if crossed the intersection, done or max time reached
+                #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
+                if (x_ego >= 300 and x_other <= -300):
+                    # road width = 2.0 m
+                    print("terminating on vehicle passed intersection:", x_ego, x_other )
+                    break
+            else:
+                if self.frame >= self.duration:
+                    break
 
             # TODO: update visualization
             # draw stuff after each iteration
