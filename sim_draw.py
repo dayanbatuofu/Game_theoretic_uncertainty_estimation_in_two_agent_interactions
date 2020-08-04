@@ -152,6 +152,7 @@ class VisUtils:
                 pg.display.update()
         #self.draw_dist(self.past_state_m, self.past_state_h)
         self.calc_dist()
+        self.calc_intent()
     def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
         for a in self.env.bounds:
@@ -219,8 +220,6 @@ class VisUtils:
         pyplot.xlabel("time")
         pyplot.show()
     def calc_intent(self):
-
-    def draw_intent(self):
         joint_infer_m = self.sim.agents[0].predicted_intent_other
         # TODO: assign list of theta and lambda somewhere in sim
         theta_list = [1, 1000]
@@ -234,29 +233,45 @@ class VisUtils:
             idx_m = sum_m.index(max(sum_m))
             H_intent = theta_list[idx_h]
             M_intent = theta_list[idx_m]
-
-            fig2, (ax1, ax2) = pyplot.subplots(2)
-            fig2.suptitle('Predicted intent of other agent')
-            ax1.plot(H_intent, label='predicted H intent')
-            ax1.legend()
-            ax1.set_yticks([1, 1000], ['na', 'a'])
-
-            ax2.plot(M_intent, label='predicted M intent')
-            ax2.legend()
-            ax2.set_yticks([1, 1000], ['na', 'a'])
-
+            self.intent_h.append(H_intent)
+            self.intent_m.append(M_intent)
         else:
-            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other
+            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             sum_h = p_joint_h.sum(axis=0)
+            sum_h = np.ndarray.tolist(sum_h)
+            print('sum of theta prob:', sum_h)
+            #max_theta_h = np.max(sum_h)
             idx_h = sum_h.index(max(sum_h))
+            #idx_h = np.where(sum_h == max_theta_h)
             # TODO: assign list of theta and lambda somewhere in sim
             H_intent = theta_list[idx_h]
+            print('probability of thetas H:', sum_h, 'H intent:', H_intent)
+            self.intent_h.append(H_intent)
 
-            fig2, ax1 = pyplot.subplots(1)
+    def draw_intent(self):
+        joint_infer_m = self.sim.agents[0].predicted_intent_other
+        # TODO: assign list of theta and lambda somewhere in sim
+        if not len(joint_infer_m) == 0:
+            fig2, (ax1, ax2) = pyplot.subplots(2)
             fig2.suptitle('Predicted intent of other agent')
-            ax1.plot(H_intent, label='predicted H intent')
+            ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
             ax1.set_yticks([1, 1000], ['na', 'a'])
+
+            ax2.plot(self.intent_m, label='predicted M intent')
+            ax2.legend()
+            ax2.set_yticks([1, 1000], ['na', 'a'])
+            pyplot.show()
+        else:
+            print(self.intent_h)
+            print(self.sim.agents[1].predicted_intent_other)
+            fig2, ax1 = pyplot.subplots(1)
+            fig2.suptitle('Predicted intent of other agent')
+            ax1.plot(self.intent_h, label='predicted H intent')
+            ax1.legend()
+            #TODO: get actual intent from decision model/ autonomous vehicle
+            ax1.set_yticks([1, 1000], ['na', 'a'])
+            pyplot.show()
 
     def draw_prob(self):
         """

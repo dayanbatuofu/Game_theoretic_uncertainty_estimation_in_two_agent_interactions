@@ -924,7 +924,7 @@ class InferenceModel:
             # TODO: modify score list to include all thetas x lambda pairs, instead of lambdas
             "USE THIS to record scores for past traj to speed up run time!"
             def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
-                p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta)
+                p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..]
                 a_h = _traj_h[-1][1]
                 #print(_traj_h)
                 a_i = self.action_set.index(a_h)
