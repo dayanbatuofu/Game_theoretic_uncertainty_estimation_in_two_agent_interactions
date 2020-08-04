@@ -3,6 +3,7 @@
 import pygame as pg
 import pygame.gfxdraw
 import numpy as np
+from matplotlib import pyplot
 import math
 from inference_model import InferenceModel
 from autonomous_vehicle import AutonomousVehicle
@@ -17,8 +18,13 @@ class VisUtils:
         "for drawing state distribution"
         self.sim = sim
         self.env = sim.env
-        self.p_state_H = sim.agents[1].predicted_policy_other  # get the last prediction
-
+        self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
+        self.past_state_h = sim.agents[1].state[-1]
+        self.past_state_m = sim.agents[0].state[-1]
+        self.intent_h = []
+        self.intent_m = []
+        self.frame = sim.frame
+        self.dist = []
 
         if sim.decision_type == 'baseline':
             self.screen_width = 50
@@ -100,7 +106,6 @@ class VisUtils:
         #print('IMPORTED p state: ', self.p_state_H[-1])
         "--end of dummy data--"
         if frame == 0:
-            print("do nothing")
             for i in range(self.sim.n_agents):
                 pos = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
                 "smooth out the movement between each step"
@@ -133,19 +138,20 @@ class VisUtils:
                     self.screen.blit(self.car_image[i],
                                      (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
                     if self.sim.decision_type == "baseline":
-                        time.sleep(0.2)
+                        time.sleep(0.05)
                 # # Annotations
                 # font = pg.font.SysFont("Arial", 30)
 
                 "drawing the map of state distribution"
                 pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
                 self.draw_prob() #calling function to draw with data from inference
+                #time.sleep(1)
+
 
                 pg.display.flip()
                 pg.display.update()
-
-
-
+        #self.draw_dist(self.past_state_m, self.past_state_h)
+        self.calc_dist()
     def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
         for a in self.env.bounds:
@@ -167,6 +173,91 @@ class VisUtils:
                              (self.screen_width * self.coordinate_scale,
                               (bounds[1] + bounds[0]) / 2), bounds[0] - bounds[1])
 
+    def draw_dist(self):
+        #TODO: implement plotting of distance between cars over time
+        # pyplot.plot(self.dist)
+        # pyplot.plot(self.sim.agents[0].action)
+        fig1, (ax1, ax2, ax3) = pyplot.subplots(3) #3 rows
+        fig1.suptitle('Euclidean distance and Agent Actions')
+        ax1.plot(self.dist, label='car dist')
+        ax1.legend()
+        ax1.set(xlabel='time', ylabel='distance')
+
+        #fig1, (ax2) = pyplot.subplots(1)
+        #fig1.suptitle('Actions of H at each time')
+        ax2.plot(self.sim.agents[0].action, label='actual')
+        ax2.plot(self.sim.agents[1].predicted_actions_other, label='predicted', linestyle='--')
+        ax2.set_ylim([-10, 10])
+        ax2.set_yticks([-8, -4, 0, 4, 8])
+        ax2.legend()
+        ax2.set(xlabel='time', ylabel='H actions')
+
+        #fig1, (ax3) = pyplot.subplots(1)
+        #fig1.suptitle('Actions of M at each time')
+        ax3.plot(self.sim.agents[1].action, label='actual')
+        ax3.set_ylim([-10, 10])
+        ax3.set_yticks([-8, -4, 0, 4, 8])
+        ax3.legend()
+        ax3.set(xlabel='time', ylabel='M actions')
+        # pyplot.ylabel("distance")
+        # pyplot.xlabel("time")
+
+        pyplot.show()
+
+    def calc_dist(self):
+        past_state_h = self.sim.agents[0].state[-1]
+        past_state_m = self.sim.agents[1].state[-1]
+        dist_h = past_state_h[1]
+        dist_m = past_state_m[0]
+        dist = np.sqrt(dist_h * dist_h + dist_m * dist_m)
+        self.dist.append(dist)
+
+    def draw_actions(self):
+        #TODO: implement plotting of distance between cars over time
+        pyplot.plot(self.sim.agents[0].action)
+        pyplot.ylabel("actions")
+        pyplot.xlabel("time")
+        pyplot.show()
+    def calc_intent(self):
+
+    def draw_intent(self):
+        joint_infer_m = self.sim.agents[0].predicted_intent_other
+        # TODO: assign list of theta and lambda somewhere in sim
+        theta_list = [1, 1000]
+        lambda_list = [0.05, 0.1, 1, 10]
+        if not len(joint_infer_m) == 0:
+            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other
+            p_joint_m, lambda_m = joint_infer_m
+            sum_h = p_joint_h.sum(axis=0)
+            sum_m = p_joint_m.sum(axis=0)
+            idx_h = sum_h.index(max(sum_h))
+            idx_m = sum_m.index(max(sum_m))
+            H_intent = theta_list[idx_h]
+            M_intent = theta_list[idx_m]
+
+            fig2, (ax1, ax2) = pyplot.subplots(2)
+            fig2.suptitle('Predicted intent of other agent')
+            ax1.plot(H_intent, label='predicted H intent')
+            ax1.legend()
+            ax1.set_yticks([1, 1000], ['na', 'a'])
+
+            ax2.plot(M_intent, label='predicted M intent')
+            ax2.legend()
+            ax2.set_yticks([1, 1000], ['na', 'a'])
+
+        else:
+            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other
+            sum_h = p_joint_h.sum(axis=0)
+            idx_h = sum_h.index(max(sum_h))
+            # TODO: assign list of theta and lambda somewhere in sim
+            H_intent = theta_list[idx_h]
+
+            fig2, ax1 = pyplot.subplots(1)
+            fig2.suptitle('Predicted intent of other agent')
+            ax1.plot(H_intent, label='predicted H intent')
+            ax1.legend()
+            ax1.set_yticks([1, 1000], ['na', 'a'])
+
     def draw_prob(self):
         """
         drawing probability distribution of future state on pygame surface
@@ -185,6 +276,7 @@ class VisUtils:
 
         "get state distribution"
         p_state1 = (0.25, [0, 0, 0, 0])  # [p_state, (sx, sy, vx, vy)]
+        #print(self.p_state_H[-1])
         p_state_D, state_list  = self.p_state_H[-1]
         #print("PLOTTING: ", state_list, "and ", p_state_D)
 

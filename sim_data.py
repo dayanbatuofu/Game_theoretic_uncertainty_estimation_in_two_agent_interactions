@@ -18,6 +18,8 @@ class DataUtil:
                'predicted_par_self',  # other's belief of self intent, estimated
                'predicted_actions_other',  # other's future actions, estimated
                'predicted_actions_self',  # other's belief of self future actions, estimated
+               'predicted_states_other',  # prediction of other's future states
+               'predicted_intent_other',  # calculated joint probabilities of intent and rationality
                'wanted_action_self',  # most favorable self future state traj by others, estimated
                'wanted_action_self',  # most favorable other's future state traj by self
                'inference_probability',  # inference probabilities

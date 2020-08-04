@@ -67,17 +67,10 @@ class DecisionModel:
 
         args = get_args()
         "action for ego car"
-        action1 = policy_na_na.act(t.FloatTensor(p1_state).to(args.device))
+        action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
 
         "action for other car with existing model / policy"
         action2 = policy_na_na.act(t.FloatTensor(p2_state).to(args.device))
-        # if env.other_car.aggressiveness == 1000:
-        #     action2 = policy_a_na.act(torch.FloatTensor(p2_state).to(args.device))
-        # elif env.other_car.aggressiveness == 1:
-        #     if choice == 1:
-        #         action2 = policy_na_na.act(t.FloatTensor(p2_state).to(args.device))
-        #     else:
-        #         action2 = policy_na_na_2.act(t.FloatTensor(p2_state).to(args.device))
 
         action_set = [-8, -4, 0, 4, 8]
         # if self.sim.agents[0]:

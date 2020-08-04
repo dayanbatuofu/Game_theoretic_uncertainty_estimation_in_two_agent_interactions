@@ -34,6 +34,9 @@ class AutonomousVehicle:
         self.predicted_intent_self = []
         self.predicted_policy_other = []
         self.predicted_policy_self = []
+        "for recording predicted state from inference"
+        self.predicted_actions_other = []
+        self.predicted_states_other = []
         #if sim.decision_type == 'baseline':
         self.min_speed = 0.1
         self.max_speed = 30
@@ -65,29 +68,30 @@ class AutonomousVehicle:
         # TODO: add steering
         # define the discrete time dynamical model
         def f(x, u, dt):
-
+            sx, sy, vx, vy = x[0], x[1], x[2], x[3]
             if self.id == 0:
-                sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
-                vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                vx_new = vx
+                vy_new = vy + u * dt #* vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                if vy_new < self.min_speed:
+                    vy_new = self.min_speed
+                else:
+                    vy_new = max(min(vy_new, self.max_speed), self.min_speed)
                 sx_new = sx + (vx + vx_new) * dt * 0.5
                 sy_new = sy + (vy + vy_new) * dt * 0.5
-                if vy_new < 0:
-                    vy_new = -self.min_speed
-                vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-            elif self.id == 1:
-                sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                u = -u #flipped direction
-                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
-                #vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+
+            elif self.id == 1:  # white vehicle (M) (agent[1]), x axis, moving towards negative
+                #u = -u
+                vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
                 vy_new = vy
+                if vx_new > -self.min_speed:
+                    print("vehicle M is exceeding min speed", vx_new, u)
+                    vx_new = -self.min_speed
+                else:
+                    vx_new = min(max(vx_new, -self.max_speed), -self.min_speed) #negative vel, so min and max is flipped
                 sx_new = sx + (vx + vx_new) * dt * 0.5
                 sy_new = sy
-                if vx_new > 0:
-                    vx_new = -self.min_speed
-                vx_new = -max(min(abs(vx_new), self.max_speed), self.min_speed)
+
             else:
-                sx, sy, vx, vy = x[0], x[1], x[2], x[3]
                 vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
                 vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
                 sx_new = sx + (vx + vx_new) * dt * 0.5

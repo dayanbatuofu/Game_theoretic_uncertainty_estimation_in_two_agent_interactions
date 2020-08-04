@@ -21,18 +21,18 @@ parser.add_argument('--gpu', type=int, default=0)
 environment parameters
 """
 parser.add_argument('--env_name', type=str, choices=['intersection', 'trained_intersection','lane_change'],
-                    default='intersection')
+                    default='trained_intersection')
 
 """
 agent parameters
 """
 # choose inference model: none: complete information
 parser.add_argument('--agent_inference', type=str, choices=['none', 'baseline', 'trained_baseline', 'empathetic'],
-                    default=['none', 'baseline'])
+                    default=['none', 'trained_baseline'])
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'baseline', 'complete_information', 'reactive_point'],
-                    default = ['constant_speed', 'constant_speed'])
+                    default = ['baseline', 'baseline'])
                     #default=['baseline', 'baseline'])
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning

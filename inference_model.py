@@ -18,7 +18,7 @@ class InferenceModel:
         elif model == 'baseline':
             self.infer = self.baseline_inference
         elif model == 'trained_baseline':
-            self.infer == self.trained_baseline_inference
+            self.infer = self.trained_baseline_inference
         elif model == 'empathetic':
             self.infer = self.empathetic_inference
         else:
@@ -33,18 +33,27 @@ class InferenceModel:
         self.T = 1  # one step look ahead/ Time Horizon
         self.dt = sim.dt #default is 1s: assigned in main.py
         self.car_par = sim.env.car_par
-
+        # self.min_speed = sim.agents[0].min_speed
+        # self.max_speed = sim.agents[0].max_speed
+        self.min_speed = 0.1
+        self.max_speed = 30
         "---goal states---"
         self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]]
 
         "---parameters(theta and lambda)---"
-        self.lambdas = [0.01, 0.1, 1, 10]  # range?
+        #self.lambdas = [0.01, 0.05, 0.1, 0.5]  # range?
+        self.lambdas = [0.05, 0.1, 1, 10]
         self.thetas = [1, 1000]  # range?
 
         "---Params for belief calculation---"
         self.past_scores = {} #score for each lambda #TODO: record past scores for time/frame k-1
+        self.past_scores1 = {} #for theta1
+        self.past_scores2 = {} #for theta2
         self.theta_priors = None #for calculating theta lambda joint probability
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
+
+        self.traj_h = []
+        self.traj_m = []
 
         #self.action_set = [-1, -0.2, 0.0, 0.1, 0.5]  # accelerations (m/s^2) #TODO: give appropriate actions
         self.action_set = [-8, -4, 0.0, 4, 8]
@@ -487,7 +496,7 @@ class InferenceModel:
                             #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
                             #a_i = self.action_set.index(a)
                             p_action_l = self.past_scores[_lambda][t]
-                            print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                            #print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                             p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
                 else:  # for state action pair that is not at time zero
                     for theta_t in range(len(thetas)):  # cycle through theta at time t or K
@@ -595,7 +604,7 @@ class InferenceModel:
                                        best_lambdas=best_lambdas, dt=1) #IMPORTANT: set dt to desired look ahead
         #TODO: logging the data for verification?
         return {'predicted_intent_other': joint_probability,
-                'predicted_policy_other': marginal_state} #TODO: CHECK WHAT TO RETURN
+                'predicted_states_other': marginal_state} #TODO: CHECK WHAT TO RETURN
 
 
         # def lambda_update( self, lambdas, traj, priors, goals, k):
@@ -693,55 +702,379 @@ class InferenceModel:
 
         "importing agents information from Autonomous Vehicle (sim.agents)"
         curr_state_h = sim.agents[0].state[-1]
+        last_action_h = sim.agents[0].action[-1]
+        curr_state_m = sim.agents[1].state[-1]
+        last_action_m = sim.agents[1].action[-1]
 
-        "trajectory: need to process and combine past states and actions together"
-        states_h = sim.agents[0].state
-        past_actions_h = sim.agents[0].action
-        traj_h = []
-
-        for i in range(sim.frame):
-            traj_h.append([states_h[i], past_actions_h[i]])
-        if sim.frame == 0:
-            traj_h.append([states_h[0], past_actions_h[0]])
+        self.traj_h.append([curr_state_h, last_action_h])
+        self.traj_m.append([curr_state_m, last_action_m])
+        self.frame = sim.frame
 
         # TODO: import q function from pre-trained model (set_nsfp_models)
-        def trained_q_function(state):
+        def trained_q_function(state_h, state_m):
+            """
+            Import Q function from nfsp given states
+            :param state_h:
+            :param state_m:
+            :return:
+            """
 
             q_set = get_models()[0]
-            Q = q_set[0]  # use na_na for now
+            #Q = q_set[0]  # use na_na for now
+
+            "Q values for given state over a set of actions:"
+            #Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+            return q_set
+
+        def q_values(state_h, state_m, intent):
+            """
+            Get q values given the intent (Non-aggressive or aggressive)
+            :param state_h:
+            :param state_m:
+            :param intent:
+            :return:
+            """
+            q_set = trained_q_function(state_h, state_m)
+            if intent == "na_na":
+                Q = q_set[0]
+            else: #use a_na
+                Q = q_set[3]
+
+            "Need state for agent H: xH, vH, xM, vM"
+            state = [state_h[0], state_h[2], state_m[1], state_m[3]]
             Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+
             return Q_vals
 
-        def q_values():
-            pass
-
-        def action_prob(state, _lambda):
+        def action_prob(state_h, state_m, _lambda, theta):
             action_set = self.action_set
-            q_vals = trained_q_function(state)
+            if theta == self.thetas[0]:
+                intent = "na_na"
+            else:
+                intent = "a_na"
+
+            print(intent)
+            q_vals = q_values(state_h, state_m, intent=intent)
             #TODO: boltzmann noisily rational model
-            return
+            exp_Q = []
 
-        def get_state_list(state):
-            pass
+            "Q*lambda"
+            # np.multiply(Q,_lambda,out = Q)
+            q_vals = q_vals.detach().numpy() #detaching tensor
+            #print("q values: ",q_vals)
+            Q = [q * _lambda for q in q_vals]
+            # print("Q*lambda:", Q)
+            "Q*lambda/(sum(Q*lambda))"
+            # np.exp(Q, out=Q)
 
-        def traj_prob():
-            pass
+            for q in Q:
+                exp_Q.append(np.exp(q))
+            #print("EXP_Q:", exp_Q)
 
-        def resample():
-            pass
+            "normalizing"
+            # normalize(exp_Q, norm = 'l1', copy = False)
+            exp_Q /= sum(exp_Q)
+            print("exp_Q normalized:", exp_Q)
+            return exp_Q
 
-        def joint_prob():
-            pass
+        def get_state_list(state, T, dt):
+            #TODO: check if it works for this model
+            """
+            2D case: calculate an array of state (T x S at depth T)
+            1D case: calculate a list of state (1 X (1 + Action_set^T))
+            :param
+                state: any state
+                T: time horizon / look ahead
+                dt: time interval where the action will be executed, i.e. u*dt
+            :return:
+                list of resulting states from taking each action at a given state
+            """
 
-        def marginal_state():
-            pass
+            actions = self.action_set
 
-        """------------------
-        Running the functions
-        ------------------"""
-        pass
-        #return {'predicted_intent_other': joint_probability,
-        #        'predicted_policy_other': marginal_state} #TODO: CHECK WHAT TO RETURN
+            def get_s_prime(_state_list, _actions):
+                _s_prime = []
+
+                def calc_state(x, u, dt):
+                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                    "Deceleration only leads to small/min velocity!"
+                    if sx == 0 and vx == 0:  # y axis movement
+                        print("Y axis movement detected")
+                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vy_new < self.min_speed:
+                            vy_new = self.min_speed
+                        else:
+                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
+                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
+                        sy_new = sy + (vy + vy_new) * dt * 0.5
+                    elif sy == 0 and vy == 0:  # x axis movement
+                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vx_new > -self.min_speed:
+                            print("vehicle M is exceeding min speed", vx_new, u)
+                            vx_new = -self.min_speed
+                        else:
+                            vx_new = min(max(vx_new, -self.max_speed),
+                                         -self.min_speed)  # negative vel, so min and max is flipped
+                        sx_new = sx + (vx + vx_new) * dt * 0.5
+                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
+                    else:  # TODO: assume Y axis movement for single agent case!!
+                        print("Y axis movement detected (else)")
+                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vy_new < 0:
+                            vy_new = 0
+                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
+                        sy_new = sy + (vy + vy_new) * dt * 0.5
+
+                    # TODO: add a cieling for how fast they can go
+                    return sx_new, sy_new, vx_new, vy_new
+
+                "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
+                if not isinstance(_state_list[0], tuple):
+                    print("WARNING: state list is not composed of tuples!")
+                    _state_list = [_state_list]  # put it in a list to iterate
+
+                for s in _state_list:
+                    for a in _actions:
+                        # print("STATE", s)
+                        _s_prime.append(calc_state(s, a, dt))
+                return _s_prime
+
+            i = 0  # row counter
+            state_list = {}  # use dict to keep track of time step
+            # state_list = []
+            # state_list.append(state) #ADDING the current state!
+            for t in range(0, T):
+                s_prime = get_s_prime(state, actions)  # separate pos and speed!
+                state_list[i] = s_prime
+                # state_list.append(s_prime)
+                state = s_prime  # get s prime for the new states
+                i += 1  # move onto next row
+            return state_list
+
+        def traj_prob(state_h, state_m, _lambda, theta, dt, prior=None):
+            """
+            refer to mdp.py
+                Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
+            :params:
+                state: current / observed state of H at time k
+                _lambda: given lambda/rational coefficient
+                dt: length of each time step
+                prior: probability of agent being at "state" at time k (default is 1)
+            :return:
+                possible resulting states at k+1 with probabilities for being at each one of them
+            """
+
+            "for now we consider prior = 1 for observed state at time k"
+            if prior == None:
+                p_traj = 1  # initialize
+            T = self.T
+            state_list = get_state_list(state_h, T, dt)  # get list of state given curr_state/init_state from self._init_
+
+            # p_states = np.zeros(shape=state_list)
+            p_states = []
+
+            # TODO: verify if it is working properly (plotting states? p_state seems correct)
+            "for the case where state list is 1D, note that len(state list) == number of time steps!"
+            for i in range(len(state_list)):
+                if i == 0:
+                    p_a = action_prob(state_h, state_m, _lambda, theta)
+                    p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
+                    # transition is deterministic -> 1, prob state(k) = 1
+                    # print("P STATES", p_states)
+
+                else:
+                    p_s_t = []  # storing p_states for time t (or i)
+                    for j, s in enumerate(state_list[i - 1]):
+                        # print(state_list[i-1])
+                        # print(p_states)
+                        # print(type(p_states[0]))
+                        # print("Current time:",i,"working on state:", j)
+                        # print(p_states[i-1][j])
+                        p_a = action_prob(state_h, state_m, _lambda, theta) * p_states[i - 1][j]
+                        p_s_t.extend(p_a.tolist())
+
+                    p_states.append(p_s_t)
+            return p_states, state_list
+
+        def resample(priors, epsilon):
+            """
+            Equation 3
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+            # TODO: generalize this algorithm for difference sizes of matrices(1D, 2D)
+            # initial_belief = np.ones((len(priors), len(priors[0]))) / (len(priors)*len(priors[0]))
+            initial_belief = self.initial_joint_prob
+            resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
+            return resampled_priors
+
+        def joint_prob(theta_list, lambdas, traj_h, traj_m, goal, epsilon= 0.05, priors=None):
+            #TODO: study how joint prob is calculated when distribution depends on intent
+            intent_list = ["na_na", "a_na"]
+            if priors is None:
+                #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
+                priors = self.initial_joint_prob
+            print("-----theta priors: {}".format(priors))
+            print("traj: {}".format(traj_h))
+            suited_lambdas = np.empty(len(intent_list))
+
+            # TODO: modify score list to include all thetas x lambda pairs, instead of lambdas
+            "USE THIS to record scores for past traj to speed up run time!"
+            def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
+                p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta)
+                a_h = _traj_h[-1][1]
+                #print(_traj_h)
+                a_i = self.action_set.index(a_h)
+                if _theta == self.thetas[0]:
+                    if _lambda in self.past_scores1:  # add to existing list
+                        self.past_scores1[_lambda].append(p_a[a_i])
+                        scores = self.past_scores1[_lambda]
+                    else:
+                        self.past_scores1[_lambda] = [p_a[a_i]]
+                        scores = self.past_scores1[_lambda]
+                else: #theta2
+                    if _lambda in self.past_scores2:  # add to existing list
+                        self.past_scores2[_lambda].append(p_a[a_i])
+                        scores = self.past_scores2[_lambda]
+                    else:
+                        self.past_scores2[_lambda] = [p_a[a_i]]
+                        scores = self.past_scores2[_lambda]
+                log_scores = np.log(scores)
+                return np.sum(log_scores)
+
+            "Calling compute_score/get_last_score to get the best suited lambdas for EACH theta"
+            for i, theta in enumerate(theta_list):  # get a best suited lambda for each theta
+                score_list = []
+                for j, lamb in enumerate(lambdas):
+                    score_list.append(get_last_score(traj_h, traj_m, lamb, theta))
+                max_lambda_j = np.argmax(score_list)
+                suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
+
+            p_theta = np.copy(priors)
+            "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
+            p_theta = resample(p_theta, epsilon == 0.05)  # resample from uniform belief
+            # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
+            p_theta_prime = np.empty((len(lambdas), len(theta_list)))
+
+            "Compute joint probability p(lambda, theta) for each lambda and theta"
+            for t, (s, a) in enumerate(traj_h):  # enumerate through past traj
+                if t == 0:  # initially there's only one state and not past
+                    for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
+                        for l,_lambda in enumerate(lambdas):
+                            #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+                            #a_i = self.action_set.index(a)
+                            if theta == theta_list[0]:
+                                p_action_l = self.past_scores1[_lambda][t]
+                                # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                                p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+                            else: #theta 2
+                                p_action_l = self.past_scores2[_lambda][t]
+                                # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                                p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+
+                else:  # for state action pair that is not at time zero
+                    for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
+                        #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+                        for l, _lambda in enumerate(lambdas):
+                            if theta == theta_list[0]:
+                                p_action_l = self.past_scores1[_lambda][t]
+                                for theta_past in range(
+                                        len(theta_list)):  # cycle through theta probability from past time K-1
+                                    for l_past in range(len(lambdas)):
+                                        p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
+                            else:
+                                p_action_l = self.past_scores2[_lambda][t]
+                                for theta_past in range(
+                                        len(theta_list)):  # cycle through theta probability from past time K-1
+                                    for l_past in range(len(lambdas)):
+                                        p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
+                            
+            "In the case p_theta is 2d array:"
+            print(p_theta_prime, sum(p_theta_prime))
+            p_theta_prime /= np.sum(p_theta_prime) #normalize
+
+            print(p_theta_prime)
+            print(np.sum(p_theta_prime))
+            assert 0.9<=np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
+            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
+            #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
+            return p_theta_prime, suited_lambdas
+
+        def marginal_state(state_h, state_m, p_theta, best_lambdas, thetas, dt):
+            """
+
+            :param state_h:
+            :param state_m:
+            :param p_theta:
+            :param best_lambdas:
+            :param thetas:
+            :param dt:
+            :return:
+            """
+
+            "get required information"
+            lamb1, lamb2 = best_lambdas
+            theta1, theta2 = thetas
+            # print("WATCH for p_state", traj_probabilities(state, lamb1))
+            #TODO: check thetas
+            p_state_beta1, state_list = traj_prob(state_h, state_m, lamb1, theta1, dt)
+            p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
+            print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
+            # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
+            # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
+
+            "calculate marginal"
+            # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
+            p_state_D = []
+            for k in range(len(state_list)):  # k refers to the number of future time steps: currently max k=1
+                p_state_beta1k = p_state_beta1[k]  # TODO: generalize for multiple thetas!
+                p_state_beta2k = p_state_beta2[k]
+                p_state_D.append([])
+                p_state_Dk = p_state_D[k]
+                for i in range(len(p_state_beta1k)):
+                    # TODO: multiply by the p_theta with the corresponding lambda????
+                    temp = 0
+                    for j in range(len(p_theta)):
+                        # TODO: check if this is right!
+                        temp += p_state_beta1k[i] * p_theta[j][0] + p_state_beta2k[i] * p_theta[j][1]
+                    p_state_Dk.append(temp)
+                    # print(p_state_Dk[i])
+            print('p_state_D at time ', self.frame, ' :', p_state_D)
+            print("state of H:", state_h, state_list)  # sx, sy, vx, vy
+
+            assert 0.99 <= np.sum(p_state_D[0]) <= 1.001  # check
+            # return {'predicted_policy_other': [p_state_D, state_list]}
+            return p_state_D, state_list
+
+        "------------------------------"
+        "executing the above functions!"
+        "------------------------------"
+
+        "#calling functions for baseline inference"
+        joint_probability = joint_prob(theta_list=self.thetas, lambdas=self.lambdas,
+                                       traj_h=self.traj_h, traj_m=self.traj_m, goal=self.goal, epsilon=0.05)
+
+        "#take a snapshot of the theta prob for next time step"
+        self.theta_priors, best_lambdas = joint_probability
+
+        "calculate the marginal state distribution / prediction"
+        best_lambdas = joint_probability[1]
+        marginal_state_prob = marginal_state(state_h=curr_state_h, state_m=curr_state_m,
+                                             p_theta=self.theta_priors,
+                                             best_lambdas=best_lambdas, thetas=self.thetas, dt=self.dt)
+        "getting the predicted action"
+        p_state_0 = marginal_state_prob[0][0]
+        idx = p_state_0.index(max(p_state_0))
+        predicted_action = self.action_set[idx]
+
+        #IMPORTANT: set dt to desired look ahead
+        #TODO: logging the data for verification?
+        return {'predicted_intent_other': joint_probability,
+                'predicted_states_other': marginal_state_prob,
+                'predicted_actions_other': predicted_action} #TODO: CHECK WHAT TO RETURN
 
     #@staticmethod
     def empathetic_inference(self, agent, sim):

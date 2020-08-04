@@ -69,15 +69,15 @@ class Simulation:
 
             # termination criteria
             if self.decision_type == 'baseline':
-                x_ego = self.agents[0].state[-1][1] #sy_M
-                x_other = self.agents[1].state[-1][0] #sx_H
-                if self.frame >= self.duration:
+                x_H = self.agents[0].state[-1][1] #sy_H
+                x_M = self.agents[1].state[-1][0] #sx_M
+                if self.frame >= 7: #TODO: modify frame limit
                     break
                 # if crossed the intersection, done or max time reached
                 #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
-                if (x_ego >= 300 and x_other <= -300):
+                if (x_H >= 100 and x_M <= -50):
                     # road width = 2.0 m
-                    print("terminating on vehicle passed intersection:", x_ego, x_other )
+                    print("terminating on vehicle passed intersection:", x_H, x_M )
                     break
             else:
                 if self.frame >= self.duration:
@@ -109,8 +109,12 @@ class Simulation:
 
             if not self.paused:
                 self.frame += 1
-
         pg.quit()
+        "drawing results"
+        self.vis.draw_dist()
+        self.vis.draw_intent()
+        #self.vis.draw_actions()
+
 
     def reset(self):
         # reset the simulation
