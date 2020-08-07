@@ -22,6 +22,8 @@ class DecisionModel:
             self.plan = self.complete_information
         elif model == 'baseline':
             self.plan = self.baseline
+        elif model == 'baseline2':
+            self.plan = self.baseline2
         elif model == 'reactive_point':
             self.plan = self.reactive_point
         elif model == 'reactive_uncertainty':
@@ -55,22 +57,23 @@ class DecisionModel:
         # randomly pick one of the nash equilibrial policy
 
         #TODO: import args, env here
-        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()[1]
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
+        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
 
         "sorting states to obtain action from pre-trained model"
         #y direction only for M, x direction only for HV
         p1_state = self.sim.agents[0].state[-1]
         p2_state = self.sim.agents[1].state[-1]
 
-        p1_state = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])#s_ego, v_ego, s_other, v_other
-        p2_state = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))#s_ego, v_ego, s_other, v_other
+        p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
 
         args = get_args()
-        "action for ego car"
+        "action for H"
         action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
 
-        "action for other car with existing model / policy"
-        action2 = policy_na_na.act(t.FloatTensor(p2_state).to(args.device))
+        "action for M"
+        action2 = policy_na_a.act(t.FloatTensor(p2_state).to(args.device))
 
         action_set = [-8, -4, 0, 4, 8]
         # if self.sim.agents[0]:
@@ -83,6 +86,40 @@ class DecisionModel:
         print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
         #actions = {"1": action1, "2": action2}
         #actions = [action1, action2]
+        return {'action': actions}
+    def baseline2(self):
+        # randomly pick one of the nash equilibrial policy
+
+        # TODO: import args, env here
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
+        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
+
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[-1]
+        p2_state = self.sim.agents[1].state[-1]
+
+        p1_state = (-p1_state[1], -p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        p2_state = (p2_state[0], p2_state[2], -p1_state[1], -p1_state[3])
+
+        args = get_args()
+        "action for H"
+        action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
+
+        "action for M"
+        action2 = policy_na_a.act(t.FloatTensor(p2_state).to(args.device))
+
+        action_set = [-8, -4, 0, 4, 8]
+        # if self.sim.agents[0]:
+        #     action = action_set[action1]
+        # else:
+        #     action = action_set[action2]
+        action1 = action_set[action1]
+        action2 = action_set[action2]
+        actions = [action1, action2]
+        print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # actions = {"1": action1, "2": action2}
+        # actions = [action1, action2]
         return {'action': actions}
 
     def reactive_point(self):

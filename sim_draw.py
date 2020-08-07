@@ -27,11 +27,12 @@ class VisUtils:
         self.dist = []
 
         if sim.decision_type == 'baseline':
-            self.screen_width = 50
-            self.screen_height = 50
-            self.coordinate_scale = 20
-            self.zoom = 0.7
+            self.screen_width = 10 #50
+            self.screen_height = 10 #50
+            self.coordinate_scale = 80
+            self.zoom = 0.16
             self.asset_location = "assets/"
+            self.fps = 24  # max framework
 
             img_width = int(self.env.car_width * self.coordinate_scale * self.zoom)
             img_height = int(self.env.car_length * self.coordinate_scale * self.zoom)
@@ -119,6 +120,28 @@ class VisUtils:
             pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
             self.draw_prob()  # calling function to draw with data from inference
 
+            # Annotations
+            font = pg.font.SysFont("Arial", 15)
+            screen_w, screen_h = self.screen.get_size()
+            label_x = screen_w - 325  # 200
+            label_y = 260
+            label_y_offset = 30
+            #TODO: length of state/action is mismatched from frame: frame behind by 1
+            pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
+            label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
+                                (0, 0, 0))
+            self.screen.blit(label, (label_x, label_y))
+            pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
+            label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
+                                (0, 0, 0))
+            self.screen.blit(label, (label_x, label_y+label_y_offset))
+            action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
+            label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
+            self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
+            label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
+            self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
+            label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
+            self.screen.blit(label, (10, 10))
             pg.display.flip()
             pg.display.update()
         else:
@@ -141,6 +164,27 @@ class VisUtils:
                         time.sleep(0.05)
                 # # Annotations
                 # font = pg.font.SysFont("Arial", 30)
+                # Annotations
+                font = pg.font.SysFont("Arial", 15)
+                screen_w, screen_h = self.screen.get_size()
+                label_x = screen_w - 325  # 200
+                label_y = 260
+                label_y_offset = 30
+                pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
+                label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
+                                    (0, 0, 0))
+                self.screen.blit(label, (label_x, label_y))
+                pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
+                label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
+                                    (0, 0, 0))
+                self.screen.blit(label, (label_x, label_y+ label_y_offset))
+                action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
+                label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
+                self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
+                label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
+                self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
+                label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
+                self.screen.blit(label, (10, 10))
 
                 "drawing the map of state distribution"
                 pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
@@ -228,7 +272,9 @@ class VisUtils:
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other
             p_joint_m, lambda_m = joint_infer_m
             sum_h = p_joint_h.sum(axis=0)
+            sum_h = np.ndarray.tolist(sum_h)
             sum_m = p_joint_m.sum(axis=0)
+            sum_m = np.ndarray.tolist(sum_m)
             idx_h = sum_h.index(max(sum_h))
             idx_m = sum_m.index(max(sum_m))
             H_intent = theta_list[idx_h]
@@ -239,10 +285,8 @@ class VisUtils:
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
-            print('sum of theta prob:', sum_h)
-            #max_theta_h = np.max(sum_h)
+            #print('sum of theta prob:', sum_h)
             idx_h = sum_h.index(max(sum_h))
-            #idx_h = np.where(sum_h == max_theta_h)
             # TODO: assign list of theta and lambda somewhere in sim
             H_intent = theta_list[idx_h]
             print('probability of thetas H:', sum_h, 'H intent:', H_intent)
@@ -256,11 +300,14 @@ class VisUtils:
             fig2.suptitle('Predicted intent of other agent')
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
-            ax1.set_yticks([1, 1000], ['na', 'a'])
+            ax1.set_yticks([1, 1000])
+            ax1.set_yticklabels(['na', 'a'])
 
             ax2.plot(self.intent_m, label='predicted M intent')
             ax2.legend()
-            ax2.set_yticks([1, 1000], ['na', 'a'])
+            ax2.set_yticks([1, 1000])
+            ax2.set_yticklabels(['na', 'a'])
+
             pyplot.show()
         else:
             print(self.intent_h)
@@ -270,7 +317,8 @@ class VisUtils:
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
             #TODO: get actual intent from decision model/ autonomous vehicle
-            ax1.set_yticks([1, 1000], ['na', 'a'])
+            ax1.set_yticks([1, 1000])
+            ax1.set_yticklabels(['na', 'a'])
             pyplot.show()
 
     def draw_prob(self):

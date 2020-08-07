@@ -71,7 +71,7 @@ class Simulation:
             if self.decision_type == 'baseline':
                 x_H = self.agents[0].state[-1][1] #sy_H
                 x_M = self.agents[1].state[-1][0] #sx_M
-                if self.frame >= 7: #TODO: modify frame limit
+                if self.frame >= 14: #TODO: modify frame limit
                     break
                 # if crossed the intersection, done or max time reached
                 #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):

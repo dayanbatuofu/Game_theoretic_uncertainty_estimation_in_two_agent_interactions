@@ -41,8 +41,8 @@ class InferenceModel:
         self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]]
 
         "---parameters(theta and lambda)---"
-        #self.lambdas = [0.01, 0.05, 0.1, 0.5]  # range?
-        self.lambdas = [0.05, 0.1, 1, 10]
+        self.lambdas = [0.001, 0.005, 0.01, 0.05]  # range?
+        #self.lambdas = [0.05, 0.1, 1, 10]
         self.thetas = [1, 1000]  # range?
 
         "---Params for belief calculation---"
@@ -954,8 +954,10 @@ class InferenceModel:
                 suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
 
             p_theta = np.copy(priors)
+            print("prior:", p_theta)
             "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
             p_theta = resample(p_theta, epsilon == 0.05)  # resample from uniform belief
+            print("resampled:", p_theta)
             # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
             p_theta_prime = np.empty((len(lambdas), len(theta_list)))
 
@@ -967,7 +969,7 @@ class InferenceModel:
                             #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
                             #a_i = self.action_set.index(a)
                             if theta == theta_list[0]:
-                                p_action_l = self.past_scores1[_lambda][t]
+                                p_action_l = self.past_scores1[_lambda][t] #get prob of action done at time t
                                 # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                                 p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
                             else: #theta 2
@@ -991,13 +993,47 @@ class InferenceModel:
                                         len(theta_list)):  # cycle through theta probability from past time K-1
                                     for l_past in range(len(lambdas)):
                                         p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
-                            
+
+            "another joint update algorithm, without cycling through traj and only update with prior:"
+            # t = self.frame
+            # if t == 0:  # initially there's only one state and not past
+            #     for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
+            #         for l, _lambda in enumerate(lambdas):
+            #             # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+            #             # a_i = self.action_set.index(a)
+            #             if theta == theta_list[0]:
+            #                 p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
+            #                 # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+            #                 p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            #             else:  # theta 2
+            #                 p_action_l = self.past_scores2[_lambda][t]
+            #                 # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+            #                 p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            #
+            # else:  # for state action pair that is not at time zero
+            #     for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
+            #         # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+            #         for l, _lambda in enumerate(lambdas):
+            #             if theta == theta_list[0]:
+            #                 p_action_l = self.past_scores1[_lambda][t]
+            #                 for theta_past in range(
+            #                         len(theta_list)):  # cycle through theta probability from past time K-1
+            #                     for l_past in range(len(lambdas)):
+            #                         #TODO: check this
+            #                         p_theta_prime[l][theta_t] = p_action_l * p_theta[l_past][theta_past]
+            #             else:
+            #                 p_action_l = self.past_scores2[_lambda][t]
+            #                 for theta_past in range(
+            #                         len(theta_list)):  # cycle through theta probability from past time K-1
+            #                     for l_past in range(len(lambdas)):
+            #                         p_theta_prime[l][theta_t] = p_action_l * p_theta[l_past][theta_past]
+
             "In the case p_theta is 2d array:"
-            print(p_theta_prime, sum(p_theta_prime))
+            # print(p_theta_prime, sum(p_theta_prime))
             p_theta_prime /= np.sum(p_theta_prime) #normalize
 
-            print(p_theta_prime)
-            print(np.sum(p_theta_prime))
+            # print(p_theta_prime)
+            # print(np.sum(p_theta_prime))
             assert 0.9<=np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
             print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
             #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}

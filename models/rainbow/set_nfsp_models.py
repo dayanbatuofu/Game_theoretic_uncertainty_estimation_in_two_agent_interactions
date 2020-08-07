@@ -9,13 +9,13 @@ def get_models():
 
     tag = 'models/rainbow/trained_models/'
     model_index = 5000000
-    #na_na_path = tag + 'na_na_1593622586'
-    #a_na_path = tag + 'a_na_1593622607'
+    na_na_path = tag + 'na_na_1593622586'
+    a_na_path = tag + 'a_na_1593622607'
     a_a_path = tag + 'a_a_1593622476'
 
-    na_na_path = tag + '0.6_loss_new/na_na'
-    a_na_path = tag + '0.6_loss_new/a_na' #using alternative loss function for smaller negative values
-
+    # na_na_path = tag + '0.6_loss_new/na_na'
+    # a_na_path = tag + '0.6_loss_new/a_na' #using alternative loss function for smaller negative values
+    # a_a_path = tag + '0.6_loss_new/a_a'
 
     Q_na_na = NFSP_Model(action_size).to(args.device)
     Q_na_na.load_nfsp_Q(checkpoint_path=na_na_path + '/player_1_' + str(model_index) + '.pth', num=1)
