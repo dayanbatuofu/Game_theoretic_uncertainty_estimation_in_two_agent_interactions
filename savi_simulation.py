@@ -26,6 +26,7 @@ class Simulation:
         #print("decision type:", decision_type)
         self.env = env
         self.agents = []
+        self.theta_priors = None
 
         # define simulation
         car_parameter = self.env.car_par

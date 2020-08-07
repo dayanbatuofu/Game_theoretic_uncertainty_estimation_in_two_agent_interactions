@@ -56,7 +56,6 @@ class DecisionModel:
     def baseline(self):
         # randomly pick one of the nash equilibrial policy
 
-        #TODO: import args, env here
         (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
         (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
 

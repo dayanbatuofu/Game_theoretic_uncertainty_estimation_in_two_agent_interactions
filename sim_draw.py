@@ -121,9 +121,10 @@ class VisUtils:
             self.draw_prob()  # calling function to draw with data from inference
 
             # Annotations
+            # font = pg.font.SysFont("Arial", 30)
             font = pg.font.SysFont("Arial", 15)
             screen_w, screen_h = self.screen.get_size()
-            label_x = screen_w - 325  # 200
+            label_x = screen_w - 550
             label_y = 260
             label_y_offset = 30
             #TODO: length of state/action is mismatched from frame: frame behind by 1
@@ -162,12 +163,11 @@ class VisUtils:
                                      (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
                     if self.sim.decision_type == "baseline":
                         time.sleep(0.05)
-                # # Annotations
-                # font = pg.font.SysFont("Arial", 30)
                 # Annotations
+                # font = pg.font.SysFont("Arial", 30)
                 font = pg.font.SysFont("Arial", 15)
                 screen_w, screen_h = self.screen.get_size()
-                label_x = screen_w - 325  # 200
+                label_x = screen_w - 555
                 label_y = 260
                 label_y_offset = 30
                 pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]

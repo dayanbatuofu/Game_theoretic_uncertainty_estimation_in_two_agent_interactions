@@ -49,7 +49,8 @@ class InferenceModel:
         self.past_scores = {} #score for each lambda #TODO: record past scores for time/frame k-1
         self.past_scores1 = {} #for theta1
         self.past_scores2 = {} #for theta2
-        self.theta_priors = None #for calculating theta lambda joint probability
+        #self.theta_priors = None #for calculating theta lambda joint probability
+        self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
 
         self.traj_h = []
@@ -709,7 +710,8 @@ class InferenceModel:
         self.traj_h.append([curr_state_h, last_action_h])
         self.traj_m.append([curr_state_m, last_action_m])
         self.frame = sim.frame
-
+        if not self.frame == 0:
+            self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
         # TODO: import q function from pre-trained model (set_nsfp_models)
         def trained_q_function(state_h, state_m):
             """
@@ -911,7 +913,7 @@ class InferenceModel:
             resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
             return resampled_priors
 
-        def joint_prob(theta_list, lambdas, traj_h, traj_m, goal, epsilon= 0.05, priors=None):
+        def joint_prob(theta_list, lambdas, traj_h, traj_m, goal, epsilon=0.05, priors=None):
             #TODO: study how joint prob is calculated when distribution depends on intent
             intent_list = ["na_na", "a_na"]
             if priors is None:
@@ -1091,7 +1093,8 @@ class InferenceModel:
 
         "#calling functions for baseline inference"
         joint_probability = joint_prob(theta_list=self.thetas, lambdas=self.lambdas,
-                                       traj_h=self.traj_h, traj_m=self.traj_m, goal=self.goal, epsilon=0.05)
+                                       traj_h=self.traj_h, traj_m=self.traj_m, goal=self.goal, epsilon=0.05,
+                                       priors=self.theta_priors)
 
         "#take a snapshot of the theta prob for next time step"
         self.theta_priors, best_lambdas = joint_probability

@@ -58,7 +58,7 @@ class AutonomousVehicle:
 
         # update state
         action = plan["action"]
-        if self.sim.decision_type == "baseline":
+        if self.sim.decision_type == "baseline": #TODO: need to be able to check indivisual type
             action = action[self.id]
             plan = {"action": plan["action"][self.id]}
         DataUtil.update(self, plan)
@@ -81,7 +81,7 @@ class AutonomousVehicle:
 
             elif self.id == 1:  # white vehicle (M) (agent[1]), x axis, moving towards negative
                 #u = -u
-                vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                vx_new = vx + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
                 vy_new = vy
                 if vx_new > -self.min_speed:
                     print("vehicle M is exceeding min speed", vx_new, u)
