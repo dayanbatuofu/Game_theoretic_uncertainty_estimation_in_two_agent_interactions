@@ -36,7 +36,8 @@ parser.add_argument('--agent_decision', type=str,
                     #default=['baseline', 'baseline'])
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning
-
+#TODO: add agent decision args
+# parser.add_argument('', type=str, choices=[], default=[])
 args = parser.parse_args()
 
 

@@ -25,10 +25,11 @@ class VisUtils:
         self.intent_m = []
         self.frame = sim.frame
         self.dist = []
-
+        self.intent_distri_h = [[], []]  # theta1, theta2
+        self.intent_distri_m = [[], []]  # theta1, theta2
         if sim.decision_type == 'baseline':
-            self.screen_width = 10 #50
-            self.screen_height = 10 #50
+            self.screen_width = 10  # 50
+            self.screen_height = 10  # 50
             self.coordinate_scale = 80
             self.zoom = 0.16
             self.asset_location = "assets/"
@@ -257,12 +258,6 @@ class VisUtils:
         dist = np.sqrt(dist_h * dist_h + dist_m * dist_m)
         self.dist.append(dist)
 
-    def draw_actions(self):
-        #TODO: implement plotting of distance between cars over time
-        pyplot.plot(self.sim.agents[0].action)
-        pyplot.ylabel("actions")
-        pyplot.xlabel("time")
-        pyplot.show()
     def calc_intent(self):
         joint_infer_m = self.sim.agents[0].predicted_intent_other
         # TODO: assign list of theta and lambda somewhere in sim
@@ -274,9 +269,18 @@ class VisUtils:
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
             sum_m = p_joint_m.sum(axis=0)
-            sum_m = np.ndarray.tolist(sum_m)
+            sum_m = np.ndarray.tolist(sum_m) # [theta1, theta2]
+            #TODO: add sum to list
             idx_h = sum_h.index(max(sum_h))
             idx_m = sum_m.index(max(sum_m))
+            for i in range(len(sum_h)):
+                if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
+                    j = 0
+                    while j in range(len(sum_h)):
+                        self.intent_distri_h.append([])
+                        self.intent_distri_m.append([])
+                self.intent_distri_h[i].append(sum_h[i])
+                self.intent_distri_m[i].append(sum_m[i])
             H_intent = theta_list[idx_h]
             M_intent = theta_list[idx_m]
             self.intent_h.append(H_intent)
@@ -285,6 +289,13 @@ class VisUtils:
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
+            for i in range(len(sum_h)):
+                if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
+                    j = 0
+                    while j in range(len(sum_h)):
+                        self.intent_distri_h.append([])
+                self.intent_distri_h[i].append(sum_h[i])
+
             #print('sum of theta prob:', sum_h)
             idx_h = sum_h.index(max(sum_h))
             # TODO: assign list of theta and lambda somewhere in sim
@@ -308,18 +319,29 @@ class VisUtils:
             ax2.set_yticks([1, 1000])
             ax2.set_yticklabels(['na', 'a'])
 
-            pyplot.show()
         else:
             print(self.intent_h)
             print(self.sim.agents[1].predicted_intent_other)
-            fig2, ax1 = pyplot.subplots(1)
+            fig2, (ax1, ax2) = pyplot.subplots(2)
             fig2.suptitle('Predicted intent of other agent')
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
             #TODO: get actual intent from decision model/ autonomous vehicle
             ax1.set_yticks([1, 1000])
             ax1.set_yticklabels(['na', 'a'])
-            pyplot.show()
+
+            w = 0.15
+            #TODO: generalize for more than two thetas
+            x = list(range(0, len(self.intent_h)))
+            x1 = [i-w for i in x]
+            x2 = [i+w for i in x]
+            ax2.bar(x1, self.intent_distri_h[0], width=0.15, label='theta 1')
+            ax2.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
+            ax2.legend()
+            ax2.set_yticks([0.25, 0.5, 0.75])
+
+        #TODO: plot actual distributions
+        pyplot.show()
 
     def draw_prob(self):
         """
