@@ -52,6 +52,7 @@ class InferenceModel:
         #self.theta_priors = None #for calculating theta lambda joint probability
         self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
+        self.p_betas_prior = None
 
         self.traj_h = []
         self.traj_m = []
@@ -1144,6 +1145,272 @@ class InferenceModel:
         #TODO: THREE total priors needed to store: p(betas|D(k-1)) and p(Q pairs|D(k-1)) and P(x(k)|Qh,Qm)
         #NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
         #TODO: for a set of NE iterate through them using the below functions!
+
+        "place holder: using NFSP Q function in place of NE Q function pair"
+        def trained_q_function(state_h, state_m):
+            """
+            Import Q function from nfsp given states
+            :param state_h:
+            :param state_m:
+            :return:
+            """
+            q_set = get_models()[0] #0: q func, 1: policy
+            # Q = q_set[0]  # use na_na for now
+
+            "Q values for given state over a set of actions:"
+            # Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+            return q_set
+        def q_values_pair(state_h, state_m, intent):
+            q_set = trained_q_function(state_h, state_m)
+            # Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a,
+            #TODO: consider when we have more than 1 Q pair!
+            if intent == "na_na":
+                Q_h = q_set[0]
+                Q_m = q_set[1]
+            else:  # use a_na
+                Q_h = q_set[3]
+                Q_m = q_set[2]
+
+            "Need state for agent H: xH, vH, xM, vM"
+            state = [state_h[0], state_h[2], state_m[1], state_m[3]]
+
+            "Q values for each action"
+            Q_vals_h = Q_h.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+            Q_vals_m = Q_m.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+            return [Q_vals_h, Q_vals_m]
+
+        def action_prob(state_h, state_m, _lambda, theta):
+            """
+            calculate action prob for both agents
+            :param state_h:
+            :param state_m:
+            :param _lambda:
+            :param theta:
+            :return:
+            """
+            #TODO: do we need beta_m???
+            action_set = self.action_set
+            if theta == self.thetas[0]:
+                intent = "na_na"
+            else:
+                intent = "a_na"
+
+            print(intent)
+            #q_vals = q_values(state_h, state_m, intent=intent)
+            q_vals_pair = q_values_pair(state_h, state_m, intent)
+            q_vals_h = q_vals_pair[0]
+            q_vals_m = q_vals_pair[1]
+
+            exp_Q = []
+
+            "Q*lambda"
+            # np.multiply(Q,_lambda,out = Q)
+            q_vals_h = q_vals_h.detach().numpy()  # detaching tensor
+            q_vals_m = q_vals_m.detach().numpy()
+            q_vals_pair = [q_vals_h, q_vals_m]
+            # print("q values: ",q_vals)
+            exp_Q_pair = []
+            for q_vals in q_vals_pair:
+                Q = [q * _lambda for q in q_vals]
+                # print("Q*lambda:", Q)
+                "Q*lambda/(sum(Q*lambda))"
+                # np.exp(Q, out=Q)
+
+                for q in Q:
+                    exp_Q.append(np.exp(q))
+                # print("EXP_Q:", exp_Q)
+
+                "normalizing"
+                # normalize(exp_Q, norm = 'l1', copy = False)
+                exp_Q /= sum(exp_Q)
+                print("exp_Q normalized:", exp_Q)
+                exp_Q_pair.append(exp_Q)
+
+            return exp_Q_pair  # [exp_Q_h, exp_Q_m]
+
+        def action_prob_Q(state_h, state_m, Q_h, Q_m, _lambda):
+            """
+            calculate action prob for both agents given Q_h and Q_m
+            :param state_h:
+            :param state_m:
+            :param _lambda:
+            :param theta:
+            :return:
+            """
+            #TODO: do we need beta_m???
+            action_set = self.action_set
+
+            q_vals_h = Q_h
+            q_vals_m = Q_m
+
+            exp_Q = []
+
+            "Q*lambda"
+            # np.multiply(Q,_lambda,out = Q)
+            q_vals_h = q_vals_h.detach().numpy()  # detaching tensor
+            q_vals_m = q_vals_m.detach().numpy()
+            q_vals_pair = [q_vals_h, q_vals_m]
+            # print("q values: ",q_vals)
+            exp_Q_pair = []
+            for q_vals in q_vals_pair:
+                Q = [q * _lambda for q in q_vals]
+                # print("Q*lambda:", Q)
+                "Q*lambda/(sum(Q*lambda))"
+                # np.exp(Q, out=Q)
+
+                for q in Q:
+                    exp_Q.append(np.exp(q))
+                # print("EXP_Q:", exp_Q)
+
+                "normalizing"
+                # normalize(exp_Q, norm = 'l1', copy = False)
+                exp_Q /= sum(exp_Q)
+                print("exp_Q normalized:", exp_Q)
+                exp_Q_pair.append(exp_Q)
+
+            return exp_Q_pair  # [exp_Q_h, exp_Q_m]
+
+        def resample(priors, epsilon):
+            """
+            Equation 3
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+            # TODO: generalize this algorithm for difference sizes of matrices(1D, 2D)
+            # initial_belief = np.ones((len(priors), len(priors[0]))) / (len(priors)*len(priors[0]))
+            initial_belief = self.initial_joint_prob
+            resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
+            return resampled_priors
+
+        def q_vals_prob(prior, state_h, state_m, lambda_h, theta_h):
+            #TODO: documentation
+            """
+            Equation 6
+            Calculates Q function pairs probabilities for use in beta pair probabilities calculation,
+            since each beta pair may map to MULTIPLE Q function/value pair.
+
+            :requires: p_action_h, p_pair_prob(k-1) or prior, q_pairs
+            :param:
+            self:
+            q_pairs: all Q function pairs (QH, QM)
+            p_action_h
+            p_q2
+
+            :return:
+            """
+            if theta_h == self.thetas[0]:
+                intent = 'na_na'
+            else:
+                intent = 'a_na'
+
+            # TODO: this is a placeholder, we only have a pair of Q function
+            q_pairs = q_values_pair(state_h, state_m, intent)  # [q_vals_h, q_vals_m]
+            q_pairs = [q_pairs]
+
+            #TODO: Size of P(Q2|D) should be the size of possible Q2
+            if prior is None:
+                prior = np.ones(len(q_pairs))/len(q_pairs)
+            else:
+                "resample from initial/uniform distribution"
+                prior = resample(prior, epsilon=0.05)
+
+            p_action = action_prob(state_h, state_m, lambda_h, theta_h) #TODO: do we need beta_m???
+            p_q2 = np.empty(len(q_pairs))
+
+            #TODO: assuming 1D array of q functions
+            #TODO: I need to confirm if this calculation is correct
+            "Calculating probability of each Q pair: Equation 6"
+            for i, q in enumerate(q_pairs): #rows
+                p_action = action_prob_Q(state_h, state_m, q_pairs[i][0], q_pairs[i][1], lambda_h)
+                for j, p_a in enumerate(p_action):
+                    if j == 0:
+                        p_q2[i] = p_a * prior[i]
+                    else:
+                        p_q2[i] += p_a * prior[i]
+                # for j,q_m in enumerate(q_h): #cols
+                #     p_q2[i, j] = p_action[i] *prior[i, j] #action prob corresponds to H's Q so it's "i"
+
+            p_q2 /= sum(p_q2) #normalize
+            assert 0.99 <= sum(p_q2) <= 1.01 #check if properly normalized
+
+            return p_q2
+
+        def prob_beta_given_q(self, beta_H, beta_M, p_betas_prior, q_pairs):
+            #TODO: this is a placeholder, needs to be implemented
+            """
+            Equation 8: using Bayes rule
+            Calculates probability of beta pair (Bh, BM_hat) given Q pair (QH, QM): P(Bh, BM_hat | QH, QM),
+            for beta_pair_prob formula.
+            :param self:
+            :return:
+            """
+            # TODO: code is still in work
+            #TODO: check betas
+
+            "import prob of beta pair given D(k-1) from Equation 7: P(betas|D(k-1))"
+            # p_betas_prev = beta_pair_prob()
+            #p_betas_prior = self.p_betas_prior
+            if p_betas_prior is None:
+                p_betas_prior = np.ones([beta_H, beta_M]) / len([beta_H, beta_M])  # TODO:: assuming uniform prior?
+
+            "prob of Q pair given beta: equally distributed probabilities P(Qm, Qh | betas)"
+            #q_pairs = q_values_pair(state_h=, state_m=, intent=)
+            #q_pairs = [q_pairs] #TODO: this is a placeholder until we have multiple NE
+            p_q2_beta = np.ones(len(q_pairs))/len(q_pairs)
+
+            "calculate prob of beta pair given Q pair"
+            #TODO: this is assuming 1D arrays
+            p_beta_q2 = np.zeros(len(p_betas_prior))
+            for i in range(len(p_betas_prior)):
+                for j in range(p_q2_beta):
+                    if j == 0:
+                        p_beta_q2[i] = p_betas_prior[i] * p_q2_beta[j]
+                    else:
+                        p_beta_q2[i] += p_betas_prior[i] * p_q2_beta[j]
+            p_beta_q2 /= sum(p_beta_q2)
+            assert 0.99 <= sum(p_beta_q2) <= 1.01  # check if properly normalized
+
+            return p_beta_q2
+
+        def beta_pair_prob(beta_H, beta_M, q_pairs):
+            """
+            Equation 7
+            Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
+            :param self:
+            :return:
+            """
+            #TODO: This code is still in work
+            "importing prob of Q pair given observation D(k)"
+            p_q2 = q_pair_prob() #p_q2_d
+            "importing prob of beta pair given Q pair"
+            #TODO: this is a placeholder!
+            p_betas_q = prob_beta_given_q() #does not return anything yet
+            "Calculate prob of beta pair given D(k) by summing over Q pair"
+
+            # TODO: resample from initial belief! HOW??? (no prior is used!)
+            "resample from initial/uniform distribution"
+
+            p_betas_d = np.zeros(p_betas_q)
+            r = len(q_pairs)
+            c = len(q_pairs[0])#for iterating through 2D array p_q_pairs
+            for p in range(len(p_betas_d)): #iterating through 2D array p_betas
+                for q in range(len(p_betas_d)[0]):
+                    p_beta_q = p_betas_q[p, q]
+                    for i in range(r): #iterate through 2D array p_q2 or p_q2_d
+                        for j in range(c):
+                            #if p_betas[p,q] == p_beta:
+                            if (i, j) == (0,0): #first element
+                                p_betas_d[p, q] = p_beta_q * p_q2[0, 0]
+                            else:
+                                p_betas_d[p, q] += p_beta_q * p_q2[i,j]
+            return p_betas_d
+
+        #TODO: implement state probabilities calculations
+
+        "---------------------------"
+        "end of placeholder for NFSP"
+        "---------------------------"
+
         def h_action_prob(self, state, _lambda_h, q_values_h):
             # TODO: documentation
             """
@@ -1232,6 +1499,7 @@ class InferenceModel:
             assert sum(p_q2) == 1 #check if properly normalized
             pass
             return p_q2
+
         def prob_beta_given_q(self, beta_D_prior, beta_H, beta_M):
             #TODO: this is a placeholder, needs to be implemented
             """
@@ -1250,7 +1518,6 @@ class InferenceModel:
             "calculate prob of beta pair given Q pair"
 
             pass
-
 
         def beta_pair_prob(self, beta_H, beta_M, q_pairs):
             """
@@ -1380,13 +1647,13 @@ class InferenceModel:
             :return:
             """
             h_states = self.get_state_list_h(self.T)
-            h_states = h_states[1,:] #extract states from t = k+1, which is in the 2nd row
+            h_states = h_states[1, :] #extract states from t = k+1, which is in the 2nd row
             m_states = self.get_state_list_m(self.T)
-            m_states = m_states[1,:] #extract states from t = k+1, which is in the 2nd row
-            states = np.empty([len(h_states),len(m_states)])
+            m_states = m_states[1, :] #extract states from t = k+1, which is in the 2nd row
+            states = np.empty([len(h_states), len(m_states)])
             for i in range(len(h_states)):
                 for j in range(len(m_states)):
-                    states[i,j] = (h_states[i],m_states[j]) #TODO: Check states data type in sim
+                    states[i, j] = (h_states[i], m_states[j]) #TODO: Check states data type in sim
             return states #h_state by m_state matrix
 
         def state_prob(self, curr_state,Qh,Qm):
