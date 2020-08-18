@@ -713,7 +713,7 @@ class InferenceModel:
         self.frame = sim.frame
         if not self.frame == 0:
             self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
-        # TODO: import q function from pre-trained model (set_nsfp_models)
+
         def trained_q_function(state_h, state_m):
             """
             Import Q function from nfsp given states
@@ -1136,16 +1136,24 @@ class InferenceModel:
         # variables: predicted_intent_other: BH hat, predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat, predicted_policy_self: QM tilde
         #----------------------------#
-        #TODO: get necessary agent info:
-        "---agent info---"
-
-        "---end of agent info---"
         #TODO: import Q pairs from Nash Equilibrium computed with RL
         #TODO: how will betas arrays (lambda1, theta1), ... be constructed?
         #TODO: THREE total priors needed to store: p(betas|D(k-1)) and p(Q pairs|D(k-1)) and P(x(k)|Qh,Qm)
         #NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
         #TODO: for a set of NE iterate through them using the below functions!
+        "importing agents information from Autonomous Vehicle (sim.agents)"
+        curr_state_h = sim.agents[0].state[-1]
+        last_action_h = sim.agents[0].action[-1]
+        curr_state_m = sim.agents[1].state[-1]
+        last_action_m = sim.agents[1].action[-1]
 
+        self.traj_h.append([curr_state_h, last_action_h])
+        self.traj_m.append([curr_state_m, last_action_m])
+        self.frame = sim.frame
+        if not self.frame == 0:
+            self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
+
+        #TODO: get beta pairs (BH, BM)
         "place holder: using NFSP Q function in place of NE Q function pair"
         def trained_q_function(state_h, state_m):
             """
@@ -1372,7 +1380,7 @@ class InferenceModel:
 
             return p_beta_q2
 
-        def beta_pair_prob(beta_H, beta_M, q_pairs):
+        def beta_pair_prob(p_q2, p_betas_q2):
             """
             Equation 7
             Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
@@ -1381,31 +1389,232 @@ class InferenceModel:
             """
             #TODO: This code is still in work
             "importing prob of Q pair given observation D(k)"
-            p_q2 = q_pair_prob() #p_q2_d
+            #p_q2 = q_pair_prob() #p_q2_d
             "importing prob of beta pair given Q pair"
             #TODO: this is a placeholder!
-            p_betas_q = prob_beta_given_q() #does not return anything yet
+            #p_betas_q = prob_beta_given_q() #does not return anything yet
             "Calculate prob of beta pair given D(k) by summing over Q pair"
 
             # TODO: resample from initial belief! HOW??? (no prior is used!)
             "resample from initial/uniform distribution"
+            p_betas_d = np.zeros(p_betas_q2)
+            # 2D version
+            # r = len(q_pairs)
+            # c = len(q_pairs[0])#for iterating through 2D array p_q_pairs
+            # for p in range(len(p_betas_d)): #iterating through 2D array p_betas
+            #     for q in range(len(p_betas_d)[0]):
+            #         p_beta_q = p_betas_q2[p, q]
+            #         for i in range(r): #iterate through 2D array p_q2 or p_q2_d
+            #             for j in range(c):
+            #                 #if p_betas[p,q] == p_beta:
+            #                 if (i, j) == (0, 0): #first element
+            #                     p_betas_d[p, q] = p_beta_q * p_q2[0, 0]
+            #                 else:
+            #                     p_betas_d[p, q] += p_beta_q * p_q2[i,j]
 
-            p_betas_d = np.zeros(p_betas_q)
-            r = len(q_pairs)
-            c = len(q_pairs[0])#for iterating through 2D array p_q_pairs
-            for p in range(len(p_betas_d)): #iterating through 2D array p_betas
-                for q in range(len(p_betas_d)[0]):
-                    p_beta_q = p_betas_q[p, q]
-                    for i in range(r): #iterate through 2D array p_q2 or p_q2_d
-                        for j in range(c):
-                            #if p_betas[p,q] == p_beta:
-                            if (i, j) == (0,0): #first element
-                                p_betas_d[p, q] = p_beta_q * p_q2[0, 0]
-                            else:
-                                p_betas_d[p, q] += p_beta_q * p_q2[i,j]
+            # 1D version
+            for i in range(len(p_betas_q2)):
+                for j in range(len(p_q2)):
+                    if j == 0:
+                        p_betas_d[i] = p_betas_q2[i] * p_q2[j]
+                    else:
+                        p_betas_d[i] += p_betas_q2[i] * p_q2[j]
             return p_betas_d
 
         #TODO: implement state probabilities calculations
+
+        def get_state_list(state, T, dt):
+            #TODO: check if it works for this model
+            """
+            2D case: calculate an array of state (T x S at depth T)
+            1D case: calculate a list of state (1 X (1 + Action_set^T))
+            :param
+                state: any state
+                T: time horizon / look ahead
+                dt: time interval where the action will be executed, i.e. u*dt
+            :return:
+                list of resulting states from taking each action at a given state
+            """
+
+            actions = self.action_set
+            # TODO: check if this works for both agents!
+            #  ---------------------------------------
+            def get_s_prime(_state_list, _actions):
+                _s_prime = []
+
+                def calc_state(x, u, dt):
+                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
+                    "Deceleration only leads to small/min velocity!"
+                    if sx == 0 and vx == 0:  # y axis movement
+                        print("Y axis movement detected")
+                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vy_new < self.min_speed:
+                            vy_new = self.min_speed
+                        else:
+                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
+                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
+                        sy_new = sy + (vy + vy_new) * dt * 0.5
+                    elif sy == 0 and vy == 0:  # x axis movement
+                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vx_new > -self.min_speed:
+                            print("vehicle M is exceeding min speed", vx_new, u)
+                            vx_new = -self.min_speed
+                        else:
+                            vx_new = min(max(vx_new, -self.max_speed),
+                                         -self.min_speed)  # negative vel, so min and max is flipped
+                        sx_new = sx + (vx + vx_new) * dt * 0.5
+                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
+                    else:  # TODO: assume Y axis movement for single agent case!!
+                        print("Y axis movement detected (else)")
+                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                        if vy_new < 0:
+                            vy_new = 0
+                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
+                        sy_new = sy + (vy + vy_new) * dt * 0.5
+
+                    # TODO: add a cieling for how fast they can go
+                    return sx_new, sy_new, vx_new, vy_new
+
+                "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
+                if not isinstance(_state_list[0], tuple):
+                    print("WARNING: state list is not composed of tuples!")
+                    _state_list = [_state_list]  # put it in a list to iterate
+
+                for s in _state_list:
+                    for a in _actions:
+                        # print("STATE", s)
+                        _s_prime.append(calc_state(s, a, dt))
+                return _s_prime
+
+            i = 0  # row counter
+            state_list = {}  # use dict to keep track of time step
+            # state_list = []
+            # state_list.append(state) #ADDING the current state!
+            for t in range(0, T):
+                s_prime = get_s_prime(state, actions)  # separate pos and speed!
+                state_list[i] = s_prime
+                # state_list.append(s_prime)
+                state = s_prime  # get s prime for the new states
+                i += 1  # move onto next row
+            return state_list
+
+        def joint_action_prob(state_h, state_m, _lambda, theta):
+            """
+
+            :param state_h:
+            :param state_m:
+            :param lambdas:
+            :param thetas:
+            :return:
+            """
+            # p_state_joint = []
+            # for i in range(len(p_state_h)):
+            #     p_state_h.append([])
+            #     for j in range(len(p_state_h[i])):
+            #         for p in range(len(p_state_m)):
+            #             for q in range(len(p_state_m)):
+            #                 p_state_u = p_state_h[i][j] * p_state_m[p][q]
+            #                 p_state_joint[i].append()
+            "in the case where action prob is calculated separately"
+            # lambda_h, lambda_m = lambdas
+            # theta_h, theta_m = thetas
+            # p_action_h = action_prob(state_h, state_m, lambda_h, theta_h)
+            # p_action_m = action_prob(state_m, state_h, lambda_m, theta_m)
+
+            "in the case where action prob is calculated TOGETHER"
+            p_action_h, p_action_m = action_prob(state_h, state_m, _lambda, theta)
+
+            #p_action_joint = np.empty((len(p_action_h), len(p_action_m)))
+            p_action_joint = []
+            for i in p_action_h:
+                for j in p_action_m:
+                    #p_action_joint[i][j] = p_action_h[i] * p_action_m[j]
+                    p_action_joint.append(p_action_h[i] * p_action_m[j])
+            assert 0.98 < sum(p_action_joint) < 1.02
+
+            return p_action_joint
+
+        def traj_prob(state_h, state_m, _lambda, theta, dt, prior=None):
+            """
+            refer to mdp.py
+                Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
+            :params:
+                state: current / observed state of H at time k
+                _lambda: given lambda/rational coefficient
+                dt: length of each time step
+                prior: probability of agent being at "state" at time k (default is 1)
+            :return:
+                possible resulting states at k+1 with probabilities for being at each one of them
+            """
+
+            # TODO: modify so that we get joint probabilities of P(uH, uM| x, QH, QM)
+            #  get 2D array of uH x uM probability distribution?
+            #  ---------------------------
+
+            "for now we consider prior = 1 for observed state at time k"
+            if prior == None:
+                p_traj = 1  # initialize
+            T = self.T
+            #TODO: get list of resulting state lists from 2 agents taking each of their action
+            state_list_h = get_state_list(state_h, T, dt)  # get list of state given curr_state/init_state from self._init_
+            state_list_m = get_state_list(state_m, T, dt)
+            state_list = []
+            "joining H and M's states together"
+            for i in range(len(state_list_h)):
+                state_list.append([])
+                for j in range(len(state_list_h[i])):
+                    for p in range(len(state_list_m)):
+                        for q in range(len(state_list_m[p])):
+                            state_list[i].append([state_list_h[i][j], state_list_m[p][q]])
+
+            # p_states = np.zeros(shape=state_list)
+            p_states = []
+
+            # TODO: verify if it is working properly (plotting states? p_state seems correct)
+            "for the case where state list is 1D, note that len(state list) == number of time steps!"
+            for i in range(len(state_list_h)):  # over state list at time i/ t
+                #p_a = action_prob(state_h, state_m, _lambda, theta)  # assume same action prob at all time
+                p_a = joint_action_prob(state_h, state_m, _lambda, theta)
+                if i == 0:
+                    p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
+                    # transition is deterministic -> 1, prob state(k) = 1
+                    # print("P STATES", p_states)
+
+                else:  # time steps at i > 0
+                    p_s_t = []  # storing p_states for time t (or i)
+                    for j, ps in enumerate(state_list_h[i - 1]):
+                        # print(state_list[i-1])
+                        # print(p_states)
+                        # print(type(p_states[0]))
+                        # print("Current time:",i,"working on state:", j)
+                        # print(p_states[i-1][j])
+                        p_s = p_a * p_states[i - 1][j]  # assume same action prob at all time
+                        p_s_t.extend(p_s.tolist())
+                    p_states.append(p_s_t)
+
+            #TODO: verify that state prob corresponds to the right state
+            return p_states, state_list
+
+        def marginal_state_prob(p_traj, p_q2, which_q2):
+            #marginal = np.empty(len(p_traj))
+            p_q2 = p_q2[which_q2] #TODO: assuming p_traj is only using this particular q2???
+            marginal = []
+            for i in range(len(p_traj)):
+                marginal.append([])
+                for j in range(len(p_traj[i])):
+                    # for p in range(len(p_q2)):  # number of q pairs
+                    #     #marginal[i].append(p_traj[i][j]*p_q2[p])
+                    pm = p_traj[i][j] * p_q2
+                    marginal[i].append(pm)
+
+            return marginal
+
+        "calling functions"
+
+        return
 
         "---------------------------"
         "end of placeholder for NFSP"
