@@ -27,7 +27,7 @@ class Simulation:
         self.env = env
         self.agents = []
         self.theta_priors = None
-
+        self.drawing_prob = False
         # define simulation
         car_parameter = self.env.car_par
         if self.n_agents == 2:
@@ -113,7 +113,8 @@ class Simulation:
         pg.quit()
         "drawing results"
         self.vis.draw_dist()
-        self.vis.draw_intent()
+        if self.drawing_prob:
+            self.vis.draw_intent()
         #self.vis.draw_actions()
 
 

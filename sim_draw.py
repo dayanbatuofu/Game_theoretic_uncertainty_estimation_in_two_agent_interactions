@@ -18,15 +18,19 @@ class VisUtils:
         "for drawing state distribution"
         self.sim = sim
         self.env = sim.env
-        self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
-        self.past_state_h = sim.agents[1].state[-1]
-        self.past_state_m = sim.agents[0].state[-1]
-        self.intent_h = []
-        self.intent_m = []
+        self.drawing_prob = sim.drawing_prob
+        if self.drawing_prob:
+            self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
+            self.past_state_h = sim.agents[1].state[-1]
+            self.past_state_m = sim.agents[0].state[-1]
+            self.intent_h = []
+            self.intent_m = []
+            self.intent_distri_h = [[], []]  # theta1, theta2
+            self.intent_distri_m = [[], []]  # theta1, theta2
         self.frame = sim.frame
         self.dist = []
-        self.intent_distri_h = [[], []]  # theta1, theta2
-        self.intent_distri_m = [[], []]  # theta1, theta2
+
+
         if sim.decision_type == 'baseline':
             self.screen_width = 10  # 50
             self.screen_height = 10  # 50
@@ -119,7 +123,8 @@ class VisUtils:
                                 (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
             "drawing the map of state distribution"
             pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
-            self.draw_prob()  # calling function to draw with data from inference
+            if self.drawing_prob:
+                self.draw_prob()  # calling function to draw with data from inference
 
             # Annotations
             # font = pg.font.SysFont("Arial", 30)
@@ -189,7 +194,8 @@ class VisUtils:
 
                 "drawing the map of state distribution"
                 pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
-                self.draw_prob() #calling function to draw with data from inference
+                if self.drawing_prob:
+                    self.draw_prob() #calling function to draw with data from inference
                 #time.sleep(1)
 
 
@@ -197,7 +203,8 @@ class VisUtils:
                 pg.display.update()
         #self.draw_dist(self.past_state_m, self.past_state_h)
         self.calc_dist()
-        self.calc_intent()
+        if self.drawing_prob:
+            self.calc_intent()
     def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
         for a in self.env.bounds:

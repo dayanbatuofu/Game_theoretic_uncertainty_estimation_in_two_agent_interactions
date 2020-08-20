@@ -28,7 +28,7 @@ agent parameters
 """
 # choose inference model: none: complete information
 parser.add_argument('--agent_inference', type=str, choices=['none', 'baseline', 'trained_baseline', 'empathetic'],
-                    default=['none', 'trained_baseline'])
+                    default=['none', 'empathetic'])
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'baseline', 'baseline2', 'complete_information', 'reactive_point'],
