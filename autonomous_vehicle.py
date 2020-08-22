@@ -35,7 +35,7 @@ class AutonomousVehicle:
         self.predicted_policy_other = []
         self.predicted_policy_self = []
         "for recording predicted state from inference"
-        self.predicted_actions_other = []
+        self.predicted_actions_other = [0]  # assume initial action of other agent = 0
         self.predicted_states_other = []
         #if sim.decision_type == 'baseline':
         self.min_speed = 0.1
