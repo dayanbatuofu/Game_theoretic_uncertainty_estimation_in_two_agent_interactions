@@ -163,7 +163,7 @@ class DecisionModel:
             "calling function for Boltzmann model"
             intent_list = ['na_na', 'a_na']
             #TODO: does it work for both agents????
-            p_actions = action_prob(p1_state, p2_state, _lambda=1, intent='na_na')
+            p_actions = action_prob(p1_state, p2_state, _lambda=1, intent='a_na')
             actions = []
             for p_a in p_actions:
                 p_a = np.array(p_a).tolist()
