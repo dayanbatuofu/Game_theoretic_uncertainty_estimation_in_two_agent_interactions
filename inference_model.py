@@ -1,5 +1,9 @@
 """
 Perform inference on other agent
+Baseline: using the most basic Q function estimation, on how fast goal is reached
+          (need to change main.py, environment = intersection)
+Trained_baseline: using NFSP model as Q function (change environment = trained_intersection)
+Empathetic: with NFSP, perform inference on both agent (change environment = trained_intersection)
 """
 import torch
 import numpy as np
@@ -985,39 +989,54 @@ class InferenceModel:
             p_theta_prime = np.empty((len(lambdas), len(theta_list)))
 
             "Compute joint probability p(lambda, theta) for each lambda and theta"
-            for t, (s, a) in enumerate(traj_h):  # enumerate through past traj
-                if t == 0:  # initially there's only one state and not past
-                    for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
-                        for l,_lambda in enumerate(lambdas):
-                            #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-                            #a_i = self.action_set.index(a)
-                            if theta == theta_list[0]:
-                                p_action_l = self.past_scores1[_lambda][t] #get prob of action done at time t
-                                # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-                                p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-                            else: #theta 2
-                                p_action_l = self.past_scores2[_lambda][t]
-                                # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-                                p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-
-                else:  # for state action pair that is not at time zero
-                    for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
-                        #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-                        for l, _lambda in enumerate(lambdas):
-                            if theta == theta_list[0]:
-                                p_action_l = self.past_scores1[_lambda][t]
-                                for theta_past in range(
-                                        len(theta_list)):  # cycle through theta probability from past time K-1
-                                    for l_past in range(len(lambdas)):
-                                        p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
-                            else:
-                                p_action_l = self.past_scores2[_lambda][t]
-                                for theta_past in range(
-                                        len(theta_list)):  # cycle through theta probability from past time K-1
-                                    for l_past in range(len(lambdas)):
-                                        p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
+            # for t, (s, a) in enumerate(traj_h):  # enumerate through past traj
+            #     if t == 0:  # initially there's only one state and not past
+            #         for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
+            #             for l,_lambda in enumerate(lambdas):
+            #                 #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+            #                 #a_i = self.action_set.index(a)
+            #                 if theta == theta_list[0]:
+            #                     p_action_l = self.past_scores1[_lambda][t] #get prob of action done at time t
+            #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+            #                     p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            #                 else: #theta 2
+            #                     p_action_l = self.past_scores2[_lambda][t]
+            #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+            #                     p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            #
+            #     else:  # for state action pair that is not at time zero
+            #         for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
+            #             #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+            #             for l, _lambda in enumerate(lambdas):
+            #                 if theta == theta_list[0]:
+            #                     p_action_l = self.past_scores1[_lambda][t]
+            #                     for theta_past in range(
+            #                             len(theta_list)):  # cycle through theta probability from past time K-1
+            #                         for l_past in range(len(lambdas)):
+            #                             p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
+            #                 else:
+            #                     p_action_l = self.past_scores2[_lambda][t]
+            #                     for theta_past in range(
+            #                             len(theta_list)):  # cycle through theta probability from past time K-1
+            #                         for l_past in range(len(lambdas)):
+            #                             p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
 
             "another joint update algorithm, without cycling through traj and only update with prior:"
+            t = self.frame
+            # TODO: use [-1] or [t]???
+            for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
+                for l, _lambda in enumerate(lambdas):
+                    # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+                    # a_i = self.action_set.index(a)
+                    if theta == theta_list[0]:
+                        p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
+                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+                    else:  # theta 2
+                        p_action_l = self.past_scores2[_lambda][t]
+                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            "this version iterates through prior separately!"
             # t = self.frame
             # if t == 0:  # initially there's only one state and not past
             #     for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
@@ -1042,7 +1061,6 @@ class InferenceModel:
             #                 for theta_past in range(
             #                         len(theta_list)):  # cycle through theta probability from past time K-1
             #                     for l_past in range(len(lambdas)):
-            #                         #TODO: check this
             #                         p_theta_prime[l][theta_t] = p_action_l * p_theta[l_past][theta_past]
             #             else:
             #                 p_action_l = self.past_scores2[_lambda][t]
@@ -1053,11 +1071,11 @@ class InferenceModel:
 
             "In the case p_theta is 2d array:"
             # print(p_theta_prime, sum(p_theta_prime))
-            p_theta_prime /= np.sum(p_theta_prime) #normalize
+            p_theta_prime /= np.sum(p_theta_prime)  # normalize
 
             # print(p_theta_prime)
             # print(np.sum(p_theta_prime))
-            assert 0.9<=np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
+            assert 0.9 <= np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
             print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
             #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
             return p_theta_prime, suited_lambdas
@@ -1160,11 +1178,8 @@ class InferenceModel:
         # predicted_policy_other: QH hat,
         # predicted_policy_self: QM tilde
         #----------------------------#
-        #TODO: import Q pairs from Nash Equilibrium computed with RL
-        #TODO: how will betas arrays (lambda1, theta1), ... be constructed?
-        #TODO: THREE total priors needed to store: p(betas|D(k-1)) and p(Q pairs|D(k-1)) and P(x(k)|Qh,Qm)
+
         #NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
-        #TODO: for a set of NE iterate through them using the below functions!
         "importing agents information from Autonomous Vehicle (sim.agents)"
         curr_state_h = sim.agents[0].state[-1]
         last_action_h = sim.agents[0].action[-1]
@@ -1177,7 +1192,6 @@ class InferenceModel:
         # if not self.frame == 0:
         #     self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
 
-        #TODO: get beta pairs (BH, BM)
         "place holder: using NFSP Q function in place of NE Q function pair"
         def trained_q_function(state_h, state_m):
             """
@@ -1442,8 +1456,8 @@ class InferenceModel:
                 th = 1; tm = 1
             id = []
             "checking if given beta is a or na, in 1D betas:"
-            for i in index:
-                if i < 8:
+            for i in index:  # (i, j) = (row, col). 8x8 2D array
+                if i < 4:
                     id.append(0)
                 else:
                     id.append(1)
@@ -1609,7 +1623,7 @@ class InferenceModel:
 
         def joint_action_prob(state_h, state_m, beta_h, beta_m):
             """
-
+            Multiplying the two action prob together for both agents
             :param state_h:
             :param state_m:
             :param lambdas:
@@ -1720,6 +1734,26 @@ class InferenceModel:
 
             return marginal
 
+        # function to rearrange for 2D p(theta, lambda|D(k))
+        def marginal_joint_intent(id, _p_beta_d):
+            marginal = []
+            for t in range(len(self.thetas)):
+                marginal.append([])
+            if id == 0:  # H agent
+                for i, row in enumerate(_p_beta_d):  # get sum of row
+                    if i < 4:  # in 1D self.beta, 0~3 are NA, or theta1
+                        marginal[0].append(sum(row))
+                    else:
+                        marginal[1].append(sum(row))
+            else:
+                for i, col in enumerate(zip(*_p_beta_d)):
+                    if i < 4:
+                        marginal[0].append(sum(col))
+                    else:
+                        marginal[1].append(sum(col))
+            # TODO: get most likely lambda???
+            return marginal
+
         "---------------------------------------------------"
         "calling functions: P(Q2|D), P(beta2|D), P(x(k+1)|D)"
         "---------------------------------------------------"
@@ -1776,6 +1810,9 @@ class InferenceModel:
             p_a = np.array(p_a).tolist()
             id = p_a.index(max(p_a))
             predicted_actions.append(self.action_set[id])
+        "getting marginal prob for beta_h or beta_m:"
+        p_beta_d_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
+        p_beta_d_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
         # TODO: implement proposed:
         # variables:
         # predicted_intent_other: BH hat,
@@ -1785,10 +1822,11 @@ class InferenceModel:
 
         # return p_theta_prime, suited_lambdas <- predicted_intent other
         # p_betas: [8 x 8] = [BH x BM]
+
         return {'predicted_states_other': (marginal_state, state_list),
                 'predicted_actions_other': predicted_actions[0],
-                'predicted_intent_other': [p_beta_d, beta_h],
-                'predicted_intent_self': [p_beta_d, beta_m]}  # TODO: do we need to process p_beta_d?
+                'predicted_intent_other': [p_beta_d_h, beta_h],
+                'predicted_intent_self': [p_beta_d_m, beta_m]}  # TODO: do we need to process p_beta_d?
         #TODO: modify so that this works for both agents??
 
         # return {'predicted_intent_other': joint_probability,
