@@ -76,18 +76,19 @@ class AutonomousVehicle:
                     vy_new = self.min_speed
                 else:
                     vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                sx_new = sx + (vx + vx_new) * dt * 0.5
+                sx_new = sx
                 sy_new = sy + (vy + vy_new) * dt * 0.5
 
             elif self.id == 1:  # white vehicle (M) (agent[1]), x axis, moving towards negative
                 #u = -u
-                vx_new = vx + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                vx_new = abs(vx) + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
                 vy_new = vy
-                if vx_new > -self.min_speed:
-                    print("vehicle M is exceeding min speed", vx_new, u)
-                    vx_new = -self.min_speed
+                if vx_new < self.min_speed:
+                    # print("vehicle M is exceeding min speed", vx_new, u)
+                    vx_new = self.min_speed
                 else:
-                    vx_new = min(max(vx_new, -self.max_speed), -self.min_speed) #negative vel, so min and max is flipped
+                    vx_new = max(min(vx_new, self.max_speed), self.min_speed)
+                vx_new = -vx_new
                 sx_new = sx + (vx + vx_new) * dt * 0.5
                 sy_new = sy
 

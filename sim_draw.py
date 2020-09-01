@@ -16,6 +16,7 @@ class VisUtils:
 
     def __init__(self, sim):
         "for drawing state distribution"
+
         self.sim = sim
         self.env = sim.env
         self.drawing_prob = sim.drawing_prob
@@ -32,6 +33,7 @@ class VisUtils:
 
 
         if sim.decision_type == 'baseline':
+
             self.screen_width = 10  # 50
             self.screen_height = 10  # 50
             self.coordinate_scale = 80
@@ -57,7 +59,9 @@ class VisUtils:
                                                   -self.sim.agents[i].car_par["orientation"])
                               for i in range(self.sim.n_agents)]
 
-            self.origin = np.array([-15.0, 15.0])
+            #self.origin = np.array([-15.0, 15.0])
+            self.origin = np.array([0, 0])
+
         else:
             self.screen_width = 5
             self.screen_height = 5
@@ -193,20 +197,20 @@ class VisUtils:
                 self.screen.blit(label, (10, 10))
 
                 "drawing the map of state distribution"
-                pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
+                #pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1  # test
                 if self.drawing_prob:
                     self.draw_prob() #calling function to draw with data from inference
-                #time.sleep(1)
-
 
                 pg.display.flip()
                 pg.display.update()
-        #self.draw_dist(self.past_state_m, self.past_state_h)
+
         self.calc_dist()
         if self.drawing_prob:
             self.calc_intent()
+
     def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
+        #pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing
         for a in self.env.bounds:
             bound_x, bound_y = a[0], a[1]
             if bound_x:
@@ -214,7 +218,7 @@ class VisUtils:
                 _bound1 = self.c2p((b_min, 0))
                 _bound2 = self.c2p((b_max, 0))
                 bounds = np.array([_bound1[0], _bound2[0]])
-                pg.draw.line(self.screen, LIGHT_GREY, ((bounds[1] + bounds[0])/2, 0),
+                pg.draw.line(self.screen, LIGHT_GREY, ((bounds[1] + bounds[0])/2, 1),
                              ((bounds[1] + bounds[0])/2, self.screen_height * self.coordinate_scale,
                               ), bounds[1] - bounds[0])
             if bound_y:
@@ -222,7 +226,7 @@ class VisUtils:
                 _bound1 = self.c2p((0, b_min))
                 _bound2 = self.c2p((0, b_max))
                 bounds = np.array([_bound1[1], _bound2[1]])
-                pg.draw.line(self.screen, LIGHT_GREY, (0, (bounds[1] + bounds[0]) / 2),
+                pg.draw.line(self.screen, LIGHT_GREY, (1, (bounds[1] + bounds[0]) / 2),
                              (self.screen_width * self.coordinate_scale,
                               (bounds[1] + bounds[0]) / 2), bounds[0] - bounds[1])
 
@@ -294,6 +298,7 @@ class VisUtils:
             self.intent_m.append(M_intent)
         else:
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
+            #print("-draw- p_joint_h: ", p_joint_h)
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
             for i in range(len(sum_h)):
@@ -379,7 +384,7 @@ class VisUtils:
 
             for i in range(len(state_list[0])):
                 x, y = states_k[i][0], states_k[i][1]
-                #print("X, Y: ", x, y)
+                print("X, Y: ", x, y)
                 nx, ny = self.c2p((x, y))
                 p_s = p_state_Dk[i]
                 #TODO: change the range of color! (we will have different distribution)
@@ -402,7 +407,7 @@ class VisUtils:
 
     def c2p(self, coordinates):
         x = self.coordinate_scale * (coordinates[0] - self.origin[0] + self.screen_width / 2)
-        y = self.coordinate_scale * (-coordinates[1] + self.origin[1] + self.screen_height / 2)
+        y = self.coordinate_scale * (- coordinates[1] + self.origin[1] + self.screen_height / 2)
         x = int(
             (x - self.screen_width * self.coordinate_scale * 0.5) * self.zoom
             + self.screen_width * self.coordinate_scale * 0.5)

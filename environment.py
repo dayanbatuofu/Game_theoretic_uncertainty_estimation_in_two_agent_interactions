@@ -11,12 +11,14 @@ class Environment:
         self.name = env_name
 
         # TODO: unify units for all parameters
-        self.car_width = 0.66
-        self.car_length = 1.33
-        self.vehicle_max_speed = 0.05
-        self.initial_speed = 0.025
+
 
         if self.name == 'intersection':
+            self.car_width = 0.66
+            self.car_length = 1.33
+            self.vehicle_max_speed = 0.05
+            self.initial_speed = 0.025
+
             self.n_agents = 2
 
             # BOUNDS: [agent1, agent2, ...], agent: [bounds along x, bounds along y], bounds: [min, max]
@@ -40,12 +42,23 @@ class Environment:
         elif self.name == 'trained_intersection':
             #TODO: modify initial state to match with trained model
             self.n_agents = 2
+
+            self.car_width = 2  # m
+            self.car_length = 4  # m
+            # VEHICLE_MAX_SPEED = 40.2  # m/s
+            # INITIAL_SPEED = 13.4  # m/s
+            # VEHICLE_MIN_SPEED = 0.0  # m/s
+            # MAX_ACCELERATION = 8  # m/s^2
+            # MAX_DECELERATION = -8  # m/s^2
+            self.vehicle_max_speed = 40.2
+            self.initial_speed = 13.4
+
             intersection = C.CONSTANTS.Intersection
             # # BOUNDS: [agent1, agent2, ...], agent: [bounds along x, bounds along y], bounds: [min, max]
             # boundx = intersection.SCREEN_WIDTH
             # boundy = intersection.SCREEN_HEIGHT
             #self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
-            self.bounds = [[[-0.4, 0.4], None], [None, [-0.4, 0.4]]]
+            self.bounds = [[[-self.car_width/2, self.car_width/2], None], [None, [-self.car_width/2, self.car_width/2]]]
             # first car moves bottom up, second car right to left
             "randomly pick initial states:"
             sy_M = np.random.uniform(intersection.CAR_1.INITIAL_STATE[0] * 0.5,

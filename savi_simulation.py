@@ -27,7 +27,7 @@ class Simulation:
         self.env = env
         self.agents = []
         self.theta_priors = None
-        self.drawing_prob = False
+        self.drawing_prob = True  # if function for displaying future states are enabled
         # define simulation
         car_parameter = self.env.car_par
         if self.n_agents == 2:

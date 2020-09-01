@@ -832,18 +832,18 @@ class InferenceModel:
                         if vy_new < self.min_speed:
                             vy_new = self.min_speed
                         else:
-                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
+                            vy_new = min(max(vy_new, self.max_speed), self.min_speed)
                         sx_new = sx  # + (vx + vx_new) * dt * 0.5
                         sy_new = sy + (vy + vy_new) * dt * 0.5
                     elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vx_new > -self.min_speed:
-                            print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = -self.min_speed
+                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy
+                        if vx_new < self.min_speed:
+                            # print("vehicle M is exceeding min speed", vx_new, u)
+                            vx_new = self.min_speed
                         else:
-                            vx_new = min(max(vx_new, -self.max_speed),
-                                         -self.min_speed)  # negative vel, so min and max is flipped
+                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
+                        vx_new = -vx_new
                         sx_new = sx + (vx + vx_new) * dt * 0.5
                         sy_new = sy  # + (vy + vy_new) * dt * 0.5
                     else:  # TODO: assume Y axis movement for single agent case!!
@@ -1576,14 +1576,14 @@ class InferenceModel:
                         sx_new = sx  # + (vx + vx_new) * dt * 0.5
                         sy_new = sy + (vy + vy_new) * dt * 0.5
                     elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vx_new > -self.min_speed:
-                            #print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = -self.min_speed
+                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
+                        vy_new = vy
+                        if vx_new < self.min_speed:
+                            # print("vehicle M is exceeding min speed", vx_new, u)
+                            vx_new = self.min_speed
                         else:
-                            vx_new = min(max(vx_new, -self.max_speed),
-                                         -self.min_speed)  # negative vel, so min and max is flipped
+                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
+                        vx_new = -vx_new
                         sx_new = sx + (vx + vx_new) * dt * 0.5
                         sy_new = sy  # + (vy + vy_new) * dt * 0.5
                     else:  # TODO: in the case of more than 1D movement??
@@ -1647,13 +1647,13 @@ class InferenceModel:
             "in the case where action prob is calculated TOGETHER"
             p_action_h, p_action_m = action_prob(state_h, state_m, beta_h, beta_m)
 
-            #p_action_joint = np.empty((len(p_action_h), len(p_action_m)))
-            p_action_joint = []
-            for p_a_h in p_action_h:
-                for p_a_m in p_action_m:
-                    #p_action_joint[i][j] = p_action_h[i] * p_action_m[j]
-                    p_action_joint.append(p_a_h * p_a_m)
-            assert 0.98 < sum(p_action_joint) < 1.02
+            p_action_joint = np.empty((len(p_action_h), len(p_action_m)))
+            #p_action_joint = []
+            for i, p_a_h in enumerate(p_action_h):
+                for j, p_a_m in enumerate(p_action_m):
+                    p_action_joint[i][j] = p_a_h * p_a_m
+                    #p_action_joint.append(p_a_h * p_a_m)
+            assert 0.98 < np.sum(p_action_joint) < 1.02
 
             return p_action_joint
 
@@ -1676,24 +1676,27 @@ class InferenceModel:
             T = self.T
             state_list_h = get_state_list(state_h, T, dt)  # get list of state given curr_state/init_state from self._init_
             state_list_m = get_state_list(state_m, T, dt)
-            state_list = []
-            "joining H and M's states together"
-            for i in range(len(state_list_h)):
-                state_list.append([])
-                for j in range(len(state_list_h[i])):
-                    for p in range(len(state_list_m)):
-                        for q in range(len(state_list_m[p])):
-                            state_list[i].append([state_list_h[i][j], state_list_m[p][q]])
+
+            state_list = {}
+            "joining H and M's states together (2D array)"
+            for i in range(len(state_list_h)):  # time step
+                state_list[i] = []
+                for j in range(len(state_list_h[i])):  # state_h
+                    state_list[i].append([])
+                    for p in range(len(state_list_m)):  # time step
+                        for q in range(len(state_list_m[p])):  # state_m
+                            state_list[i][j].append([state_list_h[i][j], state_list_m[p][q]])
 
             # p_states = np.zeros(shape=state_list)
-            p_states = []
+            p_states = {}
 
             "for the case where state list is 1D, note that len(state list) == number of time steps!"
             for i in range(len(state_list_h)):  # over state list at time i/ t
                 #p_a = action_prob(state_h, state_m, _lambda, theta)  # assume same action prob at all time
                 p_a = joint_action_prob(state_h, state_m, beta_h, beta_m)
+                # TODO: make it into 2D
                 if i == 0:
-                    p_states.append(p_a)  # 1 step look ahead only depends on action prob
+                    p_states[i] = p_a  # 1 step look ahead only depends on action prob
                     # transition is deterministic -> 1, prob state(k) = 1
                     # print("P STATES", p_states)
 
@@ -1707,9 +1710,10 @@ class InferenceModel:
                         # print(p_states[i-1][j])
                         p_s = p_a * p_states[i - 1][j]  # assume same action prob at all time
                         p_s_t.extend(p_s.tolist())
-                    p_states.append(p_s_t)
+                    p_states[i] = p_s_t
 
             #TODO: verify that state prob corresponds to the right state
+            "state_list contains (state_h, state_m)_k"
             return p_states, state_list
 
         def marginal_state_prob(p_traj, p_q2, which_q2):
@@ -1737,8 +1741,9 @@ class InferenceModel:
         # function to rearrange for 2D p(theta, lambda|D(k))
         def marginal_joint_intent(id, _p_beta_d):
             marginal = []
-            for t in range(len(self.thetas)):
+            for t in self.thetas:
                 marginal.append([])
+            "create a 2D array of (lambda, theta) pairs distribution like single agent case"
             if id == 0:  # H agent
                 for i, row in enumerate(_p_beta_d):  # get sum of row
                     if i < 4:  # in 1D self.beta, 0~3 are NA, or theta1
@@ -1752,7 +1757,12 @@ class InferenceModel:
                     else:
                         marginal[1].append(sum(col))
             # TODO: get most likely lambda???
-            return marginal
+            # i-4 if i>3
+            id_lambda = marginal.index(max(marginal))
+            _best_lambda = self.lambdas[id_lambda] if id_lambda <= 3 else self.lambdas[id_lambda - 4]
+            marginal = np.array(marginal)
+            marginal = marginal.transpose()  # Lambdas x Thetas
+            return marginal, _best_lambda
 
         "---------------------------------------------------"
         "calling functions: P(Q2|D), P(beta2|D), P(x(k+1)|D)"
@@ -1797,7 +1807,7 @@ class InferenceModel:
         self.p_betas_prior = p_beta_d
         'getting best predicted betas'
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
-        print("best betas at time {0}".format(self.frame), beta_pair_id)
+        print("best betas ID at time {0}".format(self.frame), beta_pair_id)
         #beta_id = p_beta_d.argmax()
         best_beta_h = self.betas[beta_pair_id[0]]
         best_beta_m = self.betas[beta_pair_id[1]]
@@ -1811,8 +1821,9 @@ class InferenceModel:
             id = p_a.index(max(p_a))
             predicted_actions.append(self.action_set[id])
         "getting marginal prob for beta_h or beta_m:"
-        p_beta_d_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
-        p_beta_d_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
+        p_beta_d_h, best_lambda_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
+        p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
+        # TODO: IMPORTANT: Best beta pair != Best beta !!!
         # TODO: implement proposed:
         # variables:
         # predicted_intent_other: BH hat,
@@ -1822,8 +1833,13 @@ class InferenceModel:
 
         # return p_theta_prime, suited_lambdas <- predicted_intent other
         # p_betas: [8 x 8] = [BH x BM]
-
-        return {'predicted_states_other': (marginal_state, state_list),
+        print("state list and prob for H: ", state_list, marginal_state)
+        print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
+        marginal_state_h = {}
+        for i, marginal_s in enumerate(marginal_state):
+            marginal_state_h[i] = [sum(marg) for marg in marginal_s]
+        print("-Intent_inf- marginal state H: ", marginal_state_h)
+        return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[0],
                 'predicted_intent_other': [p_beta_d_h, beta_h],
                 'predicted_intent_self': [p_beta_d_m, beta_m]}  # TODO: do we need to process p_beta_d?

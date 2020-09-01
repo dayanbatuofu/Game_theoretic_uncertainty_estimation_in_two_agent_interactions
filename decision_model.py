@@ -32,7 +32,7 @@ class DecisionModel:
             # placeholder for future development
             pass
 
-        self.policy_or_Q = 'policy'
+        self.policy_or_Q = 'Q'
 
     @staticmethod
     def constant_speed():
@@ -70,13 +70,14 @@ class DecisionModel:
             (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
             (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
 
-            p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
-            p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+            "re-organizing for NFSP definition"
+            _p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+            _p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
             "action for H"
-            action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
+            action1 = policy_a_na.act(t.FloatTensor(_p1_state).to(args.device))
 
             "action for M"
-            action2 = policy_na_a.act(t.FloatTensor(p2_state).to(args.device))
+            action2 = policy_na_a.act(t.FloatTensor(_p2_state).to(args.device))
             action1 = action_set[action1]
             action2 = action_set[action2]
             actions = [action1, action2]
@@ -97,7 +98,7 @@ class DecisionModel:
 
             def q_values_pair(state_h, state_m, intent):
                 q_set = trained_q_function(state_h, state_m)
-                # Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a,
+                # Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2,
                 # TODO: consider when we have more than 1 Q pair!
                 if intent == "na_na":
                     Q_h = q_set[0]
