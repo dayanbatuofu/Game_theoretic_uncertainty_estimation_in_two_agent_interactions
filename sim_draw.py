@@ -1,5 +1,13 @@
 # TODO: add uncertainty visualization
-
+"""
+Draws simulation and the results
+1. draw_frame: update simulation
+2. draw_axes: draw intersection
+3. draw_dist: show results of car distances
+4. draw_intent: show results of inferred intent
+5. draw_prob: draw distribution of future states on intersection
+6. c2p: transformation from states to pixels
+"""
 import pygame as pg
 import pygame.gfxdraw
 import numpy as np

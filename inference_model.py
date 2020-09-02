@@ -29,7 +29,7 @@ class InferenceModel:
             # placeholder for future development
             pass
 
-        "---simulation info: only the static variables!---"
+        "---simulation info:---"
         self.sim = sim
         self.agents = sim.agents
         self.n_agents = sim.n_agents
@@ -41,7 +41,7 @@ class InferenceModel:
         # self.max_speed = sim.agents[0].max_speed
         self.min_speed = 0.1
         self.max_speed = 30
-        "---goal states---"
+        "---goal states (for baseline)---"
         self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]]
 
         "---parameters(theta and lambda)---"
@@ -56,7 +56,6 @@ class InferenceModel:
         #self.theta_priors = None #for calculating theta lambda joint probability
         self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
-
 
         self.traj_h = []
         self.traj_m = []
@@ -83,45 +82,6 @@ class InferenceModel:
             for j, _lambda in enumerate(self.lambdas):
                 self.betas.append([theta, _lambda])
 
-
-        "---Agent info---"
-        # "importing initial agents information"
-        # self.initial_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
-        # if self.frame == 0: #no agent info yet
-        #     self.actions = [self.car_par[0]["initial_action"],self.car_par[1]["initial_action"]]
-        #     self.curr_state = [self.car_par[0]["initial_state"], self.car_par[1]["initial_state"]]
-        #     self.traj_h = [self.curr_state[0], self.actions[0]]
-        #     self.traj_m = [self.curr_state[1], self.actions[1]]
-        #     self.traj = [[self.curr_state[0], self.curr_state[1]],[self.actions[0], self.actions[1]]]
-
-        # else:
-        #     "importing agents information from Autonomous Vehicle (sim.agents)"
-        #     for i in range(self.n_agents):
-        #         if i == 0:
-        #             self.curr_state_h = self.sim.agents[i].state[-1]
-        #         if i == 1:
-        #             self.curr_state_m = self.sim.agents[i].state[-1]
-        #     self.curr_state = self.sim.agents.state[-1]
-        #
-
-        #     self.actions = [-2, -0.5, 0, 0.5, 2]  # accelerations (m/s^2)
-        #
-        #     "trajectory: need to process and combine past states and actions together"
-        #     self.states_h = self.sim.agents[0].state
-        #     self.states_m = self.sim.agents[1].state
-        #     self.past_actions_h = sim.agents[0].action
-        #     self.past_actions_m = sim.agents[1].action
-        #     self.traj = []
-        #     self.traj_h = []
-        #     for i in range(self.frame):
-        #         self.traj.append([[self.states_h[i],self.states_m[i]],
-        #                           [self.past_actions_h[i], self.past_actions_m[i]]])
-        #         self.traj_h.append([self.states_h[i], self.past_actions_h[i]])
-        # # self.traj = AutonomousVehicle.planned_trajectory_set
-        "---end of agent info---"
-
-
-
         #"--------------------------------------------------------"
         "Some reference variables from pedestrian prediction"
         #self.q_cache = {}
@@ -139,11 +99,12 @@ class InferenceModel:
 
     #@staticmethod
     def baseline_inference(self, agents, sim):
-        # TODO: implement Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
+        # Test implementation Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
+        # THIS IS ONLY FOR TEST PURPOSE. NOT IN USE
         """
         for each agent, estimate its par (agent.par) based on its last action (agent.action[-1]),
         system state (agent.state[-1] for all agent), and prior dist. of par
-        :return: #TODO: check what to return
+        :return:
 
         Important equations implemented here:
         - Equation 1 (action_probabilities):
@@ -218,7 +179,7 @@ class InferenceModel:
                     Q = -abs(goal_s - sx) / delta
                 else:
                     Q = -abs(goal_s - sx) / (vx + action * dt + delta)
-            else: #TODO: Check for the case of 2D movement
+            else:  # Check for the case of 2D movement
                 # Q = FUNCTION FOR 2D MODELS
                 goal_x = goal_s[0]
                 goal_y = goal_s[1]
@@ -247,10 +208,7 @@ class InferenceModel:
             return:
                 A 1D list of values for a given state s with action set A
 
-
             """
-            #print("q_values function is being called,{0}, {1}".format(state, goal))
-            # current_s = states[-1]
             # Q = {} #dict type
             Q = []  # list type
             actions = self.action_set  # TODO: check that actions are imported in init
@@ -260,9 +218,10 @@ class InferenceModel:
 
             return Q
 
-
         def get_state_list(state, T, dt):
             """
+            Obtain array of states resulting from list of actions given current state and given
+            the number of future timesteps (lookahead distance)
             2D case: calculate an array of state (T x S at depth T)
             1D case: calculate a list of state (1 X (1 + Action_set^T))
             :param
@@ -329,10 +288,10 @@ class InferenceModel:
                 i += 1  # move onto next row
             return state_list
 
-
         def action_probabilities(state, _lambda):  # equation 1
             """
-            refer to mdp.py
+            Equation 1
+            refer to pedestrian_prediction: mdp.py
             Noisy-rational model
             calculates probability distribution of action given hardmax Q values
             Uses:
@@ -365,15 +324,11 @@ class InferenceModel:
             exp_Q /= sum(exp_Q)
             print("exp_Q normalized:", exp_Q)
             return exp_Q
-            # exp_Q_list[i] = exp_Q
-
-            # return exp_Q_list #array of exp_Q for an array of states
-
 
         def traj_probabilities(state, _lambda, dt, prior = None):
             # TODO: What does summarizing over x(k) and u(k) do?
             """
-            refer to mdp.py
+            refer to pedestrian_prediction: mdp.py
             Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
             :params:
                 state: current / observed state of H at time k
@@ -393,7 +348,6 @@ class InferenceModel:
             # p_states = np.zeros(shape=state_list)
             p_states = []
 
-            #TODO: verify if it is working properly (plotting states? p_state seems correct)
             "for the case where state list is 1D, note that len(state list) == number of time steps!"
             for i in range(len(state_list)):
                 if i == 0:
@@ -525,6 +479,7 @@ class InferenceModel:
                 else:  # for state action pair that is not at time zero
                     for theta_t in range(len(thetas)):  # cycle through theta at time t or K
                         #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+                        # TODO: refer to train_inference.joint_update for this part
                         for l, _lambda in enumerate(lambdas):
                             p_action_l = self.past_scores[_lambda][t]
                             for theta_past in range(len(thetas)):  # cycle through theta probability from past time K-1
@@ -534,8 +489,6 @@ class InferenceModel:
             "In the case p_theta is 2d array:"
             print(p_theta_prime, sum(p_theta_prime))
             p_theta_prime /= np.sum(p_theta_prime) #normalize
-
-
 
             "(OLD) Joint inference update for (lambda, theta)"
             # for t, (s, a) in enumerate(traj):  # enumerate through past traj
@@ -552,13 +505,12 @@ class InferenceModel:
             #                 p_theta_prime[theta_t] += p_action[a_i] * p_theta[theta_past]
             # p_theta_prime /= sum(p_theta_prime)  # normalize
 
-            print(p_theta_prime)
-            print(np.sum(p_theta_prime))
+            #print(p_theta_prime)
+            #print(np.sum(p_theta_prime))
             assert 0.9<=np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
             print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
             #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
             return p_theta_prime, suited_lambdas
-
 
         def marginal_prob(state, p_theta, best_lambdas, dt):
             """
@@ -707,15 +659,6 @@ class InferenceModel:
         #
         #     pass
 
-        # def value_iter():
-        #     #Not in use
-        #     """
-        #     refer to hardmax.py
-        #     Calculate V where ith entry is the value of starting at state s till i
-        #     :return:
-        #     """
-        #     pass
-
     def trained_baseline_inference(self, agent, sim):
         """
         Use Q function from nfsp models
@@ -736,7 +679,7 @@ class InferenceModel:
         if not self.frame == 0:
             self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
 
-        def trained_q_function(state_h, state_m):
+        def trained_q_function():
             """
             Import Q function from nfsp given states
             :param state_h:
@@ -745,10 +688,7 @@ class InferenceModel:
             """
 
             q_set = get_models()[0]
-            #Q = q_set[0]  # use na_na for now
 
-            "Q values for given state over a set of actions:"
-            #Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
             return q_set
 
         def q_values(state_h, state_m, intent):
@@ -759,7 +699,7 @@ class InferenceModel:
             :param intent:
             :return:
             """
-            q_set = trained_q_function(state_h, state_m)
+            q_set = trained_q_function()
             if intent == "na_na":
                 Q = q_set[0]
             else: #use a_na
@@ -774,6 +714,22 @@ class InferenceModel:
             return Q_vals
 
         def action_prob(state_h, state_m, _lambda, theta):
+            """
+            Equation 1
+
+            Noisy-rational model
+            calculates probability distribution of action given hardmax Q values
+            Uses:
+            1. Softmax algorithm
+            2. Q-value given state and theta(intent)
+            3. lambda: "rationality coefficient"
+            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            :param state_h: current H state
+            :param state_m: current M state
+            :param _lambda: rationality coefficient
+            :param theta: aggressiveness/ gracefullness parameter
+            :return: Normalized probability distributions of available actions at a given state and lambda
+            """
             action_set = self.action_set
             if theta == self.thetas[0]:
                 intent = "na_na"
@@ -810,7 +766,7 @@ class InferenceModel:
             2D case: calculate an array of state (T x S at depth T)
             1D case: calculate a list of state (1 X (1 + Action_set^T))
             :param
-                state: any state
+                state: current state
                 T: time horizon / look ahead
                 dt: time interval where the action will be executed, i.e. u*dt
             :return:
@@ -883,7 +839,8 @@ class InferenceModel:
 
         def traj_prob(state_h, state_m, _lambda, theta, dt, prior=None):
             """
-            refer to mdp.py
+            Equation 4
+            refer to pp.mdp.py
                 Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
             :params:
                 state: current / observed state of H at time k
@@ -939,7 +896,18 @@ class InferenceModel:
             return resampled_priors
 
         def joint_prob(theta_list, lambdas, traj_h, traj_m, goal, epsilon=0.05, priors=None):
-            #TODO: study how joint prob is calculated when distribution depends on intent
+            """
+            Equation 2
+            update belief on P(lambda, theta)
+            :param theta_list:
+            :param lambdas:
+            :param traj_h:
+            :param traj_m:
+            :param goal:
+            :param epsilon:
+            :param priors:
+            :return: P(lambda, theta) and best lambda
+            """
             intent_list = ["na_na", "a_na"]
             if priors is None:
                 #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
@@ -948,7 +916,6 @@ class InferenceModel:
             print("traj: {}".format(traj_h))
             suited_lambdas = np.empty(len(intent_list))
 
-            # TODO: modify score list to include all thetas x lambda pairs, instead of lambdas
             "USE THIS to record scores for past traj to speed up run time!"
             def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
                 p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..]
@@ -1036,38 +1003,6 @@ class InferenceModel:
                         p_action_l = self.past_scores2[_lambda][t]
                         # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                         p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-            "this version iterates through prior separately!"
-            # t = self.frame
-            # if t == 0:  # initially there's only one state and not past
-            #     for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
-            #         for l, _lambda in enumerate(lambdas):
-            #             # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-            #             # a_i = self.action_set.index(a)
-            #             if theta == theta_list[0]:
-            #                 p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
-            #                 # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-            #                 p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-            #             else:  # theta 2
-            #                 p_action_l = self.past_scores2[_lambda][t]
-            #                 # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-            #                 p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-            #
-            # else:  # for state action pair that is not at time zero
-            #     for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
-            #         # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-            #         for l, _lambda in enumerate(lambdas):
-            #             if theta == theta_list[0]:
-            #                 p_action_l = self.past_scores1[_lambda][t]
-            #                 for theta_past in range(
-            #                         len(theta_list)):  # cycle through theta probability from past time K-1
-            #                     for l_past in range(len(lambdas)):
-            #                         p_theta_prime[l][theta_t] = p_action_l * p_theta[l_past][theta_past]
-            #             else:
-            #                 p_action_l = self.past_scores2[_lambda][t]
-            #                 for theta_past in range(
-            #                         len(theta_list)):  # cycle through theta probability from past time K-1
-            #                     for l_past in range(len(lambdas)):
-            #                         p_theta_prime[l][theta_t] = p_action_l * p_theta[l_past][theta_past]
 
             "In the case p_theta is 2d array:"
             # print(p_theta_prime, sum(p_theta_prime))
@@ -1082,7 +1017,8 @@ class InferenceModel:
 
         def marginal_state(state_h, state_m, p_theta, best_lambdas, thetas, dt):
             """
-
+            Equation 5
+            Get marginal: P(x(k+1)|D(k)) from P(x(k+1)|lambda, theta) and P(lambda, theta|D(k))
             :param state_h:
             :param state_m:
             :param p_theta:
@@ -1096,7 +1032,8 @@ class InferenceModel:
             lamb1, lamb2 = best_lambdas
             theta1, theta2 = thetas
             # print("WATCH for p_state", traj_probabilities(state, lamb1))
-            #TODO: check thetas
+            "get P(x(k+1)|theta,lambda) for the 2 thetas"
+            # TODO: get all p_traj with different (lambda, theta)???
             p_state_beta1, state_list = traj_prob(state_h, state_m, lamb1, theta1, dt)
             p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
             #print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
@@ -1115,7 +1052,6 @@ class InferenceModel:
                     # TODO: multiply by the p_theta with the corresponding lambda????
                     temp = 0
                     for j in range(len(p_theta)):
-                        # TODO: check if this is right!
                         temp += p_state_beta1k[i] * p_theta[j][0] + p_state_beta2k[i] * p_theta[j][1]
                     p_state_Dk.append(temp)
                     # print(p_state_Dk[i])
@@ -1266,12 +1202,13 @@ class InferenceModel:
 
         def action_prob(state_h, state_m, beta_h, beta_m):
             """
+            Equation 1
             calculate action prob for both agents
             :param state_h:
             :param state_m:
             :param _lambda:
             :param theta:
-            :return:
+            :return: [p_action_H, p_action_M], where p_action = [p_a1, ..., p_a5]
             """
 
             theta_h, lambda_h = beta_h
@@ -1316,12 +1253,13 @@ class InferenceModel:
 
         def action_prob_Q(state_h, state_m, Q_h, Q_m, beta_h, beta_m):
             """
+            Equation 1
             calculate action prob for both agents given Q_h and Q_m
             :param state_h:
             :param state_m:
             :param _lambda:
             :param theta:
-            :return:
+            :return: [p_action_H, p_action_M], where p_action = [p_a1, ..., p_a5]
             """
             action_set = self.action_set
 
@@ -1386,7 +1324,7 @@ class InferenceModel:
             p_action_h
             p_q2
 
-            :return:
+            :return:[Q_pairs, P(QH, QM|D(k))], where Q_pairs = [Q_NA_NA, ..., Q_A_A]
             """
             # if theta_h == self.thetas[0]:
             #     intent = 'na_na'
@@ -1435,6 +1373,7 @@ class InferenceModel:
 
         def prob_q2_beta(index, q_id):
             """
+            Pre-requisite for Equation 8
             Get probability of pair QH, QM given betas
             :param index: 2 entries: (i, j), where i is the index for beta_h, j is the index for beta_m
             i(0:7) = theta1 = na, i(8:15) = theta2 = a
@@ -1473,12 +1412,12 @@ class InferenceModel:
         def prob_beta_given_q(p_betas_prior, q_id):
             #TODO: modify this so that it takes a certain pair of Qs and calculat P(B2) based on the Q2
             """
-            Equation 8: using Bayes rule
+            Equation 8: using Bayes rule (prerequisite for Equation 7)
             Calculates probability of beta pair (Bh, BM_hat) given Q pair (QH, QM): P(Bh, BM_hat | QH, QM),
             for beta_pair_prob formula.
             --> GIVEN A PARTICULAR Q PAIR
             :param self:
-            :return:
+            :return: P(beta_H, beta_m|QH, QM): 8x8 matrix given particular Q pair
             """
 
             "import prob of beta pair given D(k-1) from Equation 7: P(betas|D(k-1))"
@@ -1513,7 +1452,7 @@ class InferenceModel:
             Equation 7
             Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
             :param self:
-            :return:
+            :return: P(beta_H, beta_M | D(k)), 8x8
             """
             #TODO: USE THE P_Q2 WITH THE Q2 CORRESPONDING TO THE P_BETA_Q2???
 
@@ -1626,12 +1565,13 @@ class InferenceModel:
 
         def joint_action_prob(state_h, state_m, beta_h, beta_m):
             """
+            Equation 10 (prerequisite for Equation 9)
             Multiplying the two action prob together for both agents
             :param state_h:
             :param state_m:
             :param lambdas:
             :param thetas:
-            :return:
+            :return: 5x5 P(u_H, u_M| x(k), beta_H, beta_m)
             """
             # p_state_joint = []
             # for i in range(len(p_state_h)):
@@ -1662,7 +1602,9 @@ class InferenceModel:
 
         def joint_action_prob_Q(state_h, state_m, Q_h, Q_m):
             """
+            Equation 10
             Multiplying the two action prob together for both agents
+            USING Q PAIR INSTEAD OF BETAS
             :param state_h:
             :param state_m:
             :param lambdas:
@@ -1698,8 +1640,8 @@ class InferenceModel:
 
         def traj_prob(state_h, state_m, Q_h, Q_m, dt, prior=None):
             """
-            refer to mdp.py
-                Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
+            Equation 9
+                Calculates probability of being in a set of states at time k+1: P(x(k+1)| QH, QM)
             :params:
                 state: current / observed state of H at time k
                 _lambda: given lambda/rational coefficient
@@ -1757,11 +1699,12 @@ class InferenceModel:
 
         def marginal_state_prob(state_h, state_m, p_q2, Q_pairs, dt):
             """
-
+            Equation 11
+            Calculate the marginal state prob
             :param p_traj:
             :param p_q2:
             :param which_q2:
-            :return:
+            :return: P(x(k+1)|D(k)): {0:[x1, x2,...], 1:[x1, x2, ...]}, where 0, 1, .. is the future time k
             """
             #marginal = np.empty(len(p_traj))
             #p_q2 = p_q2[which_q2]
@@ -1788,6 +1731,12 @@ class InferenceModel:
 
         # function to rearrange for 2D p(theta, lambda|D(k))
         def marginal_joint_intent(id, _p_beta_d):
+            """
+            Get the marginal P(Beta_i|D(k)) from P(beta_H, beta_M|D(k))
+            :param id:
+            :param _p_beta_d:
+            :return:
+            """
             marginal = []
             for t in self.thetas:
                 marginal.append([])
@@ -1814,7 +1763,7 @@ class InferenceModel:
 
         def marginal_action(state_h, state_m, _p_beta_D):
             """
-            Get marginal action prob P(u|x;D) from P(u|x;beta)
+            Get marginal action prob P(u|x;D) from P(u|x;beta), for analysis purposes
             :return:
                 p(uH|D), p(uM|D)
             """
@@ -1901,6 +1850,7 @@ class InferenceModel:
         p_beta_d_h, best_lambda_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
         p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
 
+        "getting most likely action for analysis purpose"
         #p_actions = action_prob(curr_state_h, curr_state_m, best_beta_h, best_beta_m)
         p_beta_d_pair = [p_beta_d_h, p_beta_d_m]
         p_actions_d = marginal_action(curr_state_h, curr_state_m, p_beta_d)
@@ -1924,14 +1874,22 @@ class InferenceModel:
         # p_betas: [8 x 8] = [BH x BM]
         # print("state list and prob for H: ", state_list, marginal_state)
         # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
+        "obtaining marginal state distribution for both agents"
         marginal_state_h = {}
-        for i, marginal_s in enumerate(marginal_state):
+        for i, marginal_s in enumerate(marginal_state):  # time step
             #print(marginal_state[i])
             marginal_state_h[i] = [sum(marg) for marg in marginal_state[i]]
+        marginal_state_m = {}
+        for t, marginal_s in enumerate(marginal_state):
+            # print(marginal_state[i])
+            print(zip(*marginal_state[t]))
+            marginal_state_m[t] = [sum(marg) for marg in zip(*marginal_state[t])]
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[0],
                 'predicted_intent_other': [p_beta_d_h, beta_h],
+                'predicted_states_self': (marginal_state_m, get_state_list(curr_state_m, self.T, self.dt)),
+                'predicted_actions_self': predicted_actions[1],
                 'predicted_intent_self': [p_beta_d_m, beta_m]}  # TODO: do we need to process p_beta_d?
         #TODO: modify so that this works for both agents??
 

@@ -1,3 +1,7 @@
+"""
+for obtaining action for each agent
+
+"""
 import numpy as np
 # TODO pytorch version
 import torch as t
@@ -20,9 +24,9 @@ class DecisionModel:
             self.plan = self.constant_speed
         elif model == 'complete_information':
             self.plan = self.complete_information
-        elif model == 'baseline':
+        elif model == 'baseline':  # use with trained models
             self.plan = self.baseline
-        elif model == 'baseline2':
+        elif model == 'baseline2':  # doesn't do anything different yet!
             self.plan = self.baseline2
         elif model == 'reactive_point':
             self.plan = self.reactive_point

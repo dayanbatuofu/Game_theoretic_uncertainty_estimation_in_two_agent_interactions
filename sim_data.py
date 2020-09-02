@@ -1,3 +1,6 @@
+"""
+parse variables to be updated in autonomous_vehicle
+"""
 import pickle
 
 

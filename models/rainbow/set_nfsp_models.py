@@ -14,6 +14,7 @@ def get_models():
     # a_na_path = tag + 'a_na_1593622607'
     # a_a_path = tag + 'a_a_1593622476'
 
+    "models with less negative Q values"
     na_na_path = tag + '0.6_loss_new/na_na'
     a_na_path = tag + '0.6_loss_new/a_na' #using alternative loss function for smaller negative values
     a_a_path = tag + '0.6_loss_new/a_a'
