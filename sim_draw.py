@@ -96,6 +96,7 @@ class VisUtils:
 
     def draw_frame(self):
         # Draw the current frame
+        self.frame = self.sim.frame
         frame = self.sim.frame
 
         # render 10 times for each step
@@ -372,10 +373,19 @@ class VisUtils:
         purple = (0, 100, 255)
 
         "get state distribution"
-        p_state1 = (0.25, [0, 0, 0, 0])  # [p_state, (sx, sy, vx, vy)]
+        #p_state1 = (0.25, [0, 0, 0, 0])  # [p_state, (sx, sy, vx, vy)]
         #print(self.p_state_H[-1])
-        p_state_D, state_list  = self.p_state_H[-1]
+        if self.frame == 0 or self.frame == 1:
+            p_state_D, state_list  = self.p_state_H[0]
+        else:
+            p_state_D, state_list = self.p_state_H[-3]
         #print("PLOTTING: ", state_list, "and ", p_state_D)
+        "checking if predicted states are actually reached"
+        if not self.frame == 0:
+            past_predicted_state = self.p_state_H[-2][1][0]
+            #print("-draw- Last state:" , self.sim.agents[0].state[-1])
+            #print("-draw- past predicted states:", past_predicted_state)
+            assert self.sim.agents[0].state[-1] in past_predicted_state
 
         "unpacking the info"
         for k in range(len(state_list)): #time steps
@@ -414,4 +424,5 @@ class VisUtils:
         y = int(
             (y - self.screen_height * self.coordinate_scale * 0.5) * self.zoom
             + self.screen_height * self.coordinate_scale * 0.5)
+
         return np.array([x, y])

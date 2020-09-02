@@ -76,7 +76,7 @@ class Simulation:
                     break
                 # if crossed the intersection, done or max time reached
                 #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
-                if (x_H >= 100 and x_M <= -50):
+                if (x_H >= 30 and x_M <= -30):
                     # road width = 2.0 m
                     print("terminating on vehicle passed intersection:", x_H, x_M )
                     break
