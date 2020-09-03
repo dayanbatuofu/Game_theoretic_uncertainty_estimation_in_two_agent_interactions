@@ -13,10 +13,8 @@ from models.rainbow.set_nfsp_models import get_models
 from autonomous_vehicle import AutonomousVehicle
 import discrete_sets as sets
 
-#class Lambdas(FloatEnums):
-
 class InferenceModel:
-    def __init__(self, model, sim): #model = inference type, sim = simulation class
+    def __init__(self, model, sim):  # model = inference type, sim = simulation class
         if model == 'none':
             self.infer = self.no_inference
         elif model == 'baseline':
@@ -35,7 +33,7 @@ class InferenceModel:
         self.n_agents = sim.n_agents
         self.frame = sim.frame
         self.T = 1  # one step look ahead/ Time Horizon
-        self.dt = sim.dt #default is 1s: assigned in main.py
+        self.dt = sim.dt  # default is 1s: assigned in main.py
         self.car_par = sim.env.car_par
         # self.min_speed = sim.agents[0].min_speed
         # self.max_speed = sim.agents[0].max_speed
@@ -50,9 +48,9 @@ class InferenceModel:
         self.thetas = [1, 1000]  # range?
 
         "---Params for belief calculation---"
-        self.past_scores = {} #score for each lambda
-        self.past_scores1 = {} #for theta1
-        self.past_scores2 = {} #for theta2
+        self.past_scores = {}  # score for each lambda
+        self.past_scores1 = {}  # for theta1
+        self.past_scores2 = {}  # for theta2
         #self.theta_priors = None #for calculating theta lambda joint probability
         self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
@@ -99,7 +97,8 @@ class InferenceModel:
 
     #@staticmethod
     def baseline_inference(self, agents, sim):
-        # Test implementation Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
+        # Test implementation Fridovich-Keil et al.
+        # "Confidence-aware motion prediction for real-time collision avoidance"
         # THIS IS ONLY FOR TEST PURPOSE. NOT IN USE
         """
         for each agent, estimate its par (agent.par) based on its last action (agent.action[-1]),
@@ -662,9 +661,20 @@ class InferenceModel:
     def trained_baseline_inference(self, agent, sim):
         """
         Use Q function from nfsp models
+        Important equations implemented here:
+        - Equation 1 (action_probabilities):
+        P(u|x,theta,lambda) = exp(Q*lambda)/sum(exp(Q*lambda)), Q size = action space at state x
+
+        - Equation 2 (belief_update):
+         #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
+        #P(lambda, theta|D(k)) = P(u| x;lambda, theta)P(lambda, theta | D(k-1)) / sum[ P(u|x;lambda', theta') P(lambda', theta' | D(k-1))]
+        #equivalent: P = action_prob * P(k-1)/{sum_(lambda,theta)[action_prob * P(k-1)]}
+
+        - Equation 3 (belief_resample):
+        #resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
         :param agent:
         :param sim:
-        :return:
+        :return: inferred other agent's parameters (P(k), P(x(k+1))
         """
 
         "importing agents information from Autonomous Vehicle (sim.agents)"
@@ -1246,7 +1256,7 @@ class InferenceModel:
                 "normalizing"
                 # normalize(exp_Q, norm = 'l1', copy = False)
                 exp_Q /= sum(exp_Q)
-                print("exp_Q normalized:", exp_Q)
+                #print("exp_Q normalized:", exp_Q)
                 exp_Q_pair.append(exp_Q)
 
             return exp_Q_pair  # [exp_Q_h, exp_Q_m]
@@ -1290,7 +1300,7 @@ class InferenceModel:
                 "normalizing"
                 # normalize(exp_Q, norm = 'l1', copy = False)
                 exp_Q /= sum(exp_Q)
-                print("exp_Q normalized:", exp_Q)
+                #print("exp_Q normalized:", exp_Q)
                 exp_Q_pair.append(exp_Q)
 
             return exp_Q_pair  # [exp_Q_h, exp_Q_m]
@@ -1386,7 +1396,7 @@ class InferenceModel:
             # print(q_pairs)
             # print(q_pair)
             #q_id = q_pairs.index(q_pair)  # 0, 1, 2, 3
-            print("Q id:", q_id)
+            #print("Q id:", q_id)
             #TODO: for 1 and 3 make the probability 0.5
             if q_id == 0:
                 th = 0; tm = 0
@@ -1724,8 +1734,8 @@ class InferenceModel:
                         #print(p_traj[i][j])
                         for c in range(len(p_traj[t][r])): # rows
                             marginal[t][r][c] += p_traj[t][r][c] * p_q2[i]
-            print(marginal)
-            print(np.sum(marginal[0]))
+            #print(marginal)
+            #print(np.sum(marginal[0]))
             assert round(np.sum(marginal[0])) == 1
             return marginal
 
@@ -1876,14 +1886,15 @@ class InferenceModel:
         # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
         "obtaining marginal state distribution for both agents"
         marginal_state_h = {}
-        for i, marginal_s in enumerate(marginal_state):  # time step
-            #print(marginal_state[i])
-            marginal_state_h[i] = [sum(marg) for marg in marginal_state[i]]
         marginal_state_m = {}
-        for t, marginal_s in enumerate(marginal_state):
-            # print(marginal_state[i])
-            print(zip(*marginal_state[t]))
+        for t, marginal_s in enumerate(marginal_state):  # time step
+            print(marginal_state[t])
+            marginal_state_h[t] = [sum(marg) for marg in marginal_state[t]]
             marginal_state_m[t] = [sum(marg) for marg in zip(*marginal_state[t])]
+            print(marginal_state[t])
+            assert round(sum(marginal_state_m[t])) == 1 and round(sum(marginal_state_h[t])) == 1
+
+        print("-inf- marginal state for m: ", marginal_state_m)
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[0],
@@ -2131,82 +2142,8 @@ class InferenceModel:
         #     return state_list
         #     # -------end of code--------
         #
-        # def get_state_list(self):
-        #     """
-        #
-        #     :return:
-        #     """
-        #     h_states = self.get_state_list_h(self.T)
-        #     h_states = h_states[1, :] #extract states from t = k+1, which is in the 2nd row
-        #     m_states = self.get_state_list_m(self.T)
-        #     m_states = m_states[1, :] #extract states from t = k+1, which is in the 2nd row
-        #     states = np.empty([len(h_states), len(m_states)])
-        #     for i in range(len(h_states)):
-        #         for j in range(len(m_states)):
-        #             states[i, j] = (h_states[i], m_states[j]) #TODO: Check states data type in sim
-        #     return states #h_state by m_state matrix
-        #
-        # def state_prob(self, curr_state,Qh,Qm):
-        #     """
-        #     Equation 11 (includes 9 and 10)
-        #     Calculates state probabilities given past observation D(k)
-        #     :param self:
-        #     :return:
-        #     """
-        #     state_list = get_state_list(self.T) #CHECK Universal Time Horizon!!!!
-        #     def p_action_pair(state, _lambda):
-        #         """
-        #         This implementation only considers current given state! Implement outside for iterating through states
-        #         Equation 10: p(uh,um|x(k);Qh,Qm)
-        #         Computes joint probabilities of H and M's action prob
-        #         :return:
-        #         """
-        #         #TODO: consider if the state contains 2 agents information!
-        #         p_action_h = self.h_action_prob(state, _lambda,q_values_h=q_value_h) #1D arrays
-        #         p_action_m = self.m_action_prob(state, _lambda,q_values_m=q_value_m)
-        #         p_a2 = np.zeros([p_action_h,p_action_m])
-        #         for ah in p_action_h:
-        #             for am in p_action_m:
-        #                 p_a2[ah,am] = p_action_h[ah]*p_action_m[am]
-        #         return p_a2
-        #         #pass
-        #     def state_prob_q(prior = None):
-        #         """
-        #         Equation 9
-        #         :return:
-        #         """
-        #         "import p(uh,um|x(k);Qh,Qm)"
-        #         p_a2 = p_action_pair()
-        #         "import prior p(x(k)|Qh,Qm)"
-        #         #TODO: do we need to check if prior is available?
-        #         #p_state_prev = state_prob_q() #previous time step
-        #         "In the case where transition is deterministic, and prior P(x(k)) is 1 as it is already observed:"
-        #         "And time horizon T = 1"
-        #         return p_a2 #P(x(k+1)|Q2) is solely determined by p(uh,um|x(k),Q2)
-        #         #pass
-        #     #p_actions_list =
-        #     "Import Q pair prob from Equation 6"
-        #     p_q2 = q_pair_prob()
-        #     "Call the function: state prob q"
-        #     p_state_q = state_prob_q()
-        #     "Equation 11: calculate state probabilities given past observation D(k)"
-        #     #p_s = np.multiply(p_q2,p_state_q) <- incorrect, we are calculating the marginal
-        #
-        #     #TODO: check the size of state_list and p_q2
-        #     p_s = np.zeros(state_list) #p_s should have the same size as s_list
-        #     for p in range(len(state_list)): #assuming state_list is 2D
-        #         for q in range(len(state_list[0])):
-        #             p_state_q_i = p_state_q[p, q] #extract an element for multiplication
-        #             for i in range(len(p_q2)): #assuming p_q2 is a 2D array
-        #                 for j in range(len(p_q2[0])):
-        #                     if (i, j) == (0,0): #for the first element
-        #                         p_s[p, q] = p_state_q_i * p_q2[0,0]
-        #                     else:
-        #                         p_s[p, q] += p_state_q_i * p_q2[i, j]
-        #
-        #
-        #     return p_s #size of uH x uM
-        #
+
+
 
 
     @staticmethod

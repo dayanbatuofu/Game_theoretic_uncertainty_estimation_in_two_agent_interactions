@@ -30,6 +30,7 @@ class VisUtils:
         self.drawing_prob = sim.drawing_prob
         if self.drawing_prob:
             self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
+            self.p_state_M = sim.agents[1].predicted_states_self
             self.past_state_h = sim.agents[1].state[-1]
             self.past_state_m = sim.agents[0].state[-1]
             self.intent_h = []
@@ -143,7 +144,7 @@ class VisUtils:
             # font = pg.font.SysFont("Arial", 30)
             font = pg.font.SysFont("Arial", 15)
             screen_w, screen_h = self.screen.get_size()
-            label_x = screen_w - 550
+            label_x = screen_w - 800
             label_y = 260
             label_y_offset = 30
             #TODO: length of state/action is mismatched from frame: frame behind by 1
@@ -181,12 +182,12 @@ class VisUtils:
                     self.screen.blit(self.car_image[i],
                                      (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
                     if self.sim.decision_type == "baseline":
-                        time.sleep(0.05)
+                        time.sleep(0.03)
                 # Annotations
                 # font = pg.font.SysFont("Arial", 30)
                 font = pg.font.SysFont("Arial", 15)
                 screen_w, screen_h = self.screen.get_size()
-                label_x = screen_w - 555
+                label_x = screen_w - 800
                 label_y = 260
                 label_y_offset = 30
                 pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
@@ -261,6 +262,7 @@ class VisUtils:
         #fig1, (ax3) = pyplot.subplots(1)
         #fig1.suptitle('Actions of M at each time')
         ax3.plot(self.sim.agents[1].action, label='actual')
+        ax3.plot(self.sim.agents[1].predicted_actions_self, label='predicted', linestyle='--')
         ax3.set_ylim([-10, 10])
         ax3.set_yticks([-8, -4, 0, 4, 8])
         ax3.legend()
@@ -279,13 +281,14 @@ class VisUtils:
         self.dist.append(dist)
 
     def calc_intent(self):
-        joint_infer_m = self.sim.agents[0].predicted_intent_other
+        joint_infer_m = self.sim.agents[1].predicted_intent_self
         # TODO: assign list of theta and lambda somewhere in sim
         theta_list = [1, 1000]
         lambda_list = [0.05, 0.1, 1, 10]
         if not len(joint_infer_m) == 0:
-            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other
-            p_joint_m, lambda_m = joint_infer_m
+            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
+            p_joint_m, lambda_m = joint_infer_m[-1]
+            # TODO: process the lambda
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
             sum_m = p_joint_m.sum(axis=0)
@@ -325,31 +328,58 @@ class VisUtils:
             self.intent_h.append(H_intent)
 
     def draw_intent(self):
-        joint_infer_m = self.sim.agents[0].predicted_intent_other
+        joint_infer_m = self.sim.agents[1].predicted_intent_self
         # TODO: assign list of theta and lambda somewhere in sim
+        print(joint_infer_m)
         if not len(joint_infer_m) == 0:
-            fig2, (ax1, ax2) = pyplot.subplots(2)
-            fig2.suptitle('Predicted intent of other agent')
+            fig2, (ax1, ax2, ax3, ax4) = pyplot.subplots(4, figsize=(5, 8))
+            fig2.suptitle('Predicted intent and rationality')
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
             ax1.set_yticks([1, 1000])
             ax1.set_yticklabels(['na', 'a'])
+            ax1.set(xlabel='time', ylabel='intent')
 
             ax2.plot(self.intent_m, label='predicted M intent')
             ax2.legend()
             ax2.set_yticks([1, 1000])
             ax2.set_yticklabels(['na', 'a'])
+            ax2.set(xlabel='time', ylabel='intent')
+
+            w = 0.15
+            # TODO: generalize for more than two thetas
+            x = list(range(0, len(self.intent_h)))
+            x1 = [i - w for i in x]
+            x2 = [i + w for i in x]
+            ax3.bar(x1, self.intent_distri_h[0], width=0.15, label='theta 1')
+            ax3.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
+            ax3.legend(loc="lower right")
+            ax3.set_yticks([0.25, 0.5, 0.75])
+            # for i, v in enumerate(self.intent_distri_h[0]):
+            #     ax3.text(v + 0.05, i + 0.2, str(v), color='blue', fontweight='bold')
+            ax3.set(xlabel='time', ylabel='H distri')
+
+            w = 0.15
+            x = list(range(0, len(self.intent_m)))
+            x1 = [i - w for i in x]
+            x2 = [i + w for i in x]
+            ax4.bar(x1, self.intent_distri_m[0], width=0.15, label='theta 1')
+            ax4.bar(x2, self.intent_distri_m[1], width=0.15, label='theta 2')
+            ax4.legend(loc='lower right')
+            ax4.set_yticks([0.25, 0.5, 0.75])
+            ax4.set(xlabel='time', ylabel='M distri')
 
         else:
-            print(self.intent_h)
-            print(self.sim.agents[1].predicted_intent_other)
+            print("predicted intent H", self.intent_h)
+            print("predicted intent for H from AV:", self.sim.agents[1].predicted_intent_other)
             fig2, (ax1, ax2) = pyplot.subplots(2)
-            fig2.suptitle('Predicted intent of other agent')
+            fig2.suptitle('Predicted intent of H agent')
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
             #TODO: get actual intent from decision model/ autonomous vehicle
             ax1.set_yticks([1, 1000])
             ax1.set_yticklabels(['na', 'a'])
+            ax1.set(xlabel='time', ylabel='intent')
 
             w = 0.15
             #TODO: generalize for more than two thetas
@@ -360,8 +390,10 @@ class VisUtils:
             ax2.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
             ax2.legend()
             ax2.set_yticks([0.25, 0.5, 0.75])
+            ax2.set(xlabel='time', ylabel='probability')
 
         #TODO: plot actual distributions
+        #pyplot.tight_layout()
         pyplot.show()
 
     def draw_prob(self):
@@ -402,7 +434,7 @@ class VisUtils:
 
             for i in range(len(state_list[0])):
                 x, y = states_k[i][0], states_k[i][1]
-                print("X, Y: ", x, y)
+                #print("X, Y: ", x, y)
                 nx, ny = self.c2p((x, y))
                 p_s = p_state_Dk[i]
                 #TODO: change the range of color! (we will have different distribution)
