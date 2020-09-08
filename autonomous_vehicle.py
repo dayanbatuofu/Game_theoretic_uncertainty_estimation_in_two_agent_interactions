@@ -22,10 +22,20 @@ class AutonomousVehicle:
         self.decision_model = decision_model
         self.id = i
 
+        # TODO: get initial action based on intent!
         # Initialize variables
         self.state = self.car_par["initial_state"]  # state is cumulative
         self.intent = self.car_par["par"]
-        self.action = self.car_par["initial_action"]  # action is cumulative
+        self.follow_intent = False
+        if self.follow_intent:
+            # if self.intent == self.sim.theta_list[0]:  # NA
+            plan = self.decision_model.plan()
+            action = plan["action"]
+            self.action = [action]
+            # else:
+            #    self.action = [0]
+        else:
+            self.action = self.car_par["initial_action"]  # action is cumulative
         self.trajectory = []
         self.planned_actions_set = []
         self.planned_trajectory_set = []
@@ -36,6 +46,7 @@ class AutonomousVehicle:
         self.predicted_policy_other = []
         self.predicted_policy_self = []
         "for recording predicted state from inference"
+        # TODO: check this predicted action
         self.predicted_actions_other = [0]  # assume initial action of other agent = 0
         self.predicted_actions_self = [0]
         self.predicted_states_self = []
@@ -58,12 +69,14 @@ class AutonomousVehicle:
         # planning
         plan = self.decision_model.plan()
 
-
         # update state
         action = plan["action"]
-        if self.sim.decision_type == "baseline": #TODO: need to be able to check indivisual type
+        if self.sim.decision_type[self.id] == "baseline" \
+                or self.sim.decision_type[self.id] == "baseline2" \
+                or self.sim.decision_type[self.id] == "reactive_point"\
+                or self.sim.decision_type[self.id] == "reactive_uncertainty": #TODO: need to be able to check indivisual type
             action = action[self.id]
-            plan = {"action": plan["action"][self.id]}
+            plan = {"action": action}
         DataUtil.update(self, plan)
         self.dynamics(action)
 

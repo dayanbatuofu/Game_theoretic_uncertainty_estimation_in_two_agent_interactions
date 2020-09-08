@@ -72,7 +72,8 @@ class Environment:
             max_speed = np.sqrt((sx_H - 1 - C.CONSTANTS.CAR_LENGTH * 0.5) * 2.
                                 * abs(intersection.MAX_DECELERATION))
             vx_H = np.random.uniform(max_speed * 0.1, max_speed * 0.5)
-            print("initial vel:", vy_M, -vx_H, "initial pos:", -sy_M, sx_H)
+            #print("initial vel:", vy_M, -vx_H, "initial pos:", -sy_M, sx_H)
+
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y

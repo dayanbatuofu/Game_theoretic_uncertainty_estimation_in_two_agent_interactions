@@ -20,6 +20,8 @@ from models.rainbow.common.utils import epsilon_scheduler, beta_scheduler, updat
 class DecisionModel:
     def __init__(self, model, sim):
         self.sim = sim
+        # TODO: check the info imported from inference is the right frame!
+        # assert self.sim.frame == len(self.sim.agents[1].predicted_intent_other) - 1
         if model == 'constant_speed':
             self.plan = self.constant_speed
         elif model == 'complete_information':
@@ -28,10 +30,17 @@ class DecisionModel:
             self.plan = self.baseline
         elif model == 'baseline2':  # doesn't do anything different yet!
             self.plan = self.baseline2
-        elif model == 'reactive_point':
+        elif model == 'reactive_point':  # non-game, using NFSP, import estimated params to choose action
             self.plan = self.reactive_point
-        elif model == 'reactive_uncertainty':
+            # TODO: import estimated values; use estimation of other's param to get an action for self
+            # self.H_intent = self.sim.agents[1].predicted_intent_other
+            # self.H_action = self.sim.agents[1].predicted_actions_other
+        elif model == 'reactive_uncertainty':  # game, using NFSP, import inferred params for both agents
             self.plan = self.reactive_uncertainty
+            # TODO: import estimated values; use estimation of other and self params to get an action for both
+            # self.H_intent = self.sim.agents[1].predicted_intent_other
+            # self.H_action = self.sim.agents[1].predicted_actions_other
+            # self.predicted_action_m = self.sim.agents[1].predicted_actions_self
         else:
             # placeholder for future development
             pass
@@ -185,7 +194,12 @@ class DecisionModel:
         #actions = {"1": action1, "2": action2}
         #actions = [action1, action2]
         return {'action': actions}
+
     def baseline2(self):
+        """
+        This is for H to act according to the models
+        :return:
+        """
         # randomly pick one of the nash equilibrial policy
 
         # TODO: import args, env here
@@ -197,13 +211,45 @@ class DecisionModel:
         p1_state = self.sim.agents[0].state[-1]
         p2_state = self.sim.agents[1].state[-1]
 
-        p1_state = (-p1_state[1], -p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
-        p2_state = (p2_state[0], p2_state[2], -p1_state[1], -p1_state[3])
-
+        p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+        p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+        # state_h = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
+        # state_m = [state_m[0], abs(state_m[2]), -state_h[1], abs(state_h[3])]
         args = get_args()
-        "action for H"
-        action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
 
+        def action_prob(q_vals, _lambda):
+            """
+            Equation 1
+            Noisy-rational model
+            calculates probability distribution of action given hardmax Q values
+            Uses:
+            1. Softmax algorithm
+            2. Q-value given state and theta(intent)
+            3. lambda: "rationality coefficient"
+            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            :return: Normalized probability distributions of available actions at a given state and lambda
+            """
+            # q_vals = q_values(state_h, state_m, intent=intent)
+            exp_Q = []
+            "Q*lambda"
+            q_vals = q_vals.detach().numpy()  # detaching tensor
+            Q = [q * _lambda for q in q_vals]
+            "Q*lambda/(sum(Q*lambda))"
+
+            for q in Q:
+                exp_Q.append(np.exp(q))
+
+            "normalizing"
+            exp_Q /= sum(exp_Q)
+            # print("exp_Q normalized:", exp_Q)
+            return exp_Q
+
+        "action for H"
+        q_h = Q_a_na  # TODO: GROUND TRUTH
+        q_vals_h = q_h.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
+        lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
+        p_action_h = action_prob(q_vals_h, lambda_h)
+        action1 = np.argmax(p_action_h)
         "action for M"
         action2 = policy_na_a.act(t.FloatTensor(p2_state).to(args.device))
 
@@ -221,12 +267,154 @@ class DecisionModel:
         return {'action': actions}
 
     def reactive_point(self):
+        """
+        Get appropriate action based on predicted intent of the other agent (H)
+        :return:
+        """
         # implement reactive planning based on point estimates of future trajectories
-        pass
+        # TODO: import HJI BVP model
+        "----------This is placeholder until we have BVP result-------------"
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
+        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
+
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[-1]
+        p2_state = self.sim.agents[1].state[-1]
+
+        p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+        p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+
+        args = get_args()
+        def action_prob(q_vals, _lambda):
+            """
+            Equation 1
+            Noisy-rational model
+            calculates probability distribution of action given hardmax Q values
+            Uses:
+            1. Softmax algorithm
+            2. Q-value given state and theta(intent)
+            3. lambda: "rationality coefficient"
+            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            :return: Normalized probability distributions of available actions at a given state and lambda
+            """
+            #q_vals = q_values(state_h, state_m, intent=intent)
+            exp_Q = []
+            "Q*lambda"
+            q_vals = q_vals.detach().numpy() #detaching tensor
+            Q = [q * _lambda for q in q_vals]
+            "Q*lambda/(sum(Q*lambda))"
+
+            for q in Q:
+                exp_Q.append(np.exp(q))
+
+            "normalizing"
+            exp_Q /= sum(exp_Q)
+            #print("exp_Q normalized:", exp_Q)
+            return exp_Q
+
+        "action for H"
+        q_h = Q_a_na  # TODO: GROUND TRUTH
+        q_vals_h = q_h.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
+        lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
+        p_action_h = action_prob(q_vals_h, lambda_h)
+        action1 = np.argmax(p_action_h)
+        #action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
+
+        "action for M: we know our intent, get best response to H's intent"
+        # TODO: GROUND TRUTH for M, using NA for now
+        theta_list = self.sim.theta_list
+        lambda_m = self.sim.lambda_list[-1]  # the most rational coefficient
+        h_intent = self.sim.agents[1].predicted_intent_other[-1]
+
+        if h_intent == theta_list[0]:  # NA
+            q_m = Q_na_na_2  # TODO: check which Q na
+        else:  # A
+            q_m = Q_na_a
+        q_vals_m = q_m.forward(t.FloatTensor(p2_state).to(t.device("cpu")))
+        p_action_m = action_prob(q_vals_m, lambda_m)
+        action2 = np.argmax(p_action_m)
+
+        action_set = [-8, -4, 0, 4, 8]
+        # if self.sim.agents[0]:
+        #     action = action_set[action1]
+        # else:
+        #     action = action_set[action2]
+        action1 = action_set[action1]
+        action2 = action_set[action2]
+        actions = [action1, action2]
+        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # actions = {"1": action1, "2": action2}
+        # actions = [action1, action2]
+        return {'action': actions}
 
     def reactive_uncertainty(self):
         # implement reactive planning based on inference of future trajectories
-        pass
+        # TODO: import HJI BVP model
+        "----------This is placeholder until we have BVP result-------------"
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
+        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
+
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[-1]
+        p2_state = self.sim.agents[1].state[-1]
+
+        p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+        p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+
+        args = get_args()
+
+        def action_prob(q_vals, _lambda):
+            """
+            Equation 1
+            Noisy-rational model
+            calculates probability distribution of action given hardmax Q values
+            Uses:
+            1. Softmax algorithm
+            2. Q-value given state and theta(intent)
+            3. lambda: "rationality coefficient"
+            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            :return: Normalized probability distributions of available actions at a given state and lambda
+            """
+            # q_vals = q_values(state_h, state_m, intent=intent)
+            exp_Q = []
+            "Q*lambda"
+            q_vals = q_vals.detach().numpy()  # detaching tensor
+            Q = [q * _lambda for q in q_vals]
+            "Q*lambda/(sum(Q*lambda))"
+
+            for q in Q:
+                exp_Q.append(np.exp(q))
+
+            "normalizing"
+            exp_Q /= sum(exp_Q)
+            print("exp_Q normalized:", exp_Q)
+            return exp_Q
+
+        "action for H"
+        q_h = Q_a_na  # TODO: GROUND TRUTH
+        q_vals_h = q_h.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
+        lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
+        p_action_h = action_prob(q_vals_h, lambda_h)
+        action1 = np.argmax(p_action_h)
+        # action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
+
+        "action for M: choose action based on the equilibrium intent set"
+        action2 = self.sim.agents[1].predicted_actions_self[-1]
+
+        action_set = [-8, -4, 0, 4, 8]
+        # if self.sim.agents[0]:
+        #     action = action_set[action1]
+        # else:
+        #     action = action_set[action2]
+        action1 = action_set[action1]
+        #action2 = action_set[action2]
+        actions = [action1, action2]
+        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # actions = {"1": action1, "2": action2}
+        # actions = [action1, action2]
+        return {'action': actions}
 
     # create long term loss as a pytorch object
     def create_long_term_loss(self, states, action1, action2, intent):

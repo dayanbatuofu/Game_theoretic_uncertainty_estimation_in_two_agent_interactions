@@ -678,10 +678,15 @@ class InferenceModel:
         """
 
         "importing agents information from Autonomous Vehicle (sim.agents)"
-        curr_state_h = sim.agents[0].state[-1]
-        last_action_h = sim.agents[0].action[-1]
-        curr_state_m = sim.agents[1].state[-1]
-        last_action_m = sim.agents[1].action[-1]
+        curr_state_h = sim.agents[0].state[self.frame]
+        last_action_h = sim.agents[0].action[self.frame]
+        curr_state_m = sim.agents[1].state[self.frame]
+        last_action_m = sim.agents[1].action[self.frame]
+
+        # curr_state_h = sim.agents[0].state[-1]
+        # last_action_h = sim.agents[0].action[-1]
+        # curr_state_m = sim.agents[1].state[-1]
+        # last_action_m = sim.agents[1].action[-1]
 
         self.traj_h.append([curr_state_h, last_action_h])
         self.traj_m.append([curr_state_m, last_action_m])
@@ -792,13 +797,13 @@ class InferenceModel:
                     sx, sy, vx, vy = x[0], x[1], x[2], x[3]
                     "Deceleration only leads to small/min velocity!"
                     if sx == 0 and vx == 0:  # y axis movement
-                        print("Y axis movement detected")
+                        # print("Y axis movement detected")
                         vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
                         vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
                         if vy_new < self.min_speed:
                             vy_new = self.min_speed
                         else:
-                            vy_new = min(max(vy_new, self.max_speed), self.min_speed)
+                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
                         sx_new = sx  # + (vx + vx_new) * dt * 0.5
                         sy_new = sy + (vy + vy_new) * dt * 0.5
                     elif sy == 0 and vy == 0:  # x axis movement
@@ -813,7 +818,7 @@ class InferenceModel:
                         sx_new = sx + (vx + vx_new) * dt * 0.5
                         sy_new = sy  # + (vy + vy_new) * dt * 0.5
                     else:  # TODO: assume Y axis movement for single agent case!!
-                        print("Y axis movement detected (else)")
+                        # print("Y axis movement detected (else)")
                         vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
                         vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
                         if vy_new < 0:
@@ -826,7 +831,7 @@ class InferenceModel:
 
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
-                    print("WARNING: state list is not composed of tuples!")
+                    # print("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list]  # put it in a list to iterate
 
                 for s in _state_list:
@@ -845,6 +850,7 @@ class InferenceModel:
                 # state_list.append(s_prime)
                 state = s_prime  # get s prime for the new states
                 i += 1  # move onto next row
+
             return state_list
 
         def traj_prob(state_h, state_m, _lambda, theta, dt, prior=None):
@@ -891,6 +897,7 @@ class InferenceModel:
                         p_s_t.extend(p_a.tolist())
 
                     p_states.append(p_s_t)
+            assert round(np.sum(p_states[0])) == 1
             return p_states, state_list
 
         def resample(priors, epsilon):
@@ -905,7 +912,7 @@ class InferenceModel:
             resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
             return resampled_priors
 
-        def joint_prob(theta_list, lambdas, traj_h, traj_m, goal, epsilon=0.05, priors=None):
+        def joint_prob(theta_list, lambdas, traj_h, traj_m, epsilon=0.05, priors=None):
             """
             Equation 2
             update belief on P(lambda, theta)
@@ -1025,7 +1032,7 @@ class InferenceModel:
             #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
             return p_theta_prime, suited_lambdas
 
-        def marginal_state(state_h, state_m, p_theta, best_lambdas, thetas, dt):
+        def marginal_state(state_h, state_m, p_theta, dt):
             """
             Equation 5
             Get marginal: P(x(k+1)|D(k)) from P(x(k+1)|lambda, theta) and P(lambda, theta|D(k))
@@ -1039,38 +1046,38 @@ class InferenceModel:
             """
 
             "get required information"
-            lamb1, lamb2 = best_lambdas
-            theta1, theta2 = thetas
+            #lamb1, lamb2 = best_lambdas
+            lambdas = self.lambdas
+            theta1, theta2 = self.thetas
             # print("WATCH for p_state", traj_probabilities(state, lamb1))
             "get P(x(k+1)|theta,lambda) for the 2 thetas"
             # TODO: get all p_traj with different (lambda, theta)???
-            p_state_beta1, state_list = traj_prob(state_h, state_m, lamb1, theta1, dt)
-            p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
-            #print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
+            p_state_beta1= traj_prob(state_h, state_m, lambdas[0], theta1, dt)[0]
+            # p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
+            # print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
             # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
             # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
 
             "calculate marginal"
             # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
-            p_state_D = []
-            for k in range(len(state_list)):  # k refers to the number of future time steps: currently max k=1
-                p_state_beta1k = p_state_beta1[k]  # TODO: generalize for multiple thetas!
-                p_state_beta2k = p_state_beta2[k]
-                p_state_D.append([])
-                p_state_Dk = p_state_D[k]
-                for i in range(len(p_state_beta1k)):
-                    # TODO: multiply by the p_theta with the corresponding lambda????
-                    temp = 0
-                    for j in range(len(p_theta)):
-                        temp += p_state_beta1k[i] * p_theta[j][0] + p_state_beta2k[i] * p_theta[j][1]
-                    p_state_Dk.append(temp)
-                    # print(p_state_Dk[i])
-            print('p_state_D at time ', self.frame, ' :', p_state_D)
-            print("state of H:", state_h, state_list)  # sx, sy, vx, vy
+            p_state_D = {}
+            print(p_state_beta1)
+            for t in range(len(p_state_beta1)):
+                p_state_D[t] = np.zeros(len(p_state_beta1[t]))
+            for t, theta in enumerate(self.thetas):
+                for l, lamb in enumerate(lambdas):
+                    _p_state_beta = traj_prob(state_h, state_m, lamb, theta, dt)[0]  # calculate p_state using beta
+                    for k in range(len(_p_state_beta)):  # k refers to the number of future time steps: currently max k=1
+                        for i in range(len(_p_state_beta[k])):
+                            p_state_D[k][i] += _p_state_beta[k][i] * p_theta[l][t]
 
-            assert 0.99 <= np.sum(p_state_D[0]) <= 1.001  # check
-            # return {'predicted_policy_other': [p_state_D, state_list]}
-            return p_state_D, state_list
+                    # print(p_state_Dk[i])
+            _state_list = get_state_list(state_h, self.T, dt)
+            print('p_state_D at time ', self.frame, ' :', p_state_D)
+            print("state of H:", state_h, _state_list)  # sx, sy, vx, vy
+            assert round(np.sum(p_state_D[0])) == 1  # check
+
+            return p_state_D, _state_list
 
         "------------------------------"
         "executing the above functions!"
@@ -1078,28 +1085,32 @@ class InferenceModel:
 
         "#calling functions for baseline inference"
         joint_probability = joint_prob(theta_list=self.thetas, lambdas=self.lambdas,
-                                       traj_h=self.traj_h, traj_m=self.traj_m, goal=self.goal, epsilon=0.05,
+                                       traj_h=self.traj_h, traj_m=self.traj_m, epsilon=0.05,
                                        priors=self.theta_priors)
 
         "#take a snapshot of the theta prob for next time step"
-        self.theta_priors, best_lambdas = joint_probability
+        p_thetas, best_lambdas = joint_probability
 
         "calculate the marginal state distribution / prediction"
         best_lambdas = joint_probability[1]
-        marginal_state_prob = marginal_state(state_h=curr_state_h, state_m=curr_state_m,
-                                             p_theta=self.theta_priors,
-                                             best_lambdas=best_lambdas, thetas=self.thetas, dt=self.dt)
+        # marginal_state_prob = marginal_state(state_h=curr_state_h, state_m=curr_state_m,
+        #                                      p_theta=self.theta_priors,
+        #                                      best_lambdas=best_lambdas, thetas=self.thetas, dt=self.dt)
+        marginal_state_prob, states_list = marginal_state(curr_state_h, curr_state_m, p_thetas, self.dt)
+
         "getting the predicted action"
-        p_state_0 = marginal_state_prob[0][0]
-        idx = p_state_0.index(max(p_state_0))
+        p_state_d_0 = marginal_state_prob[0]
+        idx = np.argmax(p_state_d_0)
         predicted_action = self.action_set[idx]
+        for m in range(len(marginal_state_prob)):
+            marginal_state_prob[m] = marginal_state_prob[m].tolist()
+        self.theta_priors = p_thetas
 
         #IMPORTANT: set dt to desired look ahead
         #TODO: logging the data for verification?
         return {'predicted_intent_other': joint_probability,
-                'predicted_states_other': marginal_state_prob,
+                'predicted_states_other': [marginal_state_prob, states_list],
                 'predicted_actions_other': predicted_action}
-
 
     #@staticmethod
     def empathetic_inference(self, agent, sim):
@@ -1710,7 +1721,7 @@ class InferenceModel:
         def marginal_state_prob(state_h, state_m, p_q2, Q_pairs, dt):
             """
             Equation 11
-            Calculate the marginal state prob
+            Calculate the marginal state prob from P(x(k+1)|QH, QM)
             :param p_traj:
             :param p_q2:
             :param which_q2:
@@ -1719,7 +1730,7 @@ class InferenceModel:
             #marginal = np.empty(len(p_traj))
             #p_q2 = p_q2[which_q2]
             marginal = {}
-            p_traj = traj_prob(state_h, state_m, Q_pairs[0][0], Q_pairs[0][1], dt=dt)[0]
+            p_traj = traj_prob(state_h, state_m, Q_pairs[0][0], Q_pairs[0][1], dt=dt)[0]  # this is just for getting sizes
             for t in range(len(p_traj)):
                 for r in range(len(p_traj[t])):
                     marginal[t] = np.zeros((len(p_traj[t]), len(p_traj[t][r])))
@@ -1818,7 +1829,7 @@ class InferenceModel:
             theta_m, lambda_m = beta_m
             "TEST: fixing the lambda to check"
             # TODO: finalize this lambda and beta
-            lambda_h, lambda_m = self.thetas[-1], self.thetas[-1]
+            lambda_h, lambda_m = self.lambdas[-1], self.lambdas[-1]
             #beta_h, beta_m = self.betas[-1], self.betas[3]  #H:A, M: NA
 
             if theta_h == self.thetas[0]:
@@ -1848,6 +1859,7 @@ class InferenceModel:
         'recording prior'
         self.q2_prior = p_q2_d
         self.p_betas_prior = p_beta_d
+
         'getting best predicted betas'
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
         print("best betas ID at time {0}".format(self.frame), beta_pair_id)
@@ -1863,8 +1875,8 @@ class InferenceModel:
         "getting most likely action for analysis purpose"
         #p_actions = action_prob(curr_state_h, curr_state_m, best_beta_h, best_beta_m)
         p_beta_d_pair = [p_beta_d_h, p_beta_d_m]
-        p_actions_d = marginal_action(curr_state_h, curr_state_m, p_beta_d)
-        #p_actions_d = action_prob(curr_state_h, curr_state_m, beta_h, beta_m)  # for testing with decision
+        #p_actions_d = marginal_action(curr_state_h, curr_state_m, p_beta_d)
+        p_actions_d = action_prob(curr_state_h, curr_state_m, beta_h, beta_m)  # for testing with decision
         predicted_actions = []
         for i, p_a in enumerate(p_actions_d):
             #p_a = marginal_action(p_a, p_beta_d_pair[i][round(beta_pair_id[i]/2)][beta_pair_id[i] % 2])

@@ -39,10 +39,10 @@ class VisUtils:
             self.intent_distri_m = [[], []]  # theta1, theta2
         self.frame = sim.frame
         self.dist = []
+        self.sleep_between_step = False
 
-
-        if sim.decision_type == 'baseline':
-
+        if not sim.decision_type_h == 'constant_speed' and not sim.decision_type_m == 'constant_speed':
+            self.sleep_between_step = True
             self.screen_width = 10  # 50
             self.screen_height = 10  # 50
             self.coordinate_scale = 80
@@ -125,21 +125,23 @@ class VisUtils:
         #draw_circle(pos1, red, 10)
         #print('IMPORTED p state: ', self.p_state_H[-1])
         "--end of dummy data--"
-        if frame == 0:
+        for k in range(1, steps + 1):
+            self.screen.fill((255, 255, 255))
+            self.draw_axes()
+            # Draw Images
             for i in range(self.sim.n_agents):
-                pos = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
+                "getting pos of agent"
+                pos_old = np.array(self.sim.agents[i].state[frame][:2])
+                pos_new = np.array(self.sim.agents[i].state[frame+1][:2])  # get 0 and 1 element (not include 2)
                 "smooth out the movement between each step"
-                #pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
+                pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
                 "transform pos"
                 pixel_pos_car = self.c2p(pos)
                 size_car = self.car_image[i].get_size()
                 self.screen.blit(self.car_image[i],
-                                (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
-            "drawing the map of state distribution"
-            pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
-            if self.drawing_prob:
-                self.draw_prob()  # calling function to draw with data from inference
-
+                                 (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
+                if self.sleep_between_step:
+                    time.sleep(0.03)
             # Annotations
             # font = pg.font.SysFont("Arial", 30)
             font = pg.font.SysFont("Arial", 15)
@@ -147,7 +149,6 @@ class VisUtils:
             label_x = screen_w - 800
             label_y = 260
             label_y_offset = 30
-            #TODO: length of state/action is mismatched from frame: frame behind by 1
             pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
             label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
                                 (0, 0, 0))
@@ -155,64 +156,110 @@ class VisUtils:
             pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
             label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
                                 (0, 0, 0))
-            self.screen.blit(label, (label_x, label_y+label_y_offset))
+            self.screen.blit(label, (label_x, label_y + label_y_offset))
             action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
             label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
-            self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
+            self.screen.blit(label, (label_x, label_y + 2 * label_y_offset))
             label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
-            self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
+            self.screen.blit(label, (label_x, label_y + 3 * label_y_offset))
             label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
             self.screen.blit(label, (10, 10))
+
+            "drawing the map of state distribution"
+            # pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1  # test
+            if self.drawing_prob:
+                self.draw_prob()  # calling function to draw with data from inference
+
             pg.display.flip()
             pg.display.update()
-        else:
-            for k in range(1, steps + 1):
-                self.screen.fill((255, 255, 255))
-                self.draw_axes()
-                # Draw Images
-                for i in range(self.sim.n_agents):
-                    "getting pos of agent"
-                    pos_old = np.array(self.sim.agents[i].state[frame - 1][:2])
-                    pos_new = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
-                    "smooth out the movement between each step"
-                    pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
-                    "transform pos"
-                    pixel_pos_car = self.c2p(pos)
-                    size_car = self.car_image[i].get_size()
-                    self.screen.blit(self.car_image[i],
-                                     (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
-                    if self.sim.decision_type == "baseline":
-                        time.sleep(0.03)
-                # Annotations
-                # font = pg.font.SysFont("Arial", 30)
-                font = pg.font.SysFont("Arial", 15)
-                screen_w, screen_h = self.screen.get_size()
-                label_x = screen_w - 800
-                label_y = 260
-                label_y_offset = 30
-                pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
-                label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
-                                    (0, 0, 0))
-                self.screen.blit(label, (label_x, label_y))
-                pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
-                label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
-                                    (0, 0, 0))
-                self.screen.blit(label, (label_x, label_y+ label_y_offset))
-                action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
-                label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
-                self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
-                label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
-                self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
-                label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
-                self.screen.blit(label, (10, 10))
-
-                "drawing the map of state distribution"
-                #pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1  # test
-                if self.drawing_prob:
-                    self.draw_prob() #calling function to draw with data from inference
-
-                pg.display.flip()
-                pg.display.update()
+        # if frame == 0:
+        #     for i in range(self.sim.n_agents):
+        #         pos = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
+        #         "smooth out the movement between each step"
+        #         #pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
+        #         "transform pos"
+        #         pixel_pos_car = self.c2p(pos)
+        #         size_car = self.car_image[i].get_size()
+        #         self.screen.blit(self.car_image[i],
+        #                         (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
+        #     "drawing the map of state distribution"
+        #     pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
+        #     if self.drawing_prob:
+        #         self.draw_prob()  # calling function to draw with data from inference
+        #
+        #     # Annotations
+        #     # font = pg.font.SysFont("Arial", 30)
+        #     font = pg.font.SysFont("Arial", 15)
+        #     screen_w, screen_h = self.screen.get_size()
+        #     label_x = screen_w - 800
+        #     label_y = 260
+        #     label_y_offset = 30
+        #     #TODO: length of state/action is mismatched from frame: frame behind by 1
+        #     pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
+        #     label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
+        #                         (0, 0, 0))
+        #     self.screen.blit(label, (label_x, label_y))
+        #     pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
+        #     label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
+        #                         (0, 0, 0))
+        #     self.screen.blit(label, (label_x, label_y+label_y_offset))
+        #     action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
+        #     label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
+        #     self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
+        #     label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
+        #     self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
+        #     label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
+        #     self.screen.blit(label, (10, 10))
+        #     pg.display.flip()
+        #     pg.display.update()
+        # else:
+        #     for k in range(1, steps + 1):
+        #         self.screen.fill((255, 255, 255))
+        #         self.draw_axes()
+        #         # Draw Images
+        #         for i in range(self.sim.n_agents):
+        #             "getting pos of agent"
+        #             pos_old = np.array(self.sim.agents[i].state[frame - 1][:2])
+        #             pos_new = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
+        #             "smooth out the movement between each step"
+        #             pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
+        #             "transform pos"
+        #             pixel_pos_car = self.c2p(pos)
+        #             size_car = self.car_image[i].get_size()
+        #             self.screen.blit(self.car_image[i],
+        #                              (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
+        #             if self.sleep_between_step:
+        #                 time.sleep(0.03)
+        #         # Annotations
+        #         # font = pg.font.SysFont("Arial", 30)
+        #         font = pg.font.SysFont("Arial", 15)
+        #         screen_w, screen_h = self.screen.get_size()
+        #         label_x = screen_w - 800
+        #         label_y = 260
+        #         label_y_offset = 30
+        #         pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
+        #         label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
+        #                             (0, 0, 0))
+        #         self.screen.blit(label, (label_x, label_y))
+        #         pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
+        #         label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
+        #                             (0, 0, 0))
+        #         self.screen.blit(label, (label_x, label_y+ label_y_offset))
+        #         action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
+        #         label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
+        #         self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
+        #         label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
+        #         self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
+        #         label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
+        #         self.screen.blit(label, (10, 10))
+        #
+        #         "drawing the map of state distribution"
+        #         #pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1  # test
+        #         if self.drawing_prob:
+        #             self.draw_prob() #calling function to draw with data from inference
+        #
+        #         pg.display.flip()
+        #         pg.display.update()
 
         self.calc_dist()
         if self.drawing_prob:
@@ -415,17 +462,20 @@ class VisUtils:
         "get state distribution"
         #p_state1 = (0.25, [0, 0, 0, 0])  # [p_state, (sx, sy, vx, vy)]
         #print(self.p_state_H[-1])
-        if self.frame == 0 or self.frame == 1:
-            p_state_D, state_list  = self.p_state_H[0]
-        else:
-            p_state_D, state_list = self.p_state_H[-3]
+        # if self.frame == 0: # or self.frame == 1:
+        #     p_state_D, state_list  = self.p_state_H[0]
+        # else:
+        #     p_state_D, state_list = self.p_state_H[-1]
+        p_state_D, state_list = self.p_state_H[self.frame]
         #print("PLOTTING: ", state_list, "and ", p_state_D)
         "checking if predicted states are actually reached"
         if not self.frame == 0:
-            past_predicted_state = self.p_state_H[-2][1][0]
+            # TODO: figure out how predicted state and actual state align
+            past_predicted_state = self.p_state_H[self.frame][1][0]  # time -> state_list -> agent
             #print("-draw- Last state:" , self.sim.agents[0].state[-1])
             #print("-draw- past predicted states:", past_predicted_state)
-            assert self.sim.agents[0].state[-1] in past_predicted_state
+            print(past_predicted_state, self.sim.agents[0].state[self.frame])
+            assert self.sim.agents[0].state[self.frame] in past_predicted_state
 
         "unpacking the info"
         for k in range(len(state_list)): #time steps
