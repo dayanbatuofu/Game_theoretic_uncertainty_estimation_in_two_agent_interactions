@@ -10,8 +10,6 @@ import numpy as np
 from sklearn.preprocessing import normalize
 from models.rainbow.set_nfsp_models import get_models
 # TODO pytorch version
-from autonomous_vehicle import AutonomousVehicle
-import discrete_sets as sets
 
 class InferenceModel:
     def __init__(self, model, sim):  # model = inference type, sim = simulation class
@@ -120,7 +118,11 @@ class InferenceModel:
         """
 
         "importing agents information from Autonomous Vehicle (sim.agents)"
-        curr_state_h = sim.agents[0].state[-1]
+        self.frame = self.sim.frame
+        curr_state_h = sim.agents[0].state[self.frame]
+        last_action_h = sim.agents[0].action[self.frame]
+        curr_state_m = sim.agents[1].state[self.frame]
+        last_action_m = sim.agents[1].action[self.frame]
 
         "trajectory: need to process and combine past states and actions together"
         states_h = sim.agents[0].state
@@ -132,7 +134,6 @@ class InferenceModel:
         if sim.frame == 0:
             traj_h.append([states_h[0], past_actions_h[0]])
         "---end of agent info---"
-        self.frame = sim.frame #updating curr frame count
 
         def q_function(current_s, action, goal_s, dt):
             """
@@ -678,6 +679,7 @@ class InferenceModel:
         """
 
         "importing agents information from Autonomous Vehicle (sim.agents)"
+        self.frame = self.sim.frame
         curr_state_h = sim.agents[0].state[self.frame]
         last_action_h = sim.agents[0].action[self.frame]
         curr_state_m = sim.agents[1].state[self.frame]
@@ -1138,14 +1140,14 @@ class InferenceModel:
 
         #NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
         "importing agents information from Autonomous Vehicle (sim.agents)"
-        curr_state_h = sim.agents[0].state[-1]
-        last_action_h = sim.agents[0].action[-1]
-        curr_state_m = sim.agents[1].state[-1]
-        last_action_m = sim.agents[1].action[-1]
+        self.frame = self.sim.frame
+        curr_state_h = sim.agents[0].state[self.frame]
+        last_action_h = sim.agents[0].action[self.frame]
+        curr_state_m = sim.agents[1].state[self.frame]
+        last_action_m = sim.agents[1].action[self.frame]
 
         self.traj_h.append([curr_state_h, last_action_h])
         self.traj_m.append([curr_state_m, last_action_m])
-        self.frame = sim.frame
         # if not self.frame == 0:
         #     self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
 
@@ -1875,8 +1877,8 @@ class InferenceModel:
         "getting most likely action for analysis purpose"
         #p_actions = action_prob(curr_state_h, curr_state_m, best_beta_h, best_beta_m)
         p_beta_d_pair = [p_beta_d_h, p_beta_d_m]
-        #p_actions_d = marginal_action(curr_state_h, curr_state_m, p_beta_d)
-        p_actions_d = action_prob(curr_state_h, curr_state_m, beta_h, beta_m)  # for testing with decision
+        p_actions_d = marginal_action(curr_state_h, curr_state_m, p_beta_d)
+        # p_actions_d = action_prob(curr_state_h, curr_state_m, beta_h, beta_m)  # for testing with decision
         predicted_actions = []
         for i, p_a in enumerate(p_actions_d):
             #p_a = marginal_action(p_a, p_beta_d_pair[i][round(beta_pair_id[i]/2)][beta_pair_id[i] % 2])

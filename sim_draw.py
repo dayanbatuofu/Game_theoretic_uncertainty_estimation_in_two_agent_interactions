@@ -111,20 +111,6 @@ class VisUtils:
         # render 10 times for each step
         steps = 20
 
-        "--dummy data--"
-        black = (0, 0, 0)
-        #red = (255, 0, 0)
-        #r = pg.Color.r
-        p_state = (0.25, [0, 0, 0, 0]) #[p_state, (sx, sy, vx, vy)]
-        sx = p_state[1][0]
-        sy = p_state[1][1]
-        #pos1 = (sx, sy)
-        pos2 = self.c2p((sx, sy))
-        # def draw_circle( pos, color, radius):
-        #     pg.draw.circle(self.screen, color, pos, radius) #surface,  color, (x, y),radius>=1
-        #draw_circle(pos1, red, 10)
-        #print('IMPORTED p state: ', self.p_state_H[-1])
-        "--end of dummy data--"
         for k in range(1, steps + 1):
             self.screen.fill((255, 255, 255))
             self.draw_axes()
@@ -466,19 +452,20 @@ class VisUtils:
         #     p_state_D, state_list  = self.p_state_H[0]
         # else:
         #     p_state_D, state_list = self.p_state_H[-1]
+        self.frame = self.sim.frame
         p_state_D, state_list = self.p_state_H[self.frame]
         #print("PLOTTING: ", state_list, "and ", p_state_D)
         "checking if predicted states are actually reached"
         if not self.frame == 0:
             # TODO: figure out how predicted state and actual state align
-            past_predicted_state = self.p_state_H[self.frame][1][0]  # time -> state_list -> agent
+            past_predicted_state = self.p_state_H[self.frame-1][1][0]  # time -> state_list -> agent
             #print("-draw- Last state:" , self.sim.agents[0].state[-1])
             #print("-draw- past predicted states:", past_predicted_state)
             print(past_predicted_state, self.sim.agents[0].state[self.frame])
             assert self.sim.agents[0].state[self.frame] in past_predicted_state
 
         "unpacking the info"
-        for k in range(len(state_list)): #time steps
+        for k in range(len(state_list)):  # time steps
             states_k = state_list[k]
             p_state_Dk = p_state_D[k]
 

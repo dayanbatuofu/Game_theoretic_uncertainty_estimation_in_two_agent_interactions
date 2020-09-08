@@ -35,6 +35,7 @@ class Simulation:
         "theta and lambda pairs (betas):"
         self.theta_list = [1, 1000]
         self.lambda_list = [0.001, 0.005, 0.01, 0.05]
+        self.action_set = [-8, -4, 0, 4, 8]
 
         if self.n_agents == 2:
             # simulations with 2 cars
@@ -82,7 +83,7 @@ class Simulation:
                 break
             # if crossed the intersection, done or max time reached
             #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
-            if (x_H >= 20 and x_M <= -20):
+            if (x_H >= 15 and x_M <= -20):
                 # road width = 2.0 m
                 print("terminating on vehicle passed intersection:", x_H, x_M )
                 break

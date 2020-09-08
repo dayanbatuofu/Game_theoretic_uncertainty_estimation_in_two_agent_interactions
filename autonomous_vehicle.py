@@ -27,7 +27,7 @@ class AutonomousVehicle:
         self.state = self.car_par["initial_state"]  # state is cumulative
         self.intent = self.car_par["par"]
         self.follow_intent = False
-        if self.follow_intent:
+        if self.follow_intent:  # doesnt work yet
             # if self.intent == self.sim.theta_list[0]:  # NA
             plan = self.decision_model.plan()
             action = plan["action"]

@@ -32,12 +32,12 @@ class DecisionModel:
             self.plan = self.baseline2
         elif model == 'reactive_point':  # non-game, using NFSP, import estimated params to choose action
             self.plan = self.reactive_point
-            # TODO: import estimated values; use estimation of other's param to get an action for self
+            # import estimated values; use estimation of other's param to get an action for self
             # self.H_intent = self.sim.agents[1].predicted_intent_other
             # self.H_action = self.sim.agents[1].predicted_actions_other
         elif model == 'reactive_uncertainty':  # game, using NFSP, import inferred params for both agents
             self.plan = self.reactive_uncertainty
-            # TODO: import estimated values; use estimation of other and self params to get an action for both
+            # import estimated values; use estimation of other and self params to get an action for both
             # self.H_intent = self.sim.agents[1].predicted_intent_other
             # self.H_action = self.sim.agents[1].predicted_actions_other
             # self.predicted_action_m = self.sim.agents[1].predicted_actions_self
