@@ -1,3 +1,13 @@
+"""
+Use python main.py to execute!
+Important files:
+1. autonomous_vehicle: process and record agent info
+2. inference_model: performs inference and prediction
+3. decision_model: returns appropriate action for each agent
+4. sim_draw: plots the simulation and results
+5. >>> savi_simulation: executes the simulation <<<
+Change the default values below to change actual model used!
+"""
 import os
 import argparse
 import utils
@@ -31,8 +41,9 @@ parser.add_argument('--agent_inference', type=str, choices=['none', 'baseline', 
                     default=['none', 'trained_baseline'])
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,
-                    choices=['constant_speed', 'baseline', 'baseline2', 'complete_information', 'reactive_point'],
-                    default=['baseline', 'baseline'])
+                    choices=['constant_speed', 'baseline', 'baseline2', 'complete_information'
+                             , 'reactive_point', 'reactive_uncertainty'],
+                    default=['baseline', 'reactive_uncertainty'])
                     #default=['baseline', 'baseline'])
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning
