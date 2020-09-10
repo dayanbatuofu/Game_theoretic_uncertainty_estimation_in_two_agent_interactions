@@ -11,6 +11,8 @@ from sklearn.preprocessing import normalize
 from models.rainbow.set_nfsp_models import get_models
 # TODO pytorch version
 
+import pdb
+
 class InferenceModel:
     def __init__(self, model, sim):  # model = inference type, sim = simulation class
         if model == 'none':
@@ -931,8 +933,10 @@ class InferenceModel:
             if priors is None:
                 #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
                 priors = self.initial_joint_prob
+
             print("-----theta priors: {}".format(priors))
             print("traj: {}".format(traj_h))
+            pdb.set_trace()
             suited_lambdas = np.empty(len(intent_list))
 
             "USE THIS to record scores for past traj to speed up run time!"

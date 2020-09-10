@@ -1,5 +1,5 @@
-from rainbow.arguments import get_args
-from rainbow.model import NFSP_Model, NFSP_Policy
+from models.rainbow.arguments import get_args
+from models.rainbow.model import NFSP_Model, NFSP_Policy
 
 action_size = 5
 

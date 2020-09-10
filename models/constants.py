@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class CarParameters:
 
     def __init__(self, SPRITE, INITIAL_STATE, aggressiveness, gracefulness, ORIENTATION, MAX_SPEED):
@@ -139,6 +138,48 @@ class CONSTANTS:
                               gracefulness=0,
                               ORIENTATION=-90,  # moving from right to left
                               MAX_SPEED=[VEHICLE_MAX_SPEED, VEHICLE_MIN_SPEED])
+    class Merger:
+        # DISPLAY
+        SCREEN_WIDTH = 50  # meter
+        SCREEN_HEIGHT = 50  # meter
+
+        # BOUNDS
+        BOUND_HUMAN_X = None
+        BOUND_HUMAN_Y = None
+        BOUND_MACHINE_X = None
+        BOUND_MACHINE_Y = None
+
+        # COLLISION BOXES
+        COLLISION_BOXES = np.array([(-1., 1., -1., 1.)])  # List of separate collision boxes (-x, x, -y, y)
+
+        VEHICLE_MAX_SPEED = 40.2  # m/s
+        INITIAL_SPEED = 13.4  # m/s
+        VEHICLE_MIN_SPEED = 0.0  # m/s
+        MAX_ACCELERATION = 8  # m/s^2
+        MAX_DECELERATION = -8  # m/s^2
+
+        MAX_TIME = 7.0  # seconds
+        MIN_TIME_INTERVAL = 0.05  # seconds, this is the min time interval to be used by RL for this environment
+
+        # Left Car
+        CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
+                              INITIAL_STATE=[20., INITIAL_SPEED],  # initial distance in m and speed in m/s
+                              aggressiveness=1,
+                              gracefulness=0,
+                              ORIENTATION=0,  # moving from bottom to top
+                              MAX_SPEED=[VEHICLE_MAX_SPEED, VEHICLE_MIN_SPEED])
+
+        # Right Car
+        CAR_2 = CarParameters(SPRITE="white_car_sized.png",
+                              INITIAL_STATE=[30., INITIAL_SPEED],
+                              aggressiveness=1,
+                              gracefulness=0,
+                              ORIENTATION=0,  # moving from right to left
+                              MAX_SPEED=[VEHICLE_MAX_SPEED, VEHICLE_MIN_SPEED])
+
+        
+
+
 
 class MATRICES:
 

@@ -9,6 +9,7 @@ from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import VisUtils
 from models import constants as C #for terminal state check (car length)
+import pdb
 
 class Simulation:
 
@@ -76,6 +77,7 @@ class Simulation:
                     agent.update(self)  # Run simulation
 
             # termination criteria
+
             #if self.decision_type == 'baseline':
             x_H = self.agents[0].state[-1][1] #sy_H
             x_M = self.agents[1].state[-1][0] #sx_M
@@ -90,6 +92,30 @@ class Simulation:
 
             if self.frame >= self.duration:
                 break
+
+            #pdb.set_trace()
+
+            if self.decision_type == 'baseline':
+                x_H = self.agents[0].state[-1][1] #sy_H ??
+                x_M = self.agents[1].state[-1][0] #sx_M
+                y_H = self.agents[0].state[-1][1] #sy_H
+                y_M = self.agents[1].state[-1][1] #sy_M
+                if self.frame >= 14: #TODO: modify frame limit
+                    break
+                # if crossed the intersection, done or max time reached
+                #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
+                if self.env.name == "trained_intersection":
+                    if (x_H >= 100 and x_M <= -50):
+                        # road width = 2.0 m
+                        print("terminating on vehicle passed intersection:", x_H, x_M )
+                        break
+                if self.env.name == "merger":
+                    if (y_H>= 50 and y_M>50):
+                        print ("terminating on vehicle merger:")
+                        break
+            else:
+                if self.frame >= self.duration:
+                    break
 
             # TODO: update visualization
             # draw stuff after each iteration
