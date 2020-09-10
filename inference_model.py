@@ -12,6 +12,7 @@ from models.rainbow.set_nfsp_models import get_models
 # TODO pytorch version
 from autonomous_vehicle import AutonomousVehicle
 import discrete_sets as sets
+import pdb
 
 #class Lambdas(FloatEnums):
 #testing edited by sunny
@@ -945,8 +946,10 @@ class InferenceModel:
             if priors is None:
                 #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
                 priors = self.initial_joint_prob
+
             print("-----theta priors: {}".format(priors))
             print("traj: {}".format(traj_h))
+            pdb.set_trace()
             suited_lambdas = np.empty(len(intent_list))
 
             # TODO: modify score list to include all thetas x lambda pairs, instead of lambdas
