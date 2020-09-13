@@ -1,24 +1,25 @@
 """
 Perform inference on other agent
-Baseline: using the most basic Q function estimation, on how fast goal is reached
+No_inference: agent does not infer other agent's param
+Test_baseline: using the most basic Q function estimation, on how fast goal is reached
           (need to change main.py, environment = intersection)
 Trained_baseline: using NFSP model as Q function (change environment = trained_intersection)
 Empathetic: with NFSP, perform inference on both agent (change environment = trained_intersection)
 """
 import torch
 import numpy as np
-from sklearn.preprocessing import normalize
+# from sklearn.preprocessing import normalize
 from models.rainbow.set_nfsp_models import get_models
 # TODO pytorch version
-
+import dynamics
 import pdb
 
 class InferenceModel:
     def __init__(self, model, sim):  # model = inference type, sim = simulation class
         if model == 'none':
             self.infer = self.no_inference
-        elif model == 'baseline':
-            self.infer = self.baseline_inference
+        elif model == 'test_baseline':
+            self.infer = self.test_baseline_inference
         elif model == 'trained_baseline':
             self.infer = self.trained_baseline_inference
         elif model == 'empathetic':
@@ -54,7 +55,7 @@ class InferenceModel:
         #self.theta_priors = None #for calculating theta lambda joint probability
         self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
-
+        # TODO: generate initial belief base on self intent!!!
         self.traj_h = []
         self.traj_m = []
 
@@ -62,7 +63,7 @@ class InferenceModel:
         self.action_set = [-8, -4, 0.0, 4, 8]  # from realistic trained model
         #  safe deceleration: 15ft/s
 
-        "for empathetic inference:" #TODO: add necessary data
+        "for empathetic inference:"
         self.p_betas_prior = None
         self.q2_prior = None
         self.past_beta = []
@@ -96,7 +97,7 @@ class InferenceModel:
         return
 
     #@staticmethod
-    def baseline_inference(self, agents, sim):
+    def test_baseline_inference(self, agents, sim):
         # Test implementation Fridovich-Keil et al.
         # "Confidence-aware motion prediction for real-time collision avoidance"
         # THIS IS ONLY FOR TEST PURPOSE. NOT IN USE
@@ -239,34 +240,6 @@ class InferenceModel:
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
 
-                def calc_state(x, u, dt):
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to zero velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vx_new < 0:
-                            vx_new = 0
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: assume x axis movement for single agent case!!
-                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vx_new < 0:
-                            vx_new = 0
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
-
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
                     print("WARNING: state list is not composed of tuples!")
@@ -275,7 +248,7 @@ class InferenceModel:
                 for s in _state_list:
                     for a in _actions:
                         #print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
+                        _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
             i = 0  # row counter
@@ -797,43 +770,8 @@ class InferenceModel:
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
 
-                def calc_state(x, u, dt):
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to small/min velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        # print("Y axis movement detected")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < self.min_speed:
-                            vy_new = self.min_speed
-                        else:
-                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy
-                        if vx_new < self.min_speed:
-                            # print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = self.min_speed
-                        else:
-                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
-                        vx_new = -vx_new
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: assume Y axis movement for single agent case!!
-                        # print("Y axis movement detected (else)")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
-
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
+                # TODO: fix this!!!
                 if not isinstance(_state_list[0], tuple):
                     # print("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list]  # put it in a list to iterate
@@ -841,7 +779,8 @@ class InferenceModel:
                 for s in _state_list:
                     for a in _actions:
                         # print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
+                        # _s_prime.append(calc_state(s, a, dt))
+                        _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
             i = 0  # row counter
@@ -936,7 +875,7 @@ class InferenceModel:
 
             print("-----theta priors: {}".format(priors))
             print("traj: {}".format(traj_h))
-            pdb.set_trace()
+            # pdb.set_trace()
             suited_lambdas = np.empty(len(intent_list))
 
             "USE THIS to record scores for past traj to speed up run time!"
@@ -1526,46 +1465,8 @@ class InferenceModel:
             """
 
             actions = self.action_set
-            # TODO: check if this works for both agents!
-            #  ---------------------------------------
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
-
-                def calc_state(x, u, dt):  #TODO: Implement dynamics in the outer scope!
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to small/min velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        #print("Y axis movement detected")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < self.min_speed:
-                            vy_new = self.min_speed
-                        else:
-                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy
-                        if vx_new < self.min_speed:
-                            # print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = self.min_speed
-                        else:
-                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
-                        vx_new = -vx_new
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: in the case of more than 1D movement??
-                        print("Y axis movement detected (else)")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
 
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
@@ -1575,7 +1476,8 @@ class InferenceModel:
                 for s in _state_list:
                     for a in _actions:
                         # print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
+                        # _s_prime.append(calc_state(s, a, dt))
+                        _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
             i = 0  # row counter

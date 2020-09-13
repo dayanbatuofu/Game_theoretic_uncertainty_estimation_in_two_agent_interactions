@@ -93,28 +93,30 @@ class Environment:
                              "par": 1,
                              "orientation": -90.},
                             ]
-            # TODO: these won't work... sim is initialized after env
-            # # TODO: choose action base on decision type and intent
-            # p1_state = self.car_par[0]["initial_state"][0]
-            # p2_state = self.car_par[1]["initial_state"][0]
-            # p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
-            # p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
-            # pi_state = [p1_state, p2_state]
-            # for i in range(len(self.sim.decision_type)):
-            #     if self.sim.decision_type[i] == 'reactive_point' or 'reactive_uncertainty':
-            #         # (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
-            #         q_sets = get_models()[0]
-            #         args = get_args()
-            #         # TODO: assume other is NA?
-            #         if self.car_par[i]["par"] == 0:  # NA
-            #             qi = q_sets[0]
-            #         else:
-            #             qi = q_sets[3]
-            #         q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
-            #         p_a = self.action_prob(q_vals_i, self.sim.lambda_list[-1])
-            #         action_i = self.sim.action_set[np.argmax(p_a)]
-            #         self.car_par[i]["initial_action"] = action_i
 
+            # TODO: choose action base on decision type and intent
+            p1_state = self.car_par[0]["initial_state"][0]
+            p2_state = self.car_par[1]["initial_state"][0]
+            p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+            p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+            pi_state = [p1_state, p2_state]
+            # (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2)
+            q_sets = get_models()[0]
+            args = get_args()
+            # TODO: define these somewhere else for general uses
+            lambda_list = [0.001, 0.005, 0.01, 0.05]
+            action_set = [-8, -4, 0, 4, 8]
+            for i in range(len(self.car_par)):
+                # TODO: assume other is NA?
+                if self.car_par[i]["par"] == 0:  # NA
+                    qi = q_sets[0]
+                else:
+                    qi = q_sets[3]
+                q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
+                p_a = self.action_prob(q_vals_i, lambda_list[-1])
+                action_i = action_set[np.argmax(p_a)]
+                self.car_par[i]["initial_action"] = [action_i]
+            print(self.car_par)
         elif self.name == 'merger':
             #TODO: modify initial state to match with trained model
             self.n_agents = 2
