@@ -253,7 +253,7 @@ class VisUtils:
         if self.drawing_prob:
             self.calc_intent()
 
-    def draw_axes_lanes(self):
+    def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
         #pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing
         for a in self.env.bounds:
@@ -287,7 +287,7 @@ class VisUtils:
                              ((((bounds[1] + bounds[0])/2)+ bounds[1]- bounds[0]) , self.screen_height * self.coordinate_scale,
                               ), bounds[1] - bounds[0])
             '''
-    def draw_axes(self):
+    def draw_axes_lanes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
         #pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing
         for a in self.env.bounds:

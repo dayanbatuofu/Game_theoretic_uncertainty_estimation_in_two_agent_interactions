@@ -3,13 +3,19 @@ Environment class
 """
 import numpy as np
 from models import constants as C
+#from savi_simulation import Simulation as sim
+import savi_simulation as sim
+from models.rainbow.arguments import get_args
+import models.rainbow.arguments
+from models.rainbow.set_nfsp_models import get_models
+import torch as t
 
 class Environment:
 
     def __init__(self, env_name):
 
         self.name = env_name
-
+        self.sim = sim
         # TODO: unify units for all parameters
 
 
@@ -72,7 +78,8 @@ class Environment:
             max_speed = np.sqrt((sx_H - 1 - C.CONSTANTS.CAR_LENGTH * 0.5) * 2.
                                 * abs(intersection.MAX_DECELERATION))
             vx_H = np.random.uniform(max_speed * 0.1, max_speed * 0.5)
-            print("initial vel:", vy_M, -vx_H, "initial pos:", -sy_M, sx_H)
+            #print("initial vel:", vy_M, -vx_H, "initial pos:", -sy_M, sx_H)
+
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
@@ -86,6 +93,27 @@ class Environment:
                              "par": 1,
                              "orientation": -90.},
                             ]
+            # TODO: these won't work... sim is initialized after env
+            # # TODO: choose action base on decision type and intent
+            # p1_state = self.car_par[0]["initial_state"][0]
+            # p2_state = self.car_par[1]["initial_state"][0]
+            # p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+            # p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+            # pi_state = [p1_state, p2_state]
+            # for i in range(len(self.sim.decision_type)):
+            #     if self.sim.decision_type[i] == 'reactive_point' or 'reactive_uncertainty':
+            #         # (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
+            #         q_sets = get_models()[0]
+            #         args = get_args()
+            #         # TODO: assume other is NA?
+            #         if self.car_par[i]["par"] == 0:  # NA
+            #             qi = q_sets[0]
+            #         else:
+            #             qi = q_sets[3]
+            #         q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
+            #         p_a = self.action_prob(q_vals_i, self.sim.lambda_list[-1])
+            #         action_i = self.sim.action_set[np.argmax(p_a)]
+            #         self.car_par[i]["initial_action"] = action_i
 
         elif self.name == 'merger':
             #TODO: modify initial state to match with trained model
@@ -165,6 +193,32 @@ class Environment:
 
             pass
 
+    def action_prob(self, q_vals, _lambda):
+        """
+        Equation 1
+        Noisy-rational model
+        calculates probability distribution of action given hardmax Q values
+        Uses:
+        1. Softmax algorithm
+        2. Q-value given state and theta(intent)
+        3. lambda: "rationality coefficient"
+        => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+        :return: Normalized probability distributions of available actions at a given state and lambda
+        """
+        # q_vals = q_values(state_h, state_m, intent=intent)
+        exp_Q = []
+        "Q*lambda"
+        q_vals = q_vals.detach().numpy()  # detaching tensor
+        Q = [q * _lambda for q in q_vals]
+        "Q*lambda/(sum(Q*lambda))"
+
+        for q in Q:
+            exp_Q.append(np.exp(q))
+
+        "normalizing"
+        exp_Q /= sum(exp_Q)
+        # print("exp_Q normalized:", exp_Q)
+        return exp_Q
 
 
 
