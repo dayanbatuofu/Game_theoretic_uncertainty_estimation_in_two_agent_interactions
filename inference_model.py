@@ -1,28 +1,27 @@
 """
 Perform inference on other agent
-Baseline: using the most basic Q function estimation, on how fast goal is reached
+No_inference: agent does not infer other agent's param
+Test_baseline: using the most basic Q function estimation, on how fast goal is reached
           (need to change main.py, environment = intersection)
 Trained_baseline: using NFSP model as Q function (change environment = trained_intersection)
 Empathetic: with NFSP, perform inference on both agent (change environment = trained_intersection)
 """
 import torch
 import numpy as np
-from sklearn.preprocessing import normalize
+# from sklearn.preprocessing import normalize
 from models.rainbow.set_nfsp_models import get_models
 # TODO pytorch version
-
+import dynamics
 import pdb
 
 class InferenceModel:
     def __init__(self, model, sim):  # model = inference type, sim = simulation class
         if model == 'none':
             self.infer = self.no_inference
-        elif model == 'baseline':
-            self.infer = self.baseline_inference
+        elif model == 'test_baseline':
+            self.infer = self.test_baseline_inference
         elif model == 'trained_baseline':
             self.infer = self.trained_baseline_inference
-        elif model == 'trained_baseline_2u':
-            self.infer = self.trained_baseline_inference_2U
         elif model == 'empathetic':
             self.infer = self.empathetic_inference
         else:
@@ -45,9 +44,11 @@ class InferenceModel:
         self.goal = [self.car_par[0]["desired_state"], self.car_par[1]["desired_state"]]
 
         "---parameters(theta and lambda)---"
-        self.lambdas = [0.001, 0.005, 0.01, 0.05]  # range?
-        #self.lambdas = [0.05, 0.1, 1, 10]
-        self.thetas = [1, 1000]  # range?
+        # self.lambdas = [0.001, 0.005, 0.01, 0.05]
+        # #self.lambdas = [0.05, 0.1, 1, 10]
+        # self.thetas = [1, 1000]  # TODO: change to appropriate numbers for PMP
+        self.lambdas = self.sim.lambda_list
+        self.thetas = self.sim.theta_list
 
         "---Params for belief calculation---"
         self.past_scores = {}  # score for each lambda
@@ -56,16 +57,15 @@ class InferenceModel:
         #self.theta_priors = None #for calculating theta lambda joint probability
         self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
-
+        # TODO: generate initial belief base on self intent!!!
         self.traj_h = []
         self.traj_m = []
 
         #self.action_set = [-1, -0.2, 0.0, 0.1, 0.5]  # accelerations (m/s^2)
         self.action_set = [-8, -4, 0.0, 4, 8]  # from realistic trained model
-        self.action_set_combo= [[-8,-1], [-8, 0], [-8,1], [-4, -1], [-4, 0], [-4, 1], [0, -1], [0,0], [0,1], [4, -1], [4, 0], [4, 1], [8,-1], [8, 0], [8,1]]
         #  safe deceleration: 15ft/s
 
-        "for empathetic inference:" #TODO: add necessary data
+        "for empathetic inference:"
         self.p_betas_prior = None
         self.q2_prior = None
         self.past_beta = []
@@ -83,23 +83,14 @@ class InferenceModel:
             for j, _lambda in enumerate(self.lambdas):
                 self.betas.append([theta, _lambda])
 
-        #"--------------------------------------------------------"
-        "Some reference variables from pedestrian prediction"
-        #self.q_cache = {}
-        #"defining reward for (s, a) pair"
-        #self.default_reward = -1
-        #self.rewards = np.zeros[self.agents.s, self.agents.a] #Needs fixing
-        #self.rewards.fill(self.default_reward)
-        #"--------------------------------------------------------"
-
-    #@staticmethod
+    # @staticmethod
     def no_inference(self, agents, sim):
         #pass
         print("frame {}".format(sim.frame))
         return
 
     #@staticmethod
-    def baseline_inference(self, agents, sim):
+    def test_baseline_inference(self, agents, sim):
         # Test implementation Fridovich-Keil et al.
         # "Confidence-aware motion prediction for real-time collision avoidance"
         # THIS IS ONLY FOR TEST PURPOSE. NOT IN USE
@@ -242,34 +233,6 @@ class InferenceModel:
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
 
-                def calc_state(x, u, dt):
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to zero velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vx_new < 0:
-                            vx_new = 0
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: assume x axis movement for single agent case!!
-                        vx_new = vx + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy  # + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vx_new < 0:
-                            vx_new = 0
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
-
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
                     print("WARNING: state list is not composed of tuples!")
@@ -278,7 +241,7 @@ class InferenceModel:
                 for s in _state_list:
                     for a in _actions:
                         #print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
+                        _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
             i = 0  # row counter
@@ -697,9 +660,6 @@ class InferenceModel:
 
         self.traj_h.append([curr_state_h, last_action_h])
         self.traj_m.append([curr_state_m, last_action_m])
-        self.frame = sim.frame
-        if not self.frame == 0:
-            self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
 
         def trained_q_function():
             """
@@ -735,7 +695,7 @@ class InferenceModel:
 
             return Q_vals
 
-        def action_prob(state_h, state_m, _lambda, theta): #Equation 1
+        def action_prob(state_h, state_m, _lambda, theta):
             """
             Equation 1
 
@@ -800,43 +760,8 @@ class InferenceModel:
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
 
-                def calc_state(x, u, dt):
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to small/min velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        # print("Y axis movement detected")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < self.min_speed:
-                            vy_new = self.min_speed
-                        else:
-                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy
-                        if vx_new < self.min_speed:
-                            # print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = self.min_speed
-                        else:
-                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
-                        vx_new = -vx_new
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: assume Y axis movement for single agent case!!
-                        # print("Y axis movement detected (else)")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
-
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
+                # TODO: fix this!!!
                 if not isinstance(_state_list[0], tuple):
                     # print("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list]  # put it in a list to iterate
@@ -844,7 +769,8 @@ class InferenceModel:
                 for s in _state_list:
                     for a in _actions:
                         # print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
+                        # _s_prime.append(calc_state(s, a, dt))
+                        _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
             i = 0  # row counter
@@ -907,7 +833,8 @@ class InferenceModel:
             assert round(np.sum(p_states[0])) == 1
             return p_states, state_list
 
-        def resample(priors, epsilon): #Equation 3
+        # TODO: implement this in util
+        def resample(priors, epsilon):
             """
             Equation 3
             Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
@@ -939,9 +866,9 @@ class InferenceModel:
 
             print("-----theta priors: {}".format(priors))
             print("traj: {}".format(traj_h))
-            #pdb.set_trace()
-            suited_lambdas = np.empty(len(intent_list))
+            # pdb.set_trace()
 
+            # TODO: this is not in use, but it works by recording how each lambda explains the trajectory
             "USE THIS to record scores for past traj to speed up run time!"
             def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
                 p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..]
@@ -966,20 +893,21 @@ class InferenceModel:
                 return np.sum(log_scores)
 
             "Calling compute_score/get_last_score to get the best suited lambdas for EACH theta"
-            for i, theta in enumerate(theta_list):  # get a best suited lambda for each theta
-                score_list = []
-                for j, lamb in enumerate(lambdas):
-                    score_list.append(get_last_score(traj_h, traj_m, lamb, theta))
-                max_lambda_j = np.argmax(score_list)
-                suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
+            # for i, theta in enumerate(theta_list):  # get a best suited lambda for each theta
+            #     #score_list = []
+            #     for j, lamb in enumerate(lambdas):
+            #         get_last_score(traj_h, traj_m, lamb, theta)
+                #     score_list.append(get_last_score(traj_h, traj_m, lamb, theta))
+                # max_lambda_j = np.argmax(score_list)
+                # suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
 
-            p_theta = np.copy(priors)
-            print("prior:", p_theta)
+            p_joint_prior = np.copy(priors)
+            # print("prior:", p_theta)
             "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
-            p_theta = resample(p_theta, epsilon == 0.05)  # resample from uniform belief
-            print("resampled:", p_theta)
+            p_joint_prior = resample(p_joint_prior, epsilon == 0.05)  # resample from uniform belief
+            # print("resampled:", p_theta)
             # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
-            p_theta_prime = np.empty((len(lambdas), len(theta_list)))
+            p_joint_prime = np.empty((len(lambdas), len(theta_list)))
 
             "Compute joint probability p(lambda, theta) for each lambda and theta"
             # for t, (s, a) in enumerate(traj_h):  # enumerate through past traj
@@ -991,11 +919,11 @@ class InferenceModel:
             #                 if theta == theta_list[0]:
             #                     p_action_l = self.past_scores1[_lambda][t] #get prob of action done at time t
             #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-            #                     p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            #                     p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
             #                 else: #theta 2
             #                     p_action_l = self.past_scores2[_lambda][t]
             #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-            #                     p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+            #                     p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
             #
             #     else:  # for state action pair that is not at time zero
             #         for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
@@ -1006,13 +934,13 @@ class InferenceModel:
             #                     for theta_past in range(
             #                             len(theta_list)):  # cycle through theta probability from past time K-1
             #                         for l_past in range(len(lambdas)):
-            #                             p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
+            #                             p_joint_prime[l][theta_t] += p_action_l * p_joint_prior[l_past][theta_past]
             #                 else:
             #                     p_action_l = self.past_scores2[_lambda][t]
             #                     for theta_past in range(
             #                             len(theta_list)):  # cycle through theta probability from past time K-1
             #                         for l_past in range(len(lambdas)):
-            #                             p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
+            #                             p_joint_prime[l][theta_t] += p_action_l * p_joint_prior[l_past][theta_past]
 
             "another joint update algorithm, without cycling through traj and only update with prior:"
             t = self.frame
@@ -1021,25 +949,31 @@ class InferenceModel:
                 for l, _lambda in enumerate(lambdas):
                     # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
                     # a_i = self.action_set.index(a)
+                    p_action = action_prob(traj_h[-1][0], traj_m[-1][0], _lambda,
+                                           theta)  # get prob of action done at time t
+                    a_i = self.action_set.index(traj_h[-1][1])
+                    p_action_l = p_action[a_i]
                     if theta == theta_list[0]:
-                        p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
+                        # p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
                         # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-                        p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+                        p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
                     else:  # theta 2
-                        p_action_l = self.past_scores2[_lambda][t]
+                        # p_action_l = self.past_scores2[_lambda][t]
                         # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-                        p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
+                        p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
 
             "In the case p_theta is 2d array:"
             # print(p_theta_prime, sum(p_theta_prime))
-            p_theta_prime /= np.sum(p_theta_prime)  # normalize
+            p_joint_prime /= np.sum(p_joint_prime)  # normalize
 
-            # print(p_theta_prime)
-            # print(np.sum(p_theta_prime))
-            assert 0.9 <= np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
-            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
-            #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
-            return p_theta_prime, suited_lambdas
+            "get best lambda from distribution"
+            suited_lambdas = np.empty(len(intent_list))
+            for t, theta in enumerate(p_joint_prime.transpose()):
+                suited_lambdas[t] = self.lambdas[np.argmax(theta)]
+
+            assert 0.9 <= np.sum(p_joint_prime) <= 1.1  # check if it is properly normalized
+            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
+            return p_joint_prime, suited_lambdas
 
         def marginal_state(state_h, state_m, p_theta, dt):
             """
@@ -1060,7 +994,6 @@ class InferenceModel:
             theta1, theta2 = self.thetas
             # print("WATCH for p_state", traj_probabilities(state, lamb1))
             "get P(x(k+1)|theta,lambda) for the 2 thetas"
-            # TODO: get all p_traj with different (lambda, theta)???
             p_state_beta1= traj_prob(state_h, state_m, lambdas[0], theta1, dt)[0]
             # p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
             # print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
@@ -1098,493 +1031,30 @@ class InferenceModel:
                                        priors=self.theta_priors)
 
         "#take a snapshot of the theta prob for next time step"
-        p_thetas, best_lambdas = joint_probability
+        p_joint, best_lambdas = joint_probability
 
         "calculate the marginal state distribution / prediction"
-        best_lambdas = joint_probability[1]
-        # marginal_state_prob = marginal_state(state_h=curr_state_h, state_m=curr_state_m,
-        #                                      p_theta=self.theta_priors,
-        #                                      best_lambdas=best_lambdas, thetas=self.thetas, dt=self.dt)
-        marginal_state_prob, states_list = marginal_state(curr_state_h, curr_state_m, p_thetas, self.dt)
+        marginal_state_prob, states_list = marginal_state(curr_state_h, curr_state_m, p_joint, self.dt)
 
         "getting the predicted action"
-        p_state_d_0 = marginal_state_prob[0]
-        idx = np.argmax(p_state_d_0)
-        predicted_action = self.action_set[idx]
+        p_theta = np.zeros(len(self.thetas))
+        for i, p_t in enumerate(p_joint.transpose()):  # get marginal prob of theta: p(theta) from joint prob p(lambda, theta)
+            p_theta[i] = sum(p_t)
+        theta_idx = np.argmax(p_theta)
+        theta_h = self.thetas[theta_idx]
+        p_a = action_prob(curr_state_h, curr_state_m, best_lambdas[theta_idx], theta=theta_h)
+        # p_a = action_prob(curr_state_h, curr_state_m, _lambda=self.lambdas[-1], theta=theta_h)  # for verification with decision model
+        predicted_action = self.action_set[np.argmax(p_a)]
+
+        "converting from array to list"
         for m in range(len(marginal_state_prob)):
             marginal_state_prob[m] = marginal_state_prob[m].tolist()
-        self.theta_priors = p_thetas
+        self.theta_priors = p_joint
 
-        #IMPORTANT: set dt to desired look ahead
-        #TODO: logging the data for verification?
-        return {'predicted_intent_other': joint_probability,
+        # IMPORTANT: set dt to desired look ahead
+        return {'predicted_intent_other': [p_joint, best_lambdas],
                 'predicted_states_other': [marginal_state_prob, states_list],
                 'predicted_actions_other': predicted_action}
-
-    def trained_baseline_inference_2U(self, agent, sim):
-        """
-        Use Q function from nfsp models
-        Important equations implemented here:
-        - Equation 1 (action_probabilities):
-        P(u|x,theta,lambda) = exp(Q*lambda)/sum(exp(Q*lambda)), Q size = action space at state x
-
-        - Equation 2 (belief_update):
-         #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
-        #P(lambda, theta|D(k)) = P(u| x;lambda, theta)P(lambda, theta | D(k-1)) / sum[ P(u|x;lambda', theta') P(lambda', theta' | D(k-1))]
-        #equivalent: P = action_prob * P(k-1)/{sum_(lambda,theta)[action_prob * P(k-1)]}
-
-        - Equation 3 (belief_resample):
-        #resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
-        :param agent:
-        :param sim:
-        :return: inferred other agent's parameters (P(k), P(x(k+1))
-        """
-
-        "importing agents information from Autonomous Vehicle (sim.agents)"
-        self.frame = self.sim.frame
-        curr_state_h = sim.agents[0].state[self.frame]
-        last_action_h = sim.agents[0].action[self.frame]
-        curr_state_m = sim.agents[1].state[self.frame]
-        last_action_m = sim.agents[1].action[self.frame]
-
-        # curr_state_h = sim.agents[0].state[-1]
-        # last_action_h = sim.agents[0].action[-1]
-        # curr_state_m = sim.agents[1].state[-1]
-        # last_action_m = sim.agents[1].action[-1]
-        #pdb.set_trace()
-        self.traj_h.append([curr_state_h, last_action_h])
-        self.traj_m.append([curr_state_m, last_action_m])
-        self.frame = sim.frame
-        if not self.frame == 0:
-            self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
-
-        def trained_q_function():
-            """
-            Import Q function from nfsp given states
-            :param state_h:
-            :param state_m:
-            :return:
-            """
-
-            q_set = get_models()[0]
-
-            return q_set
-
-        def q_values(state_h, state_m, intent):
-            """
-            Get q values given the intent (Non-aggressive or aggressive)
-            :param state_h:
-            :param state_m:
-            :param intent:
-            :return:
-            """
-            q_set = trained_q_function()
-            if intent == "na_na":
-                Q = q_set[0]
-            else: #use a_na
-                Q = q_set[3]
-
-            "Need state for agent H: xH, vH, xM, vM"
-            # state = [state_h[0], state_h[2], state_m[1], state_m[3]]
-            state = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
-            print(state)
-
-            Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
-
-            return Q_vals
-
-        def action_prob(state_h, state_m, _lambda, theta): #Equation 1
-            """
-            Equation 1
-
-            Noisy-rational model
-            calculates probability distribution of action given hardmax Q values
-            Uses:
-            1. Softmax algorithm
-            2. Q-value given state and theta(intent)
-            3. lambda: "rationality coefficient"
-            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
-            :param state_h: current H state
-            :param state_m: current M state
-            :param _lambda: rationality coefficient
-            :param theta: aggressiveness/ gracefullness parameter
-            :return: Normalized probability distributions of available actions at a given state and lambda
-            """
-            #pdb.set_trace()
-            #action_set = self.action_set
-            #action_set = self.action_set_combo
-            if theta == self.thetas[0]:
-                intent = "na_na"
-            else:
-                intent = "a_na"
-
-            print(intent)
-            q_vals = q_values(state_h, state_m, intent=intent)
-            #TODO: boltzmann noisily rational model
-            exp_Q = []
-
-            "Q*lambda"
-            # np.multiply(Q,_lambda,out = Q)
-            q_vals = q_vals.detach().numpy() #detaching tensor
-            #print("q values: ",q_vals)
-            Q = [q * _lambda for q in q_vals]
-            # print("Q*lambda:", Q)
-            "Q*lambda/(sum(Q*lambda))"
-            # np.exp(Q, out=Q)
-
-            for q in Q:
-                exp_Q.append(np.exp(q))
-            #print("EXP_Q:", exp_Q)
-
-            "normalizing"
-            # normalize(exp_Q, norm = 'l1', copy = False)
-            exp_Q /= sum(exp_Q)
-            print("exp_Q normalized:", exp_Q)
-            #pdb.set_trace()
-            return exp_Q
-
-        def get_state_list(state, T, dt):
-            #TODO: check if it works for this model
-            """
-            2D case: calculate an array of state (T x S at depth T)
-            1D case: calculate a list of state (1 X (1 + Action_set^T))
-            :param
-                state: current state
-                T: time horizon / look ahead
-                dt: time interval where the action will be executed, i.e. u*dt
-            :return:
-                list of resulting states from taking each action at a given state
-            """
-
-            actions = self.action_set
-
-            def get_s_prime(_state_list, _actions):
-                _s_prime = []
-
-                def calc_state(x, u, dt):
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to small/min velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        # print("Y axis movement detected")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < self.min_speed:
-                            vy_new = self.min_speed
-                        else:
-                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy
-                        if vx_new < self.min_speed:
-                            # print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = self.min_speed
-                        else:
-                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
-                        vx_new = -vx_new
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: assume Y axis movement for single agent case!!
-                        # print("Y axis movement detected (else)")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
-
-                "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
-                if not isinstance(_state_list[0], tuple):
-                    # print("WARNING: state list is not composed of tuples!")
-                    _state_list = [_state_list]  # put it in a list to iterate
-
-                for s in _state_list:
-                    for a in _actions:
-                        # print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
-                return _s_prime
-
-            i = 0  # row counter
-            state_list = {}  # use dict to keep track of time step
-            # state_list = []
-            # state_list.append(state) #ADDING the current state!
-            for t in range(0, T):
-                s_prime = get_s_prime(state, actions)  # separate pos and speed!
-                state_list[i] = s_prime
-                # state_list.append(s_prime)
-                state = s_prime  # get s prime for the new states
-                i += 1  # move onto next row
-
-            return state_list
-
-        def traj_prob(state_h, state_m, _lambda, theta, dt, prior=None):
-            """
-            Equation 4
-            refer to pp.mdp.py
-                Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
-            :params:
-                state: current / observed state of H at time k
-                _lambda: given lambda/rational coefficient
-                dt: length of each time step
-                prior: probability of agent being at "state" at time k (default is 1)
-            :return:
-                possible resulting states at k+1 with probabilities for being at each one of them
-            """
-
-            "for now we consider prior = 1 for observed state at time k"
-            if prior == None:
-                p_traj = 1  # initialize
-            T = self.T
-            state_list = get_state_list(state_h, T, dt)  # get list of state given curr_state/init_state from self._init_
-
-            # p_states = np.zeros(shape=state_list)
-            p_states = []
-
-            # TODO: verify if it is working properly (plotting states? p_state seems correct)
-            "for the case where state list is 1D, note that len(state list) == number of time steps!"
-            for i in range(len(state_list)):
-                if i == 0:
-                    p_a = action_prob(state_h, state_m, _lambda, theta)
-                    p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
-                    # transition is deterministic -> 1, prob state(k) = 1
-                    # print("P STATES", p_states)
-
-                else:
-                    p_s_t = []  # storing p_states for time t (or i)
-                    for j, s in enumerate(state_list[i - 1]):
-                        # print(state_list[i-1])
-                        # print(p_states)
-                        # print(type(p_states[0]))
-                        # print("Current time:",i,"working on state:", j)
-                        # print(p_states[i-1][j])
-                        p_a = action_prob(state_h, state_m, _lambda, theta) * p_states[i - 1][j]
-                        p_s_t.extend(p_a.tolist())
-
-                    p_states.append(p_s_t)
-            assert round(np.sum(p_states[0])) == 1
-            return p_states, state_list
-
-        def resample(priors, epsilon): #Equation 3
-            """
-            Equation 3
-            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
-            :return: resampled belief P(k-1) on lambda and theta
-            """
-            # TODO: generalize this algorithm for difference sizes of matrices(1D, 2D)
-            # initial_belief = np.ones((len(priors), len(priors[0]))) / (len(priors)*len(priors[0]))
-            initial_belief = self.initial_joint_prob
-            resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
-            return resampled_priors
-
-        def joint_prob(theta_list, lambdas, traj_h, traj_m, epsilon=0.05, priors=None):
-            """
-            Equation 2
-            update belief on P(lambda, theta)
-            :param theta_list:
-            :param lambdas:
-            :param traj_h:
-            :param traj_m:
-            :param goal:
-            :param epsilon:
-            :param priors:
-            :return: P(lambda, theta) and best lambda
-            """
-            intent_list = ["na_na", "a_na"]
-            if priors is None:
-                #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
-                priors = self.initial_joint_prob
-
-            print("-----theta priors: {}".format(priors)) # beta priors, beta = (theta, lambda)
-            print("traj: {}".format(traj_h))
-            #pdb.set_trace()
-            suited_lambdas = np.empty(len(intent_list)) # uninitialized list
-
-            "USE THIS to record scores for past traj to speed up run time!"
-            def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
-                #pdb.set_trace()
-                p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..] #Equation 1
-                a_h = _traj_h[-1][1]
-                #print(_traj_h)
-                a_i = self.action_set.index(a_h) #returns the placement of the action 
-                if _theta == self.thetas[0]:
-                    if _lambda in self.past_scores1:  # add to existing list
-                        self.past_scores1[_lambda].append(p_a[a_i])
-                        scores = self.past_scores1[_lambda]
-                    else:
-                        self.past_scores1[_lambda] = [p_a[a_i]] 
-                        scores = self.past_scores1[_lambda]
-                else: #theta2
-                    if _lambda in self.past_scores2:  # add to existing list
-                        self.past_scores2[_lambda].append(p_a[a_i])
-                        scores = self.past_scores2[_lambda]
-                    else:
-                        self.past_scores2[_lambda] = [p_a[a_i]]
-                        scores = self.past_scores2[_lambda]
-                log_scores = np.log(scores)
-                return np.sum(log_scores)
-
-            "Calling compute_score/get_last_score to get the best suited lambdas for EACH theta"
-            for i, theta in enumerate(theta_list):  # get a best suited lambda for each theta
-                score_list = []
-                for j, lamb in enumerate(lambdas):
-                    score_list.append(get_last_score(traj_h, traj_m, lamb, theta))
-                max_lambda_j = np.argmax(score_list)
-                suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
-
-            p_theta = np.copy(priors)
-            print("prior:", p_theta)
-            "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
-            p_theta = resample(p_theta, epsilon == 0.05)  # resample from uniform belief
-            print("resampled:", p_theta)
-            # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
-            p_theta_prime = np.empty((len(lambdas), len(theta_list)))
-
-            "Compute joint probability p(lambda, theta) for each lambda and theta"
-            # for t, (s, a) in enumerate(traj_h):  # enumerate through past traj
-            #     if t == 0:  # initially there's only one state and not past
-            #         for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
-            #             for l,_lambda in enumerate(lambdas):
-            #                 #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-            #                 #a_i = self.action_set.index(a)
-            #                 if theta == theta_list[0]:
-            #                     p_action_l = self.past_scores1[_lambda][t] #get prob of action done at time t
-            #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-            #                     p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-            #                 else: #theta 2
-            #                     p_action_l = self.past_scores2[_lambda][t]
-            #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-            #                     p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-            #
-            #     else:  # for state action pair that is not at time zero
-            #         for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
-            #             #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-            #             for l, _lambda in enumerate(lambdas):
-            #                 if theta == theta_list[0]:
-            #                     p_action_l = self.past_scores1[_lambda][t]
-            #                     for theta_past in range(
-            #                             len(theta_list)):  # cycle through theta probability from past time K-1
-            #                         for l_past in range(len(lambdas)):
-            #                             p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
-            #                 else:
-            #                     p_action_l = self.past_scores2[_lambda][t]
-            #                     for theta_past in range(
-            #                             len(theta_list)):  # cycle through theta probability from past time K-1
-            #                         for l_past in range(len(lambdas)):
-            #                             p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
-
-            "another joint update algorithm, without cycling through traj and only update with prior:"
-            t = self.frame
-            # TODO: use [-1] or [t]???
-            pdb.set_trace()
-            for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas #index and value
-                for l, _lambda in enumerate(lambdas):
-                    # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
-                    # a_i = self.action_set.index(a)
-                    if theta == theta_list[0]:
-                        p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
-                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-                        p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-                    else:  # theta 2
-                        p_action_l = self.past_scores2[_lambda][t]
-                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
-                        p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
-
-            "In the case p_theta is 2d array:"
-            # print(p_theta_prime, sum(p_theta_prime))
-            p_theta_prime /= np.sum(p_theta_prime)  # normalize
-
-            # print(p_theta_prime)
-            # print(np.sum(p_theta_prime))
-            assert 0.9 <= np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
-            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
-            #return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
-            return p_theta_prime, suited_lambdas
-
-        def marginal_state(state_h, state_m, p_theta, dt):
-            """
-            Equation 5
-            Get marginal: P(x(k+1)|D(k)) from P(x(k+1)|lambda, theta) and P(lambda, theta|D(k))
-            :param state_h:
-            :param state_m:
-            :param p_theta:
-            :param best_lambdas:
-            :param thetas:
-            :param dt:
-            :return:
-            """
-
-            "get required information"
-            #lamb1, lamb2 = best_lambdas
-            lambdas = self.lambdas
-            theta1, theta2 = self.thetas
-            # print("WATCH for p_state", traj_probabilities(state, lamb1))
-            "get P(x(k+1)|theta,lambda) for the 2 thetas"
-            # TODO: get all p_traj with different (lambda, theta)???
-            p_state_beta1= traj_prob(state_h, state_m, lambdas[0], theta1, dt)[0]
-            # p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
-            # print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
-            # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
-            # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
-
-            "calculate marginal"
-            # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
-            p_state_D = {}
-            print(p_state_beta1)
-            for t in range(len(p_state_beta1)):
-                p_state_D[t] = np.zeros(len(p_state_beta1[t]))
-            for t, theta in enumerate(self.thetas):
-                for l, lamb in enumerate(lambdas):
-                    _p_state_beta = traj_prob(state_h, state_m, lamb, theta, dt)[0]  # calculate p_state using beta
-                    for k in range(len(_p_state_beta)):  # k refers to the number of future time steps: currently max k=1
-                        for i in range(len(_p_state_beta[k])):
-                            p_state_D[k][i] += _p_state_beta[k][i] * p_theta[l][t]
-
-                    # print(p_state_Dk[i])
-            _state_list = get_state_list(state_h, self.T, dt)
-            print('p_state_D at time ', self.frame, ' :', p_state_D)
-            print("state of H:", state_h, _state_list)  # sx, sy, vx, vy
-            assert round(np.sum(p_state_D[0])) == 1  # check
-
-            return p_state_D, _state_list
-
-        "------------------------------"
-        "executing the above functions!"
-        "------------------------------"
-
-        "#calling functions for baseline inference"
-        joint_probability = joint_prob(theta_list=self.thetas, lambdas=self.lambdas,
-                                       traj_h=self.traj_h, traj_m=self.traj_m, epsilon=0.05,
-                                       priors=self.theta_priors)
-
-        "#take a snapshot of the theta prob for next time step"
-        p_thetas, best_lambdas = joint_probability
-
-        "calculate the marginal state distribution / prediction"
-        best_lambdas = joint_probability[1]
-        # marginal_state_prob = marginal_state(state_h=curr_state_h, state_m=curr_state_m,
-        #                                      p_theta=self.theta_priors,
-        #                                      best_lambdas=best_lambdas, thetas=self.thetas, dt=self.dt)
-        marginal_state_prob, states_list = marginal_state(curr_state_h, curr_state_m, p_thetas, self.dt)
-
-        "getting the predicted action"
-        p_state_d_0 = marginal_state_prob[0]
-        idx = np.argmax(p_state_d_0)
-        predicted_action = self.action_set[idx]
-        for m in range(len(marginal_state_prob)):
-            marginal_state_prob[m] = marginal_state_prob[m].tolist()
-        self.theta_priors = p_thetas
-
-        #IMPORTANT: set dt to desired look ahead
-        #TODO: logging the data for verification?
-        return {'predicted_intent_other': joint_probability,
-                'predicted_states_other': [marginal_state_prob, states_list],
-                'predicted_actions_other': predicted_action}
-
-
 
     #@staticmethod
     def empathetic_inference(self, agent, sim):
@@ -1610,7 +1080,7 @@ class InferenceModel:
         # predicted_policy_self: QM tilde
         #----------------------------#
 
-        #NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
+        # NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
         "importing agents information from Autonomous Vehicle (sim.agents)"
         self.frame = self.sim.frame
         curr_state_h = sim.agents[0].state[self.frame]
@@ -1620,8 +1090,6 @@ class InferenceModel:
 
         self.traj_h.append([curr_state_h, last_action_h])
         self.traj_m.append([curr_state_m, last_action_m])
-        # if not self.frame == 0:
-        #     self.theta_priors = self.sim.agents[1].predicted_intent_other[-1][0]
 
         "place holder: using NFSP Q function in place of NE Q function pair"
         def trained_q_function(state_h, state_m):
@@ -1634,10 +1102,11 @@ class InferenceModel:
             # Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2
             q_set = get_models()[0] #0: q func, 1: policy
             # Q = q_set[0]  # use na_na for now
-            #TODO: maybe store it as a dictionary?
+            # TODO: maybe store it as a dictionary?
             "Q values for given state over a set of actions:"
             # Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
             return q_set
+
         def q_values_pair(state_h, state_m, theta_h, theta_m):
             """
             extracts the Q function and obtain Q value given current state configuration
@@ -1994,46 +1463,8 @@ class InferenceModel:
             """
 
             actions = self.action_set
-            # TODO: check if this works for both agents!
-            #  ---------------------------------------
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
-
-                def calc_state(x, u, dt):  #TODO: Implement dynamics in the outer scope!
-                    sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-                    "Deceleration only leads to small/min velocity!"
-                    if sx == 0 and vx == 0:  # y axis movement
-                        #print("Y axis movement detected")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < self.min_speed:
-                            vy_new = self.min_speed
-                        else:
-                            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-                    elif sy == 0 and vy == 0:  # x axis movement
-                        vx_new = abs(vx) + u * dt  # * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy
-                        if vx_new < self.min_speed:
-                            # print("vehicle M is exceeding min speed", vx_new, u)
-                            vx_new = self.min_speed
-                        else:
-                            vx_new = max(min(vx_new, self.max_speed), self.min_speed)
-                        vx_new = -vx_new
-                        sx_new = sx + (vx + vx_new) * dt * 0.5
-                        sy_new = sy  # + (vy + vy_new) * dt * 0.5
-                    else:  # TODO: in the case of more than 1D movement??
-                        print("Y axis movement detected (else)")
-                        vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                        vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                        if vy_new < 0:
-                            vy_new = 0
-                        sx_new = sx  # + (vx + vx_new) * dt * 0.5
-                        sy_new = sy + (vy + vy_new) * dt * 0.5
-
-                    # TODO: add a cieling for how fast they can go
-                    return sx_new, sy_new, vx_new, vy_new
 
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
@@ -2043,7 +1474,8 @@ class InferenceModel:
                 for s in _state_list:
                     for a in _actions:
                         # print("STATE", s)
-                        _s_prime.append(calc_state(s, a, dt))
+                        # _s_prime.append(calc_state(s, a, dt))
+                        _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
             i = 0  # row counter
@@ -2291,9 +1723,9 @@ class InferenceModel:
 
         if self.frame == 0:  # initially guess the beta
             theta_h = self.thetas[0]
-            lambda_h = self.lambdas[0]
+            lambda_h = self.lambdas[-1]  # start large
             theta_m = self.thetas[0]
-            lambda_m = self.lambdas[0]
+            lambda_m = self.lambdas[-1]
             beta_h, beta_m = [theta_h, lambda_h], [theta_m, lambda_m]
             intent_pair = 'na_na'
             # TODO: beta M is assumed to be the equilibrium set
@@ -2384,10 +1816,10 @@ class InferenceModel:
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[0],
-                'predicted_intent_other': [p_beta_d_h, beta_h],
+                'predicted_intent_other': [p_beta_d_h, best_lambda_h],
                 'predicted_states_self': (marginal_state_m, get_state_list(curr_state_m, self.T, self.dt)),
                 'predicted_actions_self': predicted_actions[1],
-                'predicted_intent_self': [p_beta_d_m, beta_m]}  # TODO: do we need to process p_beta_d?
+                'predicted_intent_self': [p_beta_d_m, best_lambda_m]}  # TODO: do we need to process p_beta_d?
         #TODO: modify so that this works for both agents??
 
         # return {'predicted_intent_other': joint_probability,

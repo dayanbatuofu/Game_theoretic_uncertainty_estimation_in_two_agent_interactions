@@ -46,6 +46,12 @@ class DecisionModel:
             pass
 
         self.policy_or_Q = 'Q'
+        self.m_true_intent = self.sim.env.car_par[1]['par']
+        self.h_true_intent = self.sim.env.car_par[0]['par']
+        self.true_intents = []
+        for i, par_i in enumerate(self.sim.env.car_par):
+            self.true_intents.append(par_i["par"])
+        assert self.true_intents[0] == self.h_true_intent
 
     @staticmethod
     def constant_speed():
@@ -73,8 +79,8 @@ class DecisionModel:
 
         "sorting states to obtain action from pre-trained model"
         #y direction only for M, x direction only for HV
-        p1_state = self.sim.agents[0].state[-1]
-        p2_state = self.sim.agents[1].state[-1]
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
         action_set = [-8, -4, 0, 4, 8]
 
         args = get_args()
@@ -177,17 +183,12 @@ class DecisionModel:
             "calling function for Boltzmann model"
             intent_list = ['na_na', 'a_na']
             #TODO: does it work for both agents????
-            p_actions = action_prob(p1_state, p2_state, _lambda=0.05, intent='a_na')
+            p_actions = action_prob(p1_state, p2_state, _lambda=self.sim.lambda_list[-1], intent='na_na')
             actions = []
             for p_a in p_actions:
                 p_a = np.array(p_a).tolist()
                 id = p_a.index(max(p_a))
                 actions.append(action_set[id])
-
-        # if self.sim.agents[0]:
-        #     action = action_set[action1]
-        # else:
-        #     action = action_set[action2]
 
 
         print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
@@ -197,7 +198,7 @@ class DecisionModel:
 
     def baseline2(self):
         """
-        This is for H to act according to the models
+        This is for H to act according to the models (Policy)
         :return:
         """
         # randomly pick one of the nash equilibrial policy
@@ -319,23 +320,31 @@ class DecisionModel:
         lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
         p_action_h = action_prob(q_vals_h, lambda_h)
         action1 = np.argmax(p_action_h)
-        #action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
+        # action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
 
         "action for M: we know our intent, get best response to H's intent"
-        # TODO: GROUND TRUTH for M, using NA for now
         theta_list = self.sim.theta_list
         lambda_m = self.sim.lambda_list[-1]  # the most rational coefficient
-        h_intent = self.sim.agents[1].predicted_intent_other[-1]
-
+        p_joint_h = self.sim.agents[1].predicted_intent_other[-1][0]
+        p_theta = np.zeros(len(theta_list))
+        for i, p_t in enumerate(p_joint_h.transpose()):  # get marginal prob of theta: p(theta) from joint prob p(lambda, theta)
+            p_theta[i] = sum(p_t)
+        h_intent = theta_list[np.argmax(p_theta)]
         if h_intent == theta_list[0]:  # NA
-            q_m = Q_na_na_2  # TODO: check which Q na
+            if self.m_true_intent == theta_list[0]:
+                q_m = Q_na_na_2  # TODO: check which Q_na_na
+            else:
+                q_m = Q_a_na
         else:  # A
-            q_m = Q_na_a
+            if self.m_true_intent == theta_list[0]:
+                q_m = Q_na_a
+            else:
+                q_m = Q_a_a_2  # TODO: check which Q_a_a
         q_vals_m = q_m.forward(t.FloatTensor(p2_state).to(t.device("cpu")))
         p_action_m = action_prob(q_vals_m, lambda_m)
         action2 = np.argmax(p_action_m)
 
-        action_set = [-8, -4, 0, 4, 8]
+        action_set = self.sim.action_set
         # if self.sim.agents[0]:
         #     action = action_set[action1]
         # else:

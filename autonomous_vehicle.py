@@ -6,7 +6,7 @@ import numpy as np
 import scipy
 from sim_data import DataUtil
 import pygame as pg
-
+import dynamics
 
 class AutonomousVehicle:
     """
@@ -83,38 +83,7 @@ class AutonomousVehicle:
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
         # TODO: add steering
         # define the discrete time dynamical model
-        def f(x, u, dt):
-            sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-            if self.id == 0:
-                vx_new = vx
-                vy_new = vy + u * dt #* vy / (np.linalg.norm([vx, vy]) + 1e-12)
-                if vy_new < self.min_speed:
-                    vy_new = self.min_speed
-                else:
-                    vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                sx_new = sx
-                sy_new = sy + (vy + vy_new) * dt * 0.5
 
-            elif self.id == 1:  # white vehicle (M) (agent[1]), x axis, moving towards negative
-                #u = -u
-                vx_new = abs(vx) + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
-                vy_new = vy
-                if vx_new < self.min_speed:
-                    # print("vehicle M is exceeding min speed", vx_new, u)
-                    vx_new = self.min_speed
-                else:
-                    vx_new = max(min(vx_new, self.max_speed), self.min_speed)
-                vx_new = -vx_new
-                sx_new = sx + (vx + vx_new) * dt * 0.5
-                sy_new = sy
-
-            else:
-                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
-                vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
-                sx_new = sx + (vx + vx_new) * dt * 0.5
-                sy_new = sy + (vy + vy_new) * dt * 0.5
-            print("ID:", self.id, "action:", u, "old vel:", vx, vy, "new vel:", vx_new, vy_new)
-            return sx_new, sy_new, vx_new, vy_new
         def f_environment(x, u, dt): # x, y, theta, velocity
             sx, sy, vx, vy = x[0], x[1], x[2], x[3]
             if self.id == 0 or self.id == 1:
@@ -133,9 +102,12 @@ class AutonomousVehicle:
                 sy_new = sy + (vy + vy_new) * dt * 0.5
             print("ID:", self.id, "action:", u, "old vel:", vx, vy, "new vel:", vx_new, vy_new)
             return sx_new, sy_new, vx_new, vy_new
+
         if self.env.name == "merger":
             self.state.append(f_environment(self.state[-1], action, self.sim.dt))
-        else:
+
+        else:  # using dynamics defined in dynamics.py, for easier access
+            self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))
         # def f_environment(x, u, dt): # x, y, theta, velocity
         #     sx, sy, theta, vy = x[0], x[1], x[2], x[3]
         #     if self.id == 0 or self.id == 1:
@@ -158,13 +130,18 @@ class AutonomousVehicle:
         # if self.env.name == "merger":
         #     self.state.append(f_environment(self.state[-1], action, self.sim.dt))
         # else:
-            self.state.append(f(self.state[-1], action, self.sim.dt))
+            #self.state.append(f(self.state[-1], action, self.sim.dt))
+
         return
+
+
 # dummy class
 class dummy(object):
     pass
+
+
 if __name__ == '__main__':
-    Car1 = {"initial_state": [[200,200,0,0]], "par":1, "initial_action":1}
+    Car1 = {"initial_state": [[200, 200, 0, 0]], "par": 1, "initial_action":1}
     from environment import *
     env = Environment("merger")
     sim = dummy()
@@ -173,7 +150,7 @@ if __name__ == '__main__':
     test_car = AutonomousVehicle(sim, env, Car1, "baseline", "baseline", 0)
     i = 1
     while i<20:
-        test_car.dynamics([1,1])
+        test_car.dynamics([1, 1])
         i+= 1
 
     

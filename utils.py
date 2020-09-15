@@ -3,7 +3,6 @@
 import torch
 import numpy as np
 import matplotlib
-matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 import os
@@ -11,6 +10,7 @@ import logging
 from torch.utils.data import DataLoader
 from torch import nn
 
+matplotlib.use("TkAgg")
 # class Visualization:
 #     def __init__(self, dataset):
 #         self.dataset = dataset
