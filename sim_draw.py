@@ -39,6 +39,8 @@ class VisUtils:
             self.intent_m = []
             self.intent_distri_h = [[], []]  # theta1, theta2
             self.intent_distri_m = [[], []]  # theta1, theta2
+            self.lambda_h = []
+            self.lambda_m = []
         self.frame = sim.frame
         self.dist = []
         self.sleep_between_step = False
@@ -309,9 +311,8 @@ class VisUtils:
                              (self.screen_width * self.coordinate_scale,
                               (bounds[1] + bounds[0]) / 2), bounds[0] - bounds[1])
 
-
     def draw_dist(self):
-        #TODO: implement plotting of distance between cars over time
+        # TODO: implement plotting of distance between cars over time
         # pyplot.plot(self.dist)
         # pyplot.plot(self.sim.agents[0].action)
         fig1, (ax1, ax2, ax3) = pyplot.subplots(3) #3 rows
@@ -353,8 +354,10 @@ class VisUtils:
     def calc_intent(self):
         joint_infer_m = self.sim.agents[1].predicted_intent_self
         # TODO: assign list of theta and lambda somewhere in sim
-        theta_list = [1, 1000]
-        lambda_list = [0.05, 0.1, 1, 10]
+        # theta_list = [1, 1000]
+        # lambda_list = [0.05, 0.1, 1, 10]
+        theta_list = self.sim.theta_list
+        lambda_list = self.sim.lambda_list
         if not len(joint_infer_m) == 0:
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             p_joint_m, lambda_m = joint_infer_m[-1]
@@ -378,6 +381,8 @@ class VisUtils:
             M_intent = theta_list[idx_m]
             self.intent_h.append(H_intent)
             self.intent_m.append(M_intent)
+            self.lambda_h.append(lambda_h)
+            self.lambda_m.append(lambda_m)
         else:
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             #print("-draw- p_joint_h: ", p_joint_h)
@@ -396,23 +401,26 @@ class VisUtils:
             H_intent = theta_list[idx_h]
             print('probability of thetas H:', sum_h, 'H intent:', H_intent)
             self.intent_h.append(H_intent)
+            self.lambda_h.append(lambda_h)
 
     def draw_intent(self):
         joint_infer_m = self.sim.agents[1].predicted_intent_self
         # TODO: assign list of theta and lambda somewhere in sim
         print(joint_infer_m)
         if not len(joint_infer_m) == 0:
-            fig2, (ax1, ax2, ax3, ax4) = pyplot.subplots(4, figsize=(5, 8))
+            print("Lambdas:", self.lambda_h, self.lambda_m)
+            fig2, (ax1, ax2, ax3, ax4, ax5) = pyplot.subplots(5, figsize=(5, 8))
             fig2.suptitle('Predicted intent and rationality')
+
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
-            ax1.set_yticks([1, 1000])
+            ax1.set_yticks(self.sim.theta_list)
             ax1.set_yticklabels(['na', 'a'])
             ax1.set(xlabel='time', ylabel='intent')
 
             ax2.plot(self.intent_m, label='predicted M intent')
             ax2.legend()
-            ax2.set_yticks([1, 1000])
+            ax2.set_yticks(self.sim.theta_list)
             ax2.set_yticklabels(['na', 'a'])
             ax2.set(xlabel='time', ylabel='intent')
 
@@ -439,10 +447,17 @@ class VisUtils:
             ax4.set_yticks([0.25, 0.5, 0.75])
             ax4.set(xlabel='time', ylabel='M distri')
 
+            "plotting lambdas"
+            ax5.plot(self.lambda_h, label='H ration')
+            ax5.plot(self.lambda_m, label='M ration', linestyle='--')
+            ax5.legend()
+            ax5.set_yticks(self.sim.lambda_list)
+            ax5.set(xlabel='time', ylabel='intent')
+
         else:
             print("predicted intent H", self.intent_h)
             print("predicted intent for H from AV:", self.sim.agents[1].predicted_intent_other)
-            fig2, (ax1, ax2) = pyplot.subplots(2)
+            fig2, (ax1, ax2, ax3) = pyplot.subplots(3)
             fig2.suptitle('Predicted intent of H agent')
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.legend()
@@ -461,6 +476,12 @@ class VisUtils:
             ax2.legend()
             ax2.set_yticks([0.25, 0.5, 0.75])
             ax2.set(xlabel='time', ylabel='probability')
+
+            "plotting lambda h"
+            ax3.plot(self.lambda_h, label='predtd H rationality')
+            ax3.legend()
+            ax3.set_yticks(self.sim.lambda_list)
+            ax3.set(xlabel='time', ylabel='intent')
 
         #TODO: plot actual distributions
         #pyplot.tight_layout()

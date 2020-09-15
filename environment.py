@@ -35,13 +35,13 @@ class Environment:
                              "initial_state": [[0, -2.0, 0, 0.1]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
                              "initial_action": [0.],  # accel  #TODO: add steering angle
-                             "par": 1,  # aggressiveness
+                             "par": 1,  # aggressiveness: check sim.theta_list
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
                              "initial_state": [[2.0, 0, -0.1, 0]],
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
-                             "par": 1,
+                             "par": 1,  # aggressiveness: check sim.theta_list
                              "orientation": -90.},
                             ]
 
@@ -84,13 +84,13 @@ class Environment:
                              "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
                              "initial_action": [0.],  # accel  #TODO: add steering angle
-                             "par": 1,  # aggressiveness
+                             "par": 1,  # aggressiveness: check sim.theta_list
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
                              "initial_state": [[sx_H, 0, -vx_H, 0]], #should be having negative velocity
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
-                             "par": 1,
+                             "par": 1,  # aggressiveness: check sim.theta_list
                              "orientation": -90.},
                             ]
 
@@ -116,7 +116,8 @@ class Environment:
                 p_a = self.action_prob(q_vals_i, lambda_list[-1])
                 action_i = action_set[np.argmax(p_a)]
                 self.car_par[i]["initial_action"] = [action_i]
-            print(self.car_par)
+            print("initial params: ", self.car_par)
+
         elif self.name == 'merger':
             #TODO: modify initial state to match with trained model
             self.n_agents = 2
