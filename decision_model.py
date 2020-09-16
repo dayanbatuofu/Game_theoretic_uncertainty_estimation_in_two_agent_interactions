@@ -46,12 +46,10 @@ class DecisionModel:
             pass
 
         self.policy_or_Q = 'Q'
-        self.m_true_intent = self.sim.env.car_par[1]['par']
-        self.h_true_intent = self.sim.env.car_par[0]['par']
+
         self.true_intents = []
         for i, par_i in enumerate(self.sim.env.car_par):
             self.true_intents.append(par_i["par"])
-        assert self.true_intents[0] == self.h_true_intent
 
     @staticmethod
     def constant_speed():
@@ -183,7 +181,9 @@ class DecisionModel:
             "calling function for Boltzmann model"
             intent_list = ['na_na', 'a_na']
             #TODO: does it work for both agents????
-            p_actions = action_prob(p1_state, p2_state, _lambda=self.sim.lambda_list[-1], intent='na_na')
+            p_actions = action_prob(p1_state, p2_state, _lambda=self.sim.lambda_list[-1], intent='a_na')
+            # TODO: DRAW action instead of pulling highest mass
+            assert (not pa == 0 for pa in p_actions)
             actions = []
             for p_a in p_actions:
                 p_a = np.array(p_a).tolist()
@@ -275,18 +275,17 @@ class DecisionModel:
         # implement reactive planning based on point estimates of future trajectories
         # TODO: import HJI BVP model
         "----------This is placeholder until we have BVP result-------------"
-        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
-        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2)= get_models()[0]
 
         "sorting states to obtain action from pre-trained model"
         # y direction only for M, x direction only for HV
-        p1_state = self.sim.agents[0].state[-1]
-        p2_state = self.sim.agents[1].state[-1]
-
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
         p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
         p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
 
         args = get_args()
+
         def action_prob(q_vals, _lambda):
             """
             Equation 1
@@ -312,6 +311,7 @@ class DecisionModel:
             "normalizing"
             exp_Q /= sum(exp_Q)
             #print("exp_Q normalized:", exp_Q)
+            assert len(exp_Q) == len(self.sim.action_set)
             return exp_Q
 
         "action for H"
@@ -331,17 +331,18 @@ class DecisionModel:
             p_theta[i] = sum(p_t)
         h_intent = theta_list[np.argmax(p_theta)]
         if h_intent == theta_list[0]:  # NA
-            if self.m_true_intent == theta_list[0]:
+            if self.true_intents[1] == theta_list[0]:
                 q_m = Q_na_na_2  # TODO: check which Q_na_na
             else:
                 q_m = Q_a_na
         else:  # A
-            if self.m_true_intent == theta_list[0]:
+            if self.true_intents[1] == theta_list[0]:
                 q_m = Q_na_a
             else:
                 q_m = Q_a_a_2  # TODO: check which Q_a_a
         q_vals_m = q_m.forward(t.FloatTensor(p2_state).to(t.device("cpu")))
         p_action_m = action_prob(q_vals_m, lambda_m)
+        # TODO: DRAW action instead of pulling highest mass
         action2 = np.argmax(p_action_m)
 
         action_set = self.sim.action_set
@@ -401,15 +402,18 @@ class DecisionModel:
             print("exp_Q normalized:", exp_Q)
             return exp_Q
 
+        # TODO: get action from NE instead of separate marginal p_beta_i
         "action for H"
         q_h = Q_a_na  # TODO: GROUND TRUTH
         q_vals_h = q_h.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
         lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
         p_action_h = action_prob(q_vals_h, lambda_h)
+        # TODO: DRAW action instead of pulling highest mass
         action1 = np.argmax(p_action_h)
         # action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
 
         "action for M: choose action based on the equilibrium intent set"
+        # TODO: DRAW action instead of pulling highest mass
         action2 = self.sim.agents[1].predicted_actions_self[-1]
 
         action_set = [-8, -4, 0, 4, 8]

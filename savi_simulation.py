@@ -77,44 +77,23 @@ class Simulation:
                     agent.update(self)  # Run simulation
 
             # termination criteria
-
-            #if self.decision_type == 'baseline':
-            x_H = self.agents[0].state[-1][1] #sy_H
-            x_M = self.agents[1].state[-1][0] #sx_M
-            if self.frame >= 14: #TODO: modify frame limit
+            if self.frame >= 10:  # TODO: modify frame limit
                 break
-            # if crossed the intersection, done or max time reached
-            #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
-            if (x_H >= 15 and x_M <= -20):
-                # road width = 2.0 m
-                print("terminating on vehicle passed intersection:", x_H, x_M )
-                break
-
-            if self.frame >= self.duration:
-                break
-
             #pdb.set_trace()
-
-            if self.decision_type == 'baseline':
-                x_H = self.agents[0].state[-1][1] #sy_H ??
-                x_M = self.agents[1].state[-1][0] #sx_M
-                y_H = self.agents[0].state[-1][1] #sy_H
-                y_M = self.agents[1].state[-1][1] #sy_M
-                if self.frame >= 14: #TODO: modify frame limit
+            x_H = self.agents[0].state[self.frame][0]  # sy_H ??
+            x_M = self.agents[1].state[self.frame][0]  # sx_M
+            y_H = self.agents[0].state[self.frame][1]  # sy_H
+            y_M = self.agents[1].state[self.frame][1]  # sy_M
+            if self.env.name == "merger":
+                if (y_H >= 50 and y_M > 50):
+                    print("terminating on vehicle merger:")
                     break
-                # if crossed the intersection, done or max time reached
-                #if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
-                if self.env.name == "trained_intersection":
-                    if (x_H >= 100 and x_M <= -50):
-                        # road width = 2.0 m
-                        print("terminating on vehicle passed intersection:", x_H, x_M )
-                        break
-                if self.env.name == "merger":
-                    if (y_H>= 50 and y_M>50):
-                        print ("terminating on vehicle merger:")
-                        break
             else:
-                if self.frame >= self.duration:
+                if (y_H >= 10 and x_M <= -10):
+                    # road width = 2.0 m
+                    # if crossed the intersection, done or max time reached
+                    # if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
+                    print("terminating on vehicle passed intersection:", x_H, x_M)
                     break
 
             # TODO: update visualization
@@ -123,8 +102,6 @@ class Simulation:
                 self.vis.draw_frame()  # Draw frame
                 # if self.capture:
                 #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
-                #TODO: add occupancy plot (Yi)
-
 
                 for event in pg.event.get():
                     if event.type == pg.QUIT:

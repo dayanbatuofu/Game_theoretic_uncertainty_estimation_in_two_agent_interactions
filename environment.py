@@ -118,6 +118,9 @@ class Environment:
                 self.car_par[i]["initial_action"] = [action_i]
             print("initial params: ", self.car_par)
 
+        elif self.name == 'bvp_intersection':
+            pass
+        
         elif self.name == 'merger':
             #TODO: modify initial state to match with trained model
             self.n_agents = 2
