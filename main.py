@@ -31,7 +31,7 @@ parser.add_argument('--gpu', type=int, default=0)
 environment parameters
 """
 parser.add_argument('--env_name', type=str, choices=['intersection', 'trained_intersection', 'lane_change', 'merger'],
-                    default='trained_intersection')
+                    default='merger')
 
 """
 agent parameters

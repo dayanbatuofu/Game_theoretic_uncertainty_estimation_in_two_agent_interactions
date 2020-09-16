@@ -63,6 +63,7 @@ class InferenceModel:
 
         #self.action_set = [-1, -0.2, 0.0, 0.1, 0.5]  # accelerations (m/s^2)
         self.action_set = [-8, -4, 0.0, 4, 8]  # from realistic trained model
+        self.action_set_combo= [[-8,-1], [-8, 0], [-8,1], [-4, -1], [-4, 0], [-4, 1], [0, -1], [0,0], [0,1], [4, -1], [4, 0], [4, 1], [8,-1], [8, 0], [8,1]]
         #  safe deceleration: 15ft/s
 
         "for empathetic inference:"
@@ -1055,6 +1056,39 @@ class InferenceModel:
         return {'predicted_intent_other': [p_joint, best_lambdas],
                 'predicted_states_other': [marginal_state_prob, states_list],
                 'predicted_actions_other': predicted_action}
+
+    def trained_baseline_inference_2U(self, agent, sim):
+        """
+        Use Q function from nfsp models
+        Important equations implemented here:
+        - Equation 1 (action_probabilities):
+        P(u|x,theta,lambda) = exp(Q*lambda)/sum(exp(Q*lambda)), Q size = action space at state x
+
+        - Equation 2 (belief_update):
+         #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
+        #P(lambda, theta|D(k)) = P(u| x;lambda, theta)P(lambda, theta | D(k-1)) / sum[ P(u|x;lambda', theta') P(lambda', theta' | D(k-1))]
+        #equivalent: P = action_prob * P(k-1)/{sum_(lambda,theta)[action_prob * P(k-1)]}
+
+        - Equation 3 (belief_resample):
+        #resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
+        :param agent:
+        :param sim:
+        :return: inferred other agent's parameters (P(k), P(x(k+1))
+        """
+        "importing agents information from Autonomous Vehicle (sim.agents)"
+        self.frame = self.sim.frame
+        curr_state_h = sim.agents[0].state[self.frame]
+        last_action_h = sim.agents[0].action[self.frame]
+        curr_state_m = sim.agents[1].state[self.frame]
+        last_action_m = sim.agents[1].action[self.frame]
+
+        # curr_state_h = sim.agents[0].state[-1]
+        # last_action_h = sim.agents[0].action[-1]
+        # curr_state_m = sim.agents[1].state[-1]
+        # last_action_m = sim.agents[1].action[-1]
+
+        self.traj_h.append([curr_state_h, last_action_h])
+        self.traj_m.append([curr_state_m, last_action_m])
 
     #@staticmethod
     def empathetic_inference(self, agent, sim):
