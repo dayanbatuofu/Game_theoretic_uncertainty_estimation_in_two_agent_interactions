@@ -22,7 +22,6 @@ class AutonomousVehicle:
         self.decision_model = decision_model
         self.id = i
 
-        # TODO: get initial action based on intent!
         # Initialize variables
         self.state = self.car_par["initial_state"]  # state is cumulative
         self.intent = self.car_par["par"]
@@ -41,6 +40,7 @@ class AutonomousVehicle:
         self.planned_trajectory_set = []
 
         # Initialize prediction variables
+        self.predicted_intent_all = []
         self.predicted_intent_other = []
         self.predicted_intent_self = []
         self.predicted_policy_other = []
@@ -74,7 +74,7 @@ class AutonomousVehicle:
         if self.sim.decision_type[self.id] == "baseline" \
                 or self.sim.decision_type[self.id] == "baseline2" \
                 or self.sim.decision_type[self.id] == "reactive_point"\
-                or self.sim.decision_type[self.id] == "reactive_uncertainty": #TODO: need to be able to check indivisual type
+                or self.sim.decision_type[self.id] == "reactive_uncertainty":  #TODO: need to be able to check indivisual type
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)

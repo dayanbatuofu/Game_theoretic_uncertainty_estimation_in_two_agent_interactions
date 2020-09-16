@@ -1085,11 +1085,13 @@ class InferenceModel:
         self.frame = self.sim.frame
         curr_state_h = sim.agents[0].state[self.frame]
         last_action_h = sim.agents[0].action[self.frame]
+        last_state_h = sim.agents[0].state[self.frame - 1]
         curr_state_m = sim.agents[1].state[self.frame]
         last_action_m = sim.agents[1].action[self.frame]
+        last_state_m = sim.agents[1].state[self.frame - 1]
 
-        self.traj_h.append([curr_state_h, last_action_h])
-        self.traj_m.append([curr_state_m, last_action_m])
+        self.traj_h.append([last_state_h, last_action_h])
+        self.traj_m.append([last_state_m, last_action_m])
 
         "place holder: using NFSP Q function in place of NE Q function pair"
         def trained_q_function(state_h, state_m):
@@ -1117,7 +1119,7 @@ class InferenceModel:
             """
             q_set = trained_q_function(state_h, state_m)
             "Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2"
-            #TODO: implement when there are 2 Q pairs for na_na and a_na
+
             #TODO: generalize to iterate
             "thetas: na, a"
             id_h = self.thetas.index(theta_h)
@@ -1178,10 +1180,6 @@ class InferenceModel:
             theta_h, lambda_h = beta_h
             theta_m, lambda_m = beta_m
             action_set = self.action_set
-            # if theta == self.thetas[0]:
-            #     intent = "na_na"
-            # else:
-            #     intent = "a_na"
 
             #q_vals = q_values(state_h, state_m, intent=intent)
 
@@ -1231,15 +1229,10 @@ class InferenceModel:
             theta_m, lambda_m = beta_m
 
             "Q*lambda"
-            # np.multiply(Q,_lambda,out = Q)
-            # q_vals_h = q_vals_h.detach().numpy()  # detaching tensor
-            # q_vals_m = q_vals_m.detach().numpy()
             q_vals_pair = [Q_h, Q_m]
-            # print("q values: ",q_vals)
             exp_Q_pair = []
             _lambda = [lambda_h, lambda_m]
             "testing lambda (TEMPORARY)"
-            # _lambda = [1, 1]
             for i, q_vals in enumerate(q_vals_pair):
                 exp_Q = []
                 Q = [q * _lambda[i] for q in q_vals]
@@ -1254,7 +1247,7 @@ class InferenceModel:
                 "normalizing"
                 # normalize(exp_Q, norm = 'l1', copy = False)
                 exp_Q /= sum(exp_Q)
-                #print("exp_Q normalized:", exp_Q)
+                # print("exp_Q normalized:", exp_Q)
                 exp_Q_pair.append(exp_Q)
 
             return exp_Q_pair  # [exp_Q_h, exp_Q_m]
@@ -1276,7 +1269,6 @@ class InferenceModel:
             return resampled_priors
 
         def prob_q_vals(prior, state_h, state_m, traj_h, traj_m, beta_h, beta_m):
-            #TODO: documentation
             """
             Equation 6
             Calculates Q function pairs probabilities for use in beta pair probabilities calculation,
@@ -1290,12 +1282,6 @@ class InferenceModel:
 
             :return:[Q_pairs, P(QH, QM|D(k))], where Q_pairs = [Q_NA_NA, ..., Q_A_A]
             """
-            # if theta_h == self.thetas[0]:
-            #     intent = 'na_na'
-            # else:
-            #     intent = 'a_na'
-            theta_h, lambda_h = beta_h
-            theta_m, lambda_m = beta_m
 
             # get all q pairs
             q_pairs = []
@@ -1303,7 +1289,6 @@ class InferenceModel:
             for t_m in self.thetas:
                 for t_h in self.thetas:
                     q_pairs.append(q_values_pair(state_h, state_m, t_h, t_m))  # [q_vals_h, q_vals_m]
-            #q_pairs = [q_pairs]
 
             # Size of P(Q2|D) should be the size of possible Q2
             if prior is None:
@@ -1316,22 +1301,21 @@ class InferenceModel:
 
             # assuming 1D array of q functions
             "Calculating probability of each Q pair: Equation 6"
-            action_h = traj_h[-1][1]
-            action_m = traj_m[-1][1]
+            past_state_h, action_h = traj_h[-1]
+            past_state_m, action_m = traj_m[-1]
             ah = self.action_set.index(action_h)
             am = self.action_set.index(action_m)
-            for i, q in enumerate(q_pairs):  # iterate through pairs of equilibriums
-                #  TODO: check if it's correct to use predicted beta
-                p_action = action_prob_Q(state_h, state_m, q[0], q[1], beta_h, beta_m)
+            for i, q in enumerate(q_pairs):  # iterate through pairs of equilibria
+                p_action = action_prob_Q(past_state_h, past_state_m, q[0], q[1], beta_h, beta_m)  # action prob for last time step!
                 p_action_h = p_action[0][ah]
                 p_action_m = p_action[1][am]
                 p_a_pair = p_action_h * p_action_m
                 "P(Q2|D(k)) = P(uH, uM|x(k), QH, QM) * P(Q2|D(k-1)) / sum(~)"
                 p_q2[i] = p_a_pair * prior[i]
 
-            p_q2 /= sum(p_q2) #normalize
+            p_q2 /= sum(p_q2)  # normalize
             print(p_q2)
-            assert round(sum(p_q2)) == 1 #check if properly normalized
+            assert round(sum(p_q2)) == 1  # check if properly normalized
 
             return q_pairs, p_q2
 
@@ -1363,12 +1347,12 @@ class InferenceModel:
             id = []
             "checking if given beta is a or na, in 1D betas:"
             for i in index:  # (i, j) = (row, col). 8x8 2D array
-                if i < 4:
+                if i < 4:  # NA
                     id.append(0)
-                else:
+                else:  # A
                     id.append(1)
 
-            if id[0] == th and id[1] == tm:
+            if id[0] == th and id[1] == tm:  # if beta matches with Q
                 return 1
             else:
                 return 0
@@ -1393,7 +1377,6 @@ class InferenceModel:
             "prob of Q pair given beta: equally distributed probabilities P(Qm, Qh | betas)"
 
             "calculate prob of beta pair given Q pair"
-            # this is assuming 1D arrays
             p_beta_q2 = np.empty((len(p_betas_prior), len(p_betas_prior[0])))
             for i in range(len(p_betas_prior)):
                 for j in range(len(p_betas_prior[i])):
@@ -1407,7 +1390,7 @@ class InferenceModel:
                     #         p_beta_q2[i][j] += p_betas_prior[i][j] * p_q2_beta[k]
             p_beta_q2 /= np.sum(p_beta_q2)
             # TODO: do they sum up to 1?
-            #assert 0.99 <= np.sum(p_beta_q2) <= 1.01  # check if properly normalized
+            # assert 0.99 <= np.sum(p_beta_q2) <= 1.01  # check if properly normalized
 
             return p_beta_q2
 
@@ -1426,21 +1409,6 @@ class InferenceModel:
             "resample from initial/uniform distribution"
             p_betas_d = np.zeros((len(self.betas), len(self.betas)))
 
-            #intent = (1, 1) #assume na_na & theta_H = theta_M = theta_set[0]
-            # 2D version
-            # for i in range(len(p_betas_q2)):
-            #     for j in range(len(p_betas_q2[0])):
-            #         for k in range(len(p_q2)):
-            #             #TODO: give the function a particular q_pair!
-            #             p_betas_q2 = prob_beta_given_q(beta_H=beta_h, beta_M=beta_m,
-            #                                            p_betas_prior=self.p_betas_prior,
-            #                                            q_pairs=p_q2, q_pair=q_pairs[k])
-            #             #print(p_betas_q2, p_q2)
-            #             #print(p_betas_d)
-            #             if k == 0:
-            #                 p_betas_d[i][j] = p_betas_q2[i][j] * p_q2[k]
-            #             else:
-            #                 p_betas_d[i][j] += p_betas_q2[i][j] * p_q2[k]
             for i, q2 in enumerate(q_pairs):
                 p_betas_q2 = prob_beta_given_q(p_betas_prior=self.p_betas_prior,
                                                q_id=i)
@@ -1448,7 +1416,7 @@ class InferenceModel:
                     for k in range(len(p_betas_q2[j])):
                         p_betas_d[j][k] += p_betas_q2[j][k] * p_q2[i]
 
-            return p_betas_d #TODO: does it need to be normalized?
+            return p_betas_d  # TODO: does it need to be normalized?
 
         def get_state_list(state, T, dt):
             """
@@ -1500,14 +1468,7 @@ class InferenceModel:
             :param thetas:
             :return: 5x5 P(u_H, u_M| x(k), beta_H, beta_m)
             """
-            # p_state_joint = []
-            # for i in range(len(p_state_h)):
-            #     p_state_h.append([])
-            #     for j in range(len(p_state_h[i])):
-            #         for p in range(len(p_state_m)):
-            #             for q in range(len(p_state_m)):
-            #                 p_state_u = p_state_h[i][j] * p_state_m[p][q]
-            #                 p_state_joint[i].append()
+
             "in the case where action prob is calculated separately"
             # lambda_h, lambda_m = lambdas
             # theta_h, theta_m = thetas
@@ -1518,12 +1479,11 @@ class InferenceModel:
             p_action_h, p_action_m = action_prob(state_h, state_m, beta_h, beta_m)
 
             p_action_joint = np.empty((len(p_action_h), len(p_action_m)))
-            #p_action_joint = []
             for i, p_a_h in enumerate(p_action_h):
                 for j, p_a_m in enumerate(p_action_m):
                     p_action_joint[i][j] = p_a_h * p_a_m
                     #p_action_joint.append(p_a_h * p_a_m)
-            assert 0.98 < np.sum(p_action_joint) < 1.02
+            assert round(np.sum(p_action_joint)) == 1
 
             return p_action_joint
 
@@ -1538,14 +1498,7 @@ class InferenceModel:
             :param thetas:
             :return:
             """
-            # p_state_joint = []
-            # for i in range(len(p_state_h)):
-            #     p_state_h.append([])
-            #     for j in range(len(p_state_h[i])):
-            #         for p in range(len(p_state_m)):
-            #             for q in range(len(p_state_m)):
-            #                 p_state_u = p_state_h[i][j] * p_state_m[p][q]
-            #                 p_state_joint[i].append()
+
             "in the case where action prob is calculated separately"
             # lambda_h, lambda_m = lambdas
             # theta_h, theta_m = thetas
@@ -1553,15 +1506,14 @@ class InferenceModel:
             # p_action_m = action_prob(state_m, state_h, lambda_m, theta_m)
 
             "in the case where action prob is calculated TOGETHER"
-            p_action_h, p_action_m = action_prob(state_h, state_m, beta_h, beta_m)
+            p_action_h, p_action_m = action_prob(state_h, state_m, last_beta_h, last_beta_m)
 
             p_action_joint = np.empty((len(p_action_h), len(p_action_m)))
-            #p_action_joint = []
             for i, p_a_h in enumerate(p_action_h):
                 for j, p_a_m in enumerate(p_action_m):
                     p_action_joint[i][j] = p_a_h * p_a_m
-                    #p_action_joint.append(p_a_h * p_a_m)
-            assert 0.98 < np.sum(p_action_joint) < 1.02
+
+            assert round(np.sum(p_action_joint)) == 1
 
             return p_action_joint
 
@@ -1602,7 +1554,7 @@ class InferenceModel:
             for i in range(len(state_list_h)):  # over state list at time i/ t
                 #p_a = action_prob(state_h, state_m, _lambda, theta)  # assume same action prob at all time
                 p_a = joint_action_prob_Q(state_h, state_m, Q_h, Q_m)
-                # TODO: make it into 2D
+
                 if i == 0:
                     p_states[i] = p_a  # 1 step look ahead only depends on action prob
                     # transition is deterministic -> 1, prob state(k) = 1
@@ -1620,7 +1572,6 @@ class InferenceModel:
                         p_s_t.extend(p_s.tolist())
                     p_states[i] = p_s_t
 
-            #TODO: verify that state prob corresponds to the right state
             "state_list contains (state_h, state_m)_k"
             return p_states, state_list
 
@@ -1630,7 +1581,6 @@ class InferenceModel:
             Calculate the marginal state prob from P(x(k+1)|QH, QM)
             :param p_traj:
             :param p_q2:
-            :param which_q2:
             :return: P(x(k+1)|D(k)): {0:[x1, x2,...], 1:[x1, x2, ...]}, where 0, 1, .. is the future time k
             """
             #marginal = np.empty(len(p_traj))
@@ -1640,19 +1590,15 @@ class InferenceModel:
             for t in range(len(p_traj)):
                 for r in range(len(p_traj[t])):
                     marginal[t] = np.zeros((len(p_traj[t]), len(p_traj[t][r])))
-            # TODO: calculate p_traj with different Q pairs???
+
             for i, q2 in enumerate(Q_pairs):
                 p_traj = traj_prob(state_h, state_m, q2[0], q2[1], dt=dt)[0]
-                #print("p_traj", p_traj)
+
                 for t in range(len(p_traj)):  # time step
                     for r in range(len(p_traj[t])):  # resulting states
-                        # for p in range(len(p_q2)):  # number of q pairs
-                        #     #marginal[i].append(p_traj[i][j]*p_q2[p])
-                        #print(p_traj[i][j])
                         for c in range(len(p_traj[t][r])): # rows
                             marginal[t][r][c] += p_traj[t][r][c] * p_q2[i]
-            #print(marginal)
-            #print(np.sum(marginal[0]))
+
             assert round(np.sum(marginal[0])) == 1
             return marginal
 
@@ -1680,7 +1626,6 @@ class InferenceModel:
                         marginal[0].append(sum(col))
                     else:
                         marginal[1].append(sum(col))
-            # TODO: get most likely lambda???
             # i-4 if i>3
             id_lambda = marginal.index(max(marginal))
             _best_lambda = self.lambdas[id_lambda] if id_lambda <= 3 else self.lambdas[id_lambda - 4]
@@ -1689,31 +1634,23 @@ class InferenceModel:
             return marginal, _best_lambda
 
         def marginal_action(state_h, state_m, _p_beta_D):
+            # TODO: not in use?
             """
             Get marginal action prob P(u|x;D) from P(u|x;beta), for analysis purposes
             :return:
                 p(uH|D), p(uM|D)
             """
-            # beta_pairs = np.empty((len(self.betas), len(self.betas)))
-            # for i in range(len(self.betas)):
-            #     for j in range(len(self.betas)):
-            #         beta_ij = [self.betas[i], self.betas[j]]
-            #         beta_pairs[i][j] = beta_ij
 
-            # TODO: get all p_action with given beta pairs
             _p_action_h = np.zeros(len(self.action_set))  # 1D
             _p_action_m = np.zeros(len(self.action_set))  # 1D
             #_p_beta_D = _p_beta_D.ravel()
             for i in range(len(self.betas)):
                 for j in range(len(self.betas)):
-                    # TODO: should we store this p_a for other uses?
-                    # TODO: think about if it makes sense
                     p_a_b_h, p_a_b_m = action_prob(state_h, state_m, beta_h=self.betas[i], beta_m=self.betas[j])
-
                     for k in range(len(p_a_b_h)):
                         _p_action_h[k] += p_a_b_h[k] * _p_beta_D[i][j]
                         _p_action_m[k] += p_a_b_h[k] * _p_beta_D[i][j]
-            # TODO: does it need to be normalized?
+
             assert round(np.sum(_p_action_h)) == 1 and round(np.sum(_p_action_m)) == 1
             return _p_action_h, _p_action_m
 
@@ -1722,39 +1659,38 @@ class InferenceModel:
         "---------------------------------------------------"
 
         if self.frame == 0:  # initially guess the beta
-            theta_h = self.thetas[0]
-            lambda_h = self.lambdas[-1]  # start large
-            theta_m = self.thetas[0]
-            lambda_m = self.lambdas[-1]
-            beta_h, beta_m = [theta_h, lambda_h], [theta_m, lambda_m]
-            intent_pair = 'na_na'
-            # TODO: beta M is assumed to be the equilibrium set
-        else:  # get previously predicted beta
-            beta_h, beta_m = self.past_beta[-1]
-            theta_h, lambda_h = beta_h
-            theta_m, lambda_m = beta_m
-            "TEST: fixing the lambda to check"
-            # TODO: finalize this lambda and beta
-            lambda_h, lambda_m = self.lambdas[-1], self.lambdas[-1]
-            #beta_h, beta_m = self.betas[-1], self.betas[3]  #H:A, M: NA
+            # TODO: use the initial env car_par to get this!
+            # last_theta_h = self.thetas[0]
+            # last_lambda_h = self.lambdas[-1]  # start large
+            # last_theta_m = self.thetas[0]
+            # last_lambda_m = self.lambdas[-1]
+            last_theta_h = self.sim.env.car_par[0]['par']
+            last_lambda_h = self.lambdas[-1]  # TODO: change this according to initial setup
+            last_theta_m = self.sim.env.car_par[1]['par']
+            last_lambda_m = self.lambdas[-1]
+            last_beta_h, last_beta_m = [last_theta_h, last_lambda_h], [last_theta_m, last_lambda_m]
 
-            if theta_h == self.thetas[0]:
-                intent_pair = 'na_na'
-            else:
-                intent_pair = 'a_na'
+        else:  # get previously predicted beta
+            last_beta_h, last_beta_m = self.past_beta[-1]
+            last_theta_h, last_lambda_h = last_beta_h
+            last_theta_m, last_lambda_m = last_beta_m
+            "TEST: fixing the lambda to check"
+            # lambda_h, lambda_m = self.lambdas[-1], self.lambdas[-1]
+            # beta_h, beta_m = self.betas[-1], self.betas[3]  #H:A, M: NA
 
         'intent and rationality inference'
-        # TODO: check if this is right to use predicted betas
-        #q2 = q_values_pair(curr_state_h, curr_state_m, theta_h, theta_m)
+        # TODO: check if this is right: using traj[-1] to calculate p_action
+        # q2 = q_values_pair(curr_state_h, curr_state_m, theta_h, theta_m)
         q_pairs, p_q2_d = prob_q_vals(self.q2_prior, curr_state_h, curr_state_m,
-                                      traj_h=self.traj_h, traj_m=self.traj_m, beta_h=beta_h, beta_m=beta_m)
-        #print("Q pairs at time {0}:".format(self.frame), q_pairs, len(q_pairs) )
+                                      traj_h=self.traj_h, traj_m=self.traj_m,
+                                      beta_h=last_beta_h, beta_m=last_beta_m)  # betas are used for action_prob
+        # print("Q pairs at time {0}:".format(self.frame), q_pairs, len(q_pairs))
         # p_beta_q = prob_beta_given_q(beta_h, beta_m,
         #                              p_betas_prior=self.p_betas_prior, q_pairs=[q2], q_pair=q2)
         p_beta_d = prob_beta_pair(p_q2=p_q2_d, q_pairs=q_pairs)  # this calls p_beta_q internally
 
         'future state prediction'
-        p_traj, state_list = traj_prob(curr_state_h, curr_state_m, beta_h, beta_m, dt=self.dt)
+        p_traj, state_list = traj_prob(curr_state_h, curr_state_m, last_beta_h, last_beta_m, dt=self.dt)
         p_q2 = np.array(p_q2_d).tolist()
         which_q2 = p_q2.index(max(p_q2))
         print('p_traj:', p_traj)
@@ -1769,23 +1705,20 @@ class InferenceModel:
         'getting best predicted betas'
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
         print("best betas ID at time {0}".format(self.frame), beta_pair_id)
-        #beta_id = p_beta_d.argmax()
-        best_beta_h = self.betas[beta_pair_id[0]]
-        best_beta_m = self.betas[beta_pair_id[1]]
-        self.past_beta.append([best_beta_h, best_beta_m])
 
-        "getting marginal prob for beta_h or beta_m:"
+        new_beta_h = self.betas[beta_pair_id[0]]
+        new_beta_m = self.betas[beta_pair_id[1]]
+        self.past_beta.append([new_beta_h, new_beta_m])
+
+        "getting marginal prob for beta_h or beta_m: THIS IS ONLY FOR PLOTTING, NOT DECISION"
         p_beta_d_h, best_lambda_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
         p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
 
         "getting most likely action for analysis purpose"
-        #p_actions = action_prob(curr_state_h, curr_state_m, best_beta_h, best_beta_m)
-        p_beta_d_pair = [p_beta_d_h, p_beta_d_m]
-        p_actions_d = marginal_action(curr_state_h, curr_state_m, p_beta_d)
-        # p_actions_d = action_prob(curr_state_h, curr_state_m, beta_h, beta_m)  # for testing with decision
+        p_actions = action_prob(curr_state_h, curr_state_m, new_beta_h, new_beta_m)  # for testing with decision
         predicted_actions = []
-        for i, p_a in enumerate(p_actions_d):
-            #p_a = marginal_action(p_a, p_beta_d_pair[i][round(beta_pair_id[i]/2)][beta_pair_id[i] % 2])
+        for i, p_a in enumerate(p_actions):
+            # p_a = marginal_action(p_a, p_beta_d_pair[i][round(beta_pair_id[i]/2)][beta_pair_id[i] % 2])
             p_a = np.array(p_a).tolist()
             id = p_a.index(max(p_a))
             predicted_actions.append(self.action_set[id])
@@ -1819,249 +1752,13 @@ class InferenceModel:
                 'predicted_intent_other': [p_beta_d_h, best_lambda_h],
                 'predicted_states_self': (marginal_state_m, get_state_list(curr_state_m, self.T, self.dt)),
                 'predicted_actions_self': predicted_actions[1],
-                'predicted_intent_self': [p_beta_d_m, best_lambda_m]}  # TODO: do we need to process p_beta_d?
-        #TODO: modify so that this works for both agents??
+                'predicted_intent_self': [p_beta_d_m, best_lambda_m],
+                'predicted_intent_all': [p_beta_d, [new_beta_h, new_beta_m]]}
 
-        # return {'predicted_intent_other': joint_probability,
-        #         'predicted_states_other': marginal_state,
-        #         'predicted_actions_other': predicted_action}
 
         "---------------------------"
         "end of placeholder for NFSP"
         "---------------------------"
-
-        # def h_action_prob(self, state, _lambda_h, q_values_h):
-        #     # TODO: documentation
-        #     """
-        #     Calculate H's action probability based on the Q values from Nash Equilibrium (QH,QM)eq
-        #     :param self:
-        #     :return: H's action probabilities correspond to each action available at state s
-        #     """
-        #     # TODO: consider how q value from nash equilibrium is imported
-        #     #Pseudo code, need confirmation:
-        #     q = self.q_h_eq #get q values for H from nash equilibrium
-        #
-        #     #reusing q variable to save storage
-        #     "p_action_h = exp(q*lambda)/sum(exp(q*lambda))"
-        #     np.multiply(q, _lambda_h, out = q)
-        #     np.exp(q, out = q)
-        #     normalize(q, norm = 'l1', copy = False)
-        #
-        #     # TODO: CONSIDER if there are more than 1 set of Qs: maybe just implement them in outer scope
-        #     pass
-        #     return q
-        #
-        # def m_action_prob(self, state, _lambda_m, q_values_m):
-        #     # TODO: documentation
-        #     """
-        #     Calculate M's action probability based on the Q values obtained from Nash Equilibrium (QH,QM)eq
-        #     :param self:
-        #     :return: M's action probabilities correspond to each action available at state s
-        #     """
-        #     # Pseudo code, need confirmation:
-        #     #TODO: consider how q value from nash equilibrium is imported
-        #
-        #     q = self.q_m_eq  # get q values for H from nash equilibrium
-        #     # reusing q variable to save storage
-        #     "p_action_h = exp(q*lambda)/sum(exp(q*lambda))"
-        #     np.multiply(q, _lambda_m, out=q)
-        #     np.exp(q, out=q)
-        #     normalize(q, norm='l1', copy=False)
-        #
-        #     pass
-        #     return q
-        #
-        # def belief_resample(self, priors, epsilon):
-        #     """
-        #     Equation 3
-        #     Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
-        #     :return: resampled belief P(k-1) on lambda and theta
-        #     """
-        #     initial_belief = np.ones(len(priors)) / len(priors)
-        #     resampled_priors = (1 - epsilon)*priors + epsilon * initial_belief
-        #     return resampled_priors
-        #
-        # def q_pair_prob(self, prior ,q_pairs, state, lambda_h):
-        #     #TODO: documentation
-        #     """
-        #     Equation 6
-        #     Calculates Q function pairs probabilities for use in beta pair probabilities calculation,
-        #     since each beta pair may map to multiple Q function/value pair.
-        #
-        #     :requires: p_action_h, p_pair_prob(k-1) or prior, q_pairs
-        #     :param:
-        #     self:
-        #     q_pairs: all Q function pairs (QH, QM)
-        #     p_action_h
-        #     p_q2
-        #
-        #     :return:
-        #     """
-        #     #TODO: code is still in work
-        #     if prior is None:
-        #         prior = np.ones(q_pairs)/len(q_pairs) #TODO:: assuming uniform prior?
-        #
-        #     "resample from initial/uniform distribution"
-        #     prior = self.belief_resample(prior, epsilon=0.05)
-        #
-        #     p_action_h = h_action_prob(state, lambda_h)
-        #     p_q2 = np.empty(q_pairs)
-        #
-        #     #TODO:: I'm assuming a 2D array of q pairs is imported, needs confirmation!!!
-        #     #TODO: also I need to confirm if this calculation is correct
-        #     "Calculating probability of each Q pair: Equation 6"
-        #     for i,q_h in enumerate(q_pairs): #rows
-        #         for j,q_m in enumerate(q_h): #cols
-        #             p_q2[i, j] = p_action_h[i] *prior[i, j] #action prob corresponds to H's Q so it's "i"
-        #
-        #     p_q2 /= sum(p_q2) #normalize
-        #     assert sum(p_q2) == 1 #check if properly normalized
-        #     pass
-        #     return p_q2
-        #
-        # def prob_beta_given_q(beta_D_prior, beta_H, beta_M):
-        #     #TODO: this is a placeholder, needs to be implemented
-        #     """
-        #     Equation 8: using Bayes rule
-        #     Calculates probability of beta pair (Bh, BM_hat) given Q pair (QH, QM): P(Bh, BM_hat | QH, QM),
-        #     for beta_pair_prob formula.
-        #     :param self:
-        #     :return:
-        #     """
-        #     # TODO: code is still in work
-        #     #TODO: check betas
-        #     if beta_D_prior is None:
-        #         prior = np.ones([beta_H, beta_M]) / len([beta_H, beta_M])  # TODO:: assuming uniform prior?
-        #     "import prob of beta pair given D(k-1) from Equation 7"
-        #     p_betas_prev = beta_pair_prob()
-        #     "calculate prob of beta pair given Q pair"
-        #
-        #     pass
-        #
-        # def beta_pair_prob(self, beta_H, beta_M, q_pairs):
-        #     """
-        #     Equation 7
-        #     Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
-        #     :param self:
-        #     :return:
-        #     """
-        #     #TODO: This code is still in work
-        #     "importing prob of Q pair given observation D(k)"
-        #     p_q2 = q_pair_prob() #p_q2_d
-        #     "importing prob of beta pair given Q pair"
-        #     #TODO: this is a placeholder!
-        #     p_betas_q = prob_beta_given_q() #does not return anything yet
-        #     "Calculate prob of beta pair given D(k) by summing over Q pair"
-        #
-        #     # TODO: resample from initial belief! HOW??? (no prior is used!)
-        #     "resample from initial/uniform distribution"
-        #
-        #     p_betas_d = np.zeros(p_betas_q)
-        #     r = len(q_pairs)
-        #     c = len(q_pairs[0])#for iterating through 2D array p_q_pairs
-        #     for p in range(len(p_betas_d)): #iterating through 2D array p_betas
-        #         for q in range(len(p_betas_d)[0]):
-        #             p_beta_q = p_betas_q[p, q]
-        #             for i in range(r): #iterate through 2D array p_q2 or p_q2_d
-        #                 for j in range(c):
-        #                     #if p_betas[p,q] == p_beta:
-        #                     if (i, j) == (0,0): #first element
-        #                         p_betas_d[p, q] = p_beta_q * p_q2[0, 0]
-        #                     else:
-        #                         p_betas_d[p, q] += p_beta_q * p_q2[i,j]
-        #     pass
-        #     return p_betas_d
-        #
-        # def get_state_list_h(self, T):
-        #     """
-        #     calculate an array of state (T x S at depth T)
-        #     shape: t0[x(k)  ]
-        #            t1[x(k+1)], for 1 step look ahead
-        #     :param self:
-        #     :return:
-        #     """
-        #     # TODO: Check this modification so that action probability is calculated for states within a time horizon
-        #     # ---Code: append all states reachable within time T----
-        #     states = self.states  # TODO: import a state to start from
-        #     actions = self.action_set
-        #     #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
-        #     dt = self.sim.dt
-        #
-        #     # TODO: MODIFY for calculating state list for agent M
-        #     def get_s_prime(_states, _actions):
-        #         _s_prime = []
-        #
-        #         def calc_state(x, u, dt):
-        #             sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-        #             vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-        #             vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-        #             sx_new = sx + (vx + vx_new) * dt * 0.5
-        #             sy_new = sy + (vy + vy_new) * dt * 0.5
-        #
-        #             return sx_new, sy_new, vx_new, vy_new
-        #
-        #         for s in _states:
-        #             for a in _actions:
-        #                 _s_prime.append(calc_state(s, a, dt))
-        #         return _s_prime
-        #
-        #     # TODO: Check the state!
-        #     states = self.initial_state  # or use current state
-        #     i = 0  # row counter
-        #     state_list = np.zeros([T, actions * T])
-        #     for t in range(0, T):
-        #         s_prime = get_s_prime(states, actions)  # separate pos and speed!
-        #         state_list[i] = s_prime
-        #         state = s_prime  # get s prime for the new states
-        #         i += 1  # move onto next row
-        #     return state_list
-        #     # -------end of code--------
-        # def get_state_list_m(self, T):
-        #     """
-        #     calculate an array of state (T x S at depth T)
-        #     shape: t0[x(k)  ]
-        #            t1[x(k+1)], for 1 step look ahead
-        #     :param self:
-        #     :return:
-        #     """
-        #     # TODO: Check this modification so that action probability is calculated for states within a time horizon
-        #     # ---Code: append all states reachable within time T----
-        #     states = self.states  # TODO: import a state to start from
-        #     actions = self.action_set
-        #     #T = self.T  # this should be the time horizon/look ahead: not using predefined T to generalize for usage
-        #     dt = self.sim.dt
-        #     #TODO: MODIFY for calculating state list for agent M
-        #     def get_s_prime(_states, _actions):
-        #         _s_prime = []
-        #
-        #         def calc_state(x, u, dt):
-        #             sx, sy, vx, vy = x[0], x[1], x[2], x[3]
-        #             vx_new = vx + u * dt * vx / (np.linalg.norm([vx, vy]) + 1e-12)
-        #             vy_new = vy + u * dt * vy / (np.linalg.norm([vx, vy]) + 1e-12)
-        #             sx_new = sx + (vx + vx_new) * dt * 0.5
-        #             sy_new = sy + (vy + vy_new) * dt * 0.5
-        #
-        #             return sx_new, sy_new, vx_new, vy_new
-        #
-        #         for s in _states:
-        #             for a in _actions:
-        #                 _s_prime.append(calc_state(s, a, dt))
-        #         return _s_prime
-        #
-        #     #TODO: Check the state! As well as the state info for M (state[:,1]?? or simply self.h_state?)!
-        #     states = self.initial_state  # or use current state
-        #     i = 0  # row counter
-        #     state_list = np.zeros([T, actions * T])
-        #     for t in range(0, T):
-        #         s_prime = get_s_prime(states, actions)  # separate pos and speed!
-        #         state_list[i] = s_prime
-        #         state = s_prime  # get s prime for the new states
-        #         i += 1  # move onto next row
-        #     return state_list
-        #     # -------end of code--------
-        #
-
-
 
 
     @staticmethod
