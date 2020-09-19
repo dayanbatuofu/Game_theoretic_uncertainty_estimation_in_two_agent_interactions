@@ -51,17 +51,17 @@ class InferenceModel:
         self.thetas = self.sim.theta_list
 
         "---Params for belief calculation---"
+        # TODO: get initial belief from agent.initial_belief
+        self.initial_belief = None  # p0: initial belief of the param distribution
         self.past_scores = {}  # score for each lambda
         self.past_scores1 = {}  # for theta1
         self.past_scores2 = {}  # for theta2
-        #self.theta_priors = None #for calculating theta lambda joint probability
+        # self.theta_priors = None #for calculating theta lambda joint probability
         self.theta_priors = self.sim.theta_priors
         self.initial_joint_prob = np.ones((len(self.lambdas), len(self.thetas))) / (len(self.lambdas) * len(self.thetas)) #do this here to increase speed
-        # TODO: generate initial belief base on self intent!!!
         self.traj_h = []
         self.traj_m = []
 
-        #self.action_set = [-1, -0.2, 0.0, 0.1, 0.5]  # accelerations (m/s^2)
         self.action_set = [-8, -4, 0.0, 4, 8]  # from realistic trained model
         #  safe deceleration: 15ft/s
 
@@ -69,10 +69,12 @@ class InferenceModel:
         self.p_betas_prior = None
         self.q2_prior = None
         self.past_beta = []
+        # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
         #          [theta2, lambda1], [theta2, lambda2], [theta2, lambda3], [theta2, lambda4] ]
-        self.betas = []
+        # ----------------------------------------------------------------------------------------
+        self.beta_set = []
         '2D version of beta'
         # for i, theta in enumerate(self.thetas):
         #     self.betas.append([])
@@ -81,15 +83,13 @@ class InferenceModel:
         '1D version of beta'
         for i, theta in enumerate(self.thetas):
             for j, _lambda in enumerate(self.lambdas):
-                self.betas.append([theta, _lambda])
+                self.beta_set.append([theta, _lambda])
 
     # @staticmethod
     def no_inference(self, agents, sim):
-        #pass
         print("frame {}".format(sim.frame))
         return
 
-    #@staticmethod
     def test_baseline_inference(self, agents, sim):
         # Test implementation Fridovich-Keil et al.
         # "Confidence-aware motion prediction for real-time collision avoidance"
@@ -1370,7 +1370,7 @@ class InferenceModel:
 
             "import prob of beta pair given D(k-1) from Equation 7: P(betas|D(k-1))"
             if p_betas_prior is None:
-                betas_len = len(self.betas)
+                betas_len = len(self.beta_set)
                 p_betas_prior = np.ones((betas_len, betas_len)) / (betas_len * betas_len)
             else:
                 p_betas_prior = resample(p_betas_prior, epsilon=0.05)
@@ -1407,7 +1407,7 @@ class InferenceModel:
 
             # TODO: resample from initial belief! HOW??? (no prior is used!)
             "resample from initial/uniform distribution"
-            p_betas_d = np.zeros((len(self.betas), len(self.betas)))
+            p_betas_d = np.zeros((len(self.beta_set), len(self.beta_set)))
 
             for i, q2 in enumerate(q_pairs):
                 p_betas_q2 = prob_beta_given_q(p_betas_prior=self.p_betas_prior,
@@ -1614,21 +1614,22 @@ class InferenceModel:
             for t in self.thetas:
                 marginal.append([])
             "create a 2D array of (lambda, theta) pairs distribution like single agent case"
+            half = round(len(self.beta_set) / 2)  # TODO: check if this works!
             if id == 0:  # H agent
                 for i, row in enumerate(_p_beta_d):  # get sum of row
-                    if i < 4:  # in 1D self.beta, 0~3 are NA, or theta1
+                    if i < half:  # in 1D self.beta, first half are NA, or theta1
                         marginal[0].append(sum(row))
                     else:
                         marginal[1].append(sum(row))
             else:
                 for i, col in enumerate(zip(*_p_beta_d)):
-                    if i < 4:
+                    if i < half:
                         marginal[0].append(sum(col))
                     else:
                         marginal[1].append(sum(col))
             # i-4 if i>3
             id_lambda = marginal.index(max(marginal))
-            _best_lambda = self.lambdas[id_lambda] if id_lambda <= 3 else self.lambdas[id_lambda - 4]
+            _best_lambda = self.lambdas[id_lambda] if id_lambda < half else self.lambdas[id_lambda - half]
             marginal = np.array(marginal)
             marginal = marginal.transpose()  # Lambdas x Thetas
             return marginal, _best_lambda
@@ -1644,9 +1645,9 @@ class InferenceModel:
             _p_action_h = np.zeros(len(self.action_set))  # 1D
             _p_action_m = np.zeros(len(self.action_set))  # 1D
             #_p_beta_D = _p_beta_D.ravel()
-            for i in range(len(self.betas)):
-                for j in range(len(self.betas)):
-                    p_a_b_h, p_a_b_m = action_prob(state_h, state_m, beta_h=self.betas[i], beta_m=self.betas[j])
+            for i in range(len(self.beta_set)):
+                for j in range(len(self.beta_set)):
+                    p_a_b_h, p_a_b_m = action_prob(state_h, state_m, beta_h=self.beta_set[i], beta_m=self.beta_set[j])
                     for k in range(len(p_a_b_h)):
                         _p_action_h[k] += p_a_b_h[k] * _p_beta_D[i][j]
                         _p_action_m[k] += p_a_b_h[k] * _p_beta_D[i][j]
@@ -1706,8 +1707,8 @@ class InferenceModel:
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
         print("best betas ID at time {0}".format(self.frame), beta_pair_id)
 
-        new_beta_h = self.betas[beta_pair_id[0]]
-        new_beta_m = self.betas[beta_pair_id[1]]
+        new_beta_h = self.beta_set[beta_pair_id[0]]
+        new_beta_m = self.beta_set[beta_pair_id[1]]
         self.past_beta.append([new_beta_h, new_beta_m])
 
         "getting marginal prob for beta_h or beta_m: THIS IS ONLY FOR PLOTTING, NOT DECISION"

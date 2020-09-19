@@ -26,6 +26,7 @@ class Simulation:
         self.decision_type = decision_type
         self.decision_type_h = decision_type[0]
         self.decision_type_m = decision_type[1]
+        self.inference_type = inference_type
         #print("decision type:", decision_type)
         self.env = env
         self.agents = []
@@ -125,7 +126,9 @@ class Simulation:
         self.vis.draw_dist()
         if self.drawing_prob:
             self.vis.draw_intent()
+        print("-------Simulation results:-------")
         print("Frames:", self.frame)
+        print("Initial belief:", self.agents[1].belief )
         print("states of H:", self.agents[0].state)
         print("states of H predicted by M:", self.agents[1].predicted_states_other)
         print("Action taken by H:", self.agents[0].action)

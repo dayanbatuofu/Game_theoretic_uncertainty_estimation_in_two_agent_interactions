@@ -25,20 +25,14 @@ class AutonomousVehicle:
         # Initialize variables
         self.state = self.car_par["initial_state"]  # state is cumulative
         self.intent = self.car_par["par"]
-        self.follow_intent = False
-        if self.follow_intent:  # doesnt work yet
-            # if self.intent == self.sim.theta_list[0]:  # NA
-            plan = self.decision_model.plan()
-            action = plan["action"]
-            self.action = [action]
-            # else:
-            #    self.action = [0]
-        else:
-            self.action = self.car_par["initial_action"]  # action is cumulative
+        self.action = self.car_par["initial_action"]  # action is cumulative
         self.trajectory = []
         self.planned_actions_set = []
         self.planned_trajectory_set = []
-
+        # TODO: decide lambdas and weight in env
+        self.belief = self.initial_belief(self.env.car_par[0]['par'], self.env.car_par[1]['par'],
+                                          self.sim.lambda_list[-1], self.sim.lambda_list[-1],
+                                          weight=0.8)
         # Initialize prediction variables
         self.predicted_intent_all = []
         self.predicted_intent_other = []
@@ -46,7 +40,7 @@ class AutonomousVehicle:
         self.predicted_policy_other = []
         self.predicted_policy_self = []
         "for recording predicted state from inference"
-        # TODO: check this predicted action
+        # TODO: check this predicted action: to match the time steps we put 0 initially, but fixes?
         self.predicted_actions_other = [0]  # assume initial action of other agent = 0
         self.predicted_actions_self = [0]
         self.predicted_states_self = []
@@ -78,6 +72,7 @@ class AutonomousVehicle:
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)
+        print(action)
         self.dynamics(action)
 
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
@@ -133,6 +128,86 @@ class AutonomousVehicle:
             #self.state.append(f(self.state[-1], action, self.sim.dt))
 
         return
+
+    def initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
+        """
+        Obtain initial belief of the params
+        :param theta_h:
+        :param theta_m:
+        :param lambda_h:
+        :param lambda_m:
+        :param weight:
+        :return:
+        """
+        # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
+        theta_list = self.sim.theta_list
+        lambda_list = self.sim.lambda_list
+        # beta_list = np.zeros((len(lambda_list), len(theta_list)))  # 2D type
+        # beta_list = np.zeros(len(lambda_list)* len(theta_list))  # 1D type
+        beta_list = []  # 1D list type (or 2D in terms of lambda, theta)
+        for i, lamb in enumerate(lambda_list):
+            for j, theta in enumerate(theta_list):
+                _beta = [lamb, theta]
+                beta_list.append(_beta)  # list type
+                # beta_list[i][j] = _beta  # np type
+        if self.sim.inference_type[1] == 'empathetic':
+            # beta_list = beta_list.flatten()
+            # TODO: higher prob for right theta, or beta (including lambda)?
+            # TODO: how to limit decimals
+            belief = np.ones((len(beta_list), len(beta_list)))
+            for i, beta_h in enumerate(beta_list):  # H: the rows
+                for j, beta_m in enumerate(beta_list):  # M: the columns
+                    if beta_h[0] == lambda_h:  # check lambda
+                        belief[i][j] *= weight
+                        if beta_h[1] == theta_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                        if beta_h[1] == theta_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+
+                    if beta_m[0] == lambda_m:  # check lambda
+                        belief[i][j] *= weight
+                        if beta_m[1] == theta_m:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                        if beta_m[1] == theta_m:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+
+                    # if beta_h == [lambda_h, theta_h] and beta_m == [lambda_m, theta_m]:
+                    #     belief[i][j] = weight
+                    # else:
+                    #     belief[i][j] = 1
+
+        # TODO: not in use! we only use the game theoretic inference
+        else:  # get belief on H agent only
+            belief = np.ones((len(lambda_list), len(theta_list)))
+            for i, lamb in enumerate(lambda_list):
+                for j, theta in enumerate(theta_list):
+                    if lamb == lambda_h:  # check lambda
+                        belief[i][j] *= weight
+                        if theta == theta_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                        if theta == theta_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+        belief /= np.sum(belief)  # normalize
+        assert round(np.sum(belief)) == 1
+        return belief
 
 
 # dummy class

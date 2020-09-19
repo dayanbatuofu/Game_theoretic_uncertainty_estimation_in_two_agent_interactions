@@ -5,9 +5,9 @@ for obtaining action for each agent
 import numpy as np
 # TODO pytorch version
 import torch as t
-
-#TODO: organize imports
 import sys
+import random
+# TODO: organize this
 sys.path.append('/models/rainbow/')
 from models.rainbow.arguments import get_args
 import models.rainbow.arguments
@@ -113,16 +113,30 @@ class DecisionModel:
                 # Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
                 return q_set
 
-            def q_values_pair(state_h, state_m, intent):
+            def q_values_pair(state_h, state_m, theta_h, theta_m):
                 q_set = trained_q_function(state_h, state_m)
                 # Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2,
                 # TODO: consider when we have more than 1 Q pair!
-                if intent == "na_na":
-                    Q_h = q_set[0]
-                    Q_m = q_set[1]
-                else:  # use a_na
-                    Q_h = q_set[3]
-                    Q_m = q_set[2]
+                id_h = self.sim.theta_list.index(theta_h)
+                id_m = self.sim.theta_list.index(theta_m)
+                if id_h == 0:
+                    if id_m == 0:  # TODO: IMPORTANT: CHECK WHICH ONE IS NA2 IN DECISION
+                        Q_h = q_set[0]
+                        Q_m = q_set[1]
+                    elif id_m == 1:  # M is aggressive
+                        Q_h = q_set[2]
+                        Q_m = q_set[3]
+                    else:
+                        print("ID FOR THETA DOES NOT EXIST")
+                elif id_h == 1:
+                    if id_m == 0:
+                        Q_h = q_set[3]
+                        Q_m = q_set[2]
+                    elif id_m == 1:  # TODO: IMPORTANT: CHECK WHICH ONE IS A2 IN DECISION
+                        Q_h = q_set[4]
+                        Q_m = q_set[5]
+                    else:
+                        print("ID FOR THETA DOES NOT EXIST")
 
                 "Need state for agent H: xH, vH, xM, vM"
                 state_h = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
@@ -134,7 +148,7 @@ class DecisionModel:
                 Q_vals_m = Q_m.forward(t.FloatTensor(state_m).to(t.device("cpu")))
                 return [Q_vals_h, Q_vals_m]
 
-            def action_prob(state_h, state_m, _lambda, intent):
+            def action_prob(state_h, state_m, _lambda, theta_h, theta_m):
                 """
                 calculate action prob for both agents
                 :param state_h:
@@ -147,7 +161,7 @@ class DecisionModel:
 
                 'intent has to be na_na or a_na'
                 # q_vals = q_values(state_h, state_m, intent=intent)
-                q_vals_pair = q_values_pair(state_h, state_m, intent)
+                q_vals_pair = q_values_pair(state_h, state_m, theta_h, theta_m)
                 q_vals_h = q_vals_pair[0]
                 q_vals_m = q_vals_pair[1]
 
@@ -180,20 +194,21 @@ class DecisionModel:
 
             "calling function for Boltzmann model"
             intent_list = ['na_na', 'a_na']
-            #TODO: does it work for both agents????
-            p_actions = action_prob(p1_state, p2_state, _lambda=self.sim.lambda_list[-1], intent='a_na')
-            # TODO: DRAW action instead of pulling highest mass
+            theta_h, theta_m = self.true_intents
+            p_actions = action_prob(p1_state, p2_state, self.sim.lambda_list[-1], theta_h, theta_m)
             assert (not pa == 0 for pa in p_actions)
             actions = []
             for p_a in p_actions:
                 p_a = np.array(p_a).tolist()
-                id = p_a.index(max(p_a))
-                actions.append(action_set[id])
+                "drawing action from action set using the distribution"
+                action = random.choices(action_set, weights=p_a, k=1)
+                actions.append(action[0])  # TODO: check why it's list from random??
+                # id = p_a.index(max(p_a))
+                # actions.append(action_set[id])
 
-
-        print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
-        #actions = {"1": action1, "2": action2}
-        #actions = [action1, action2]
+        print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # actions = {"1": action1, "2": action2}
+        # actions = [action1, action2]
         return {'action': actions}
 
     def baseline2(self):
