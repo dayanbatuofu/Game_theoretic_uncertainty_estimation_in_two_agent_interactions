@@ -18,7 +18,7 @@ class Environment:
         self.sim = sim
         # TODO: unify units for all parameters
 
-        if self.name == 'test_intersection':
+        if self.name == 'intersection':
             self.car_width = 0.66
             self.car_length = 1.33
             self.vehicle_max_speed = 0.05
@@ -112,7 +112,6 @@ class Environment:
                     qi = q_sets[3]
                 q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
                 p_a = self.action_prob(q_vals_i, lambda_list[-1])
-                assert (not pa == 0 for pa in p_a)  # check if any entry became zero from large negative Q
                 action_i = action_set[np.argmax(p_a)]
                 self.car_par[i]["initial_action"] = [action_i]
             print("initial params: ", self.car_par)
@@ -224,8 +223,6 @@ class Environment:
         exp_Q /= sum(exp_Q)
         # print("exp_Q normalized:", exp_Q)
         return exp_Q
-
-
 
 
 

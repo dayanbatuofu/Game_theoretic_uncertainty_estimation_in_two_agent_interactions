@@ -38,6 +38,7 @@ class Simulation:
         self.theta_list = [1, 1000]
         self.lambda_list = [0.001, 0.005, 0.01, 0.05]
         self.action_set = [-8, -4, 0, 4, 8]
+        self.action_set_combo= [[-8,-1], [-8, 0], [-8,1], [-4, -1], [-4, 0], [-4, 1], [0, -1], [0,0], [0,1], [4, -1], [4, 0], [4, 1], [8,-1], [8, 0], [8,1]]
 
         if self.n_agents == 2:
             # simulations with 2 cars
@@ -172,6 +173,5 @@ class Simulation:
         #     # print("Simulation video output saved to %s." % self.output_dir)
         # print("Simulation ended.")
         pass
-
 
 

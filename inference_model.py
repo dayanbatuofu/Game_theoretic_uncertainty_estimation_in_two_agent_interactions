@@ -63,6 +63,7 @@ class InferenceModel:
         self.traj_m = []
 
         self.action_set = [-8, -4, 0.0, 4, 8]  # from realistic trained model
+        self.action_set_combo= [[-8,-1], [-8, 0], [-8,1], [-4, -1], [-4, 0], [-4, 1], [0, -1], [0,0], [0,1], [4, -1], [4, 0], [4, 1], [8,-1], [8, 0], [8,1]]
         #  safe deceleration: 15ft/s
 
         "for empathetic inference:"
@@ -1055,6 +1056,285 @@ class InferenceModel:
         return {'predicted_intent_other': [p_joint, best_lambdas],
                 'predicted_states_other': [marginal_state_prob, states_list],
                 'predicted_actions_other': predicted_action}
+
+    def trained_baseline_inference_2U(self, agent, sim):
+        """
+        Use Q function from nfsp models
+        Important equations implemented here:
+        - Equation 1 (action_probabilities):
+        P(u|x,theta,lambda) = exp(Q*lambda)/sum(exp(Q*lambda)), Q size = action space at state x
+
+        - Equation 2 (belief_update):
+         #Pseudo code for intent inference to obtain P(lambda, theta) based on past action sequence D(k-1):
+        #P(lambda, theta|D(k)) = P(u| x;lambda, theta)P(lambda, theta | D(k-1)) / sum[ P(u|x;lambda', theta') P(lambda', theta' | D(k-1))]
+        #equivalent: P = action_prob * P(k-1)/{sum_(lambda,theta)[action_prob * P(k-1)]}
+
+        - Equation 3 (belief_resample):
+        #resampled_prior = (1 - epsilon)*prior + epsilon * initial_belief
+        :param agent:
+        :param sim:
+        :return: inferred other agent's parameters (P(k), P(x(k+1))
+        """
+        "importing agents information from Autonomous Vehicle (sim.agents)"
+        self.frame = self.sim.frame
+        curr_state_h = sim.agents[0].state[self.frame]
+        last_action_h = sim.agents[0].action[self.frame]
+        curr_state_m = sim.agents[1].state[self.frame]
+        last_action_m = sim.agents[1].action[self.frame]
+
+        # curr_state_h = sim.agents[0].state[-1]
+        # last_action_h = sim.agents[0].action[-1]
+        # curr_state_m = sim.agents[1].state[-1]
+        # last_action_m = sim.agents[1].action[-1]
+
+        self.traj_h.append([curr_state_h, last_action_h]) # 5 states and 2 actions
+        self.traj_m.append([curr_state_m, last_action_m])
+
+
+        def trained_q_function():
+            """
+            Import Q function from nfsp given states
+            :param state_h:
+            :param state_m:
+            :return:
+            """
+
+            q_set = get_models()[0]
+
+            return q_set
+
+        def q_values(state_h, state_m, intent):
+            """
+            Get q values given the intent (Non-aggressive or aggressive)
+            :param state_h:
+            :param state_m:
+            :param intent:
+            :return:
+            """
+            q_set = trained_q_function()
+            if intent == "na_na":
+                Q = q_set[0]
+            else: #use a_na
+                Q = q_set[3]
+
+            "Need state for agent H: xH, vH, xM, vM"
+            # state = [state_h[0], state_h[2], state_m[1], state_m[3]]
+            state = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
+
+            Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+
+            return Q_vals
+
+        def action_prob(state_h, state_m, _lambda, theta):
+            """
+            Equation 1
+
+            Noisy-rational model
+            calculates probability distribution of action given hardmax Q values
+            Uses:
+            1. Softmax algorithm
+            2. Q-value given state and theta(intent)
+            3. lambda: "rationality coefficient"
+            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+            :param state_h: current H state
+            :param state_m: current M state
+            :param _lambda: rationality coefficient
+            :param theta: aggressiveness/ gracefullness parameter
+            :return: Normalized probability distributions of available actions at a given state and lambda
+            """
+            action_set = self.action_set
+            if theta == self.thetas[0]:
+                intent = "na_na"
+            else:
+                intent = "a_na"
+
+            print(intent)
+            q_vals = q_values(state_h, state_m, intent=intent)
+            #TODO: boltzmann noisily rational model
+            exp_Q = []
+
+            "Q*lambda"
+            # np.multiply(Q,_lambda,out = Q)
+            q_vals = q_vals.detach().numpy() #detaching tensor
+            #print("q values: ",q_vals)
+            Q = [q * _lambda for q in q_vals]
+            # print("Q*lambda:", Q)
+            "Q*lambda/(sum(Q*lambda))"
+            # np.exp(Q, out=Q)
+
+            for q in Q:
+                exp_Q.append(np.exp(q))
+            #print("EXP_Q:", exp_Q)
+
+            "normalizing"
+            # normalize(exp_Q, norm = 'l1', copy = False)
+            exp_Q /= sum(exp_Q)
+            print("exp_Q normalized:", exp_Q)
+            return exp_Q
+
+        def resample(priors, epsilon):
+            """
+            Equation 3
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+            # TODO: generalize this algorithm for difference sizes of matrices(1D, 2D)
+            # initial_belief = np.ones((len(priors), len(priors[0]))) / (len(priors)*len(priors[0]))
+            initial_belief = self.initial_joint_prob
+            resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
+            return resampled_priors
+
+        def joint_prob(theta_list, lambdas, traj_h, traj_m, epsilon=0.05, priors=None):
+            """
+            Equation 2
+            update belief on P(lambda, theta)
+            :param theta_list:
+            :param lambdas:
+            :param traj_h:
+            :param traj_m:
+            :param goal:
+            :param epsilon:
+            :param priors:
+            :return: P(lambda, theta) and best lambda
+            """
+            intent_list = ["na_na", "a_na"]
+            if priors is None:
+                #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
+                priors = self.initial_joint_prob
+
+            print("-----theta priors: {}".format(priors))
+            print("traj: {}".format(traj_h))
+            # pdb.set_trace()
+
+            # TODO: this is not in use, but it works by recording how each lambda explains the trajectory
+            # "USE THIS to record scores for past traj to speed up run time!"
+            # def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
+            #     p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..]
+            #     a_h = _traj_h[-1][1]
+            #     #print(_traj_h)
+            #     a_i = self.action_set.index(a_h)
+            #     if _theta == self.thetas[0]:
+            #         if _lambda in self.past_scores1:  # add to existing list
+            #             self.past_scores1[_lambda].append(p_a[a_i])
+            #             scores = self.past_scores1[_lambda]
+            #         else:
+            #             self.past_scores1[_lambda] = [p_a[a_i]]
+            #             scores = self.past_scores1[_lambda]
+            #     else: #theta2
+            #         if _lambda in self.past_scores2:  # add to existing list
+            #             self.past_scores2[_lambda].append(p_a[a_i])
+            #             scores = self.past_scores2[_lambda]
+            #         else:
+            #             self.past_scores2[_lambda] = [p_a[a_i]]
+            #             scores = self.past_scores2[_lambda]
+            #     log_scores = np.log(scores)
+            #     return np.sum(log_scores)
+
+            "Calling compute_score/get_last_score to get the best suited lambdas for EACH theta"
+            # for i, theta in enumerate(theta_list):  # get a best suited lambda for each theta
+            #     #score_list = []
+            #     for j, lamb in enumerate(lambdas):
+            #         get_last_score(traj_h, traj_m, lamb, theta)
+                #     score_list.append(get_last_score(traj_h, traj_m, lamb, theta))
+                # max_lambda_j = np.argmax(score_list)
+                # suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
+
+            p_joint_prior = np.copy(priors)
+            # print("prior:", p_theta)
+            "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
+            p_joint_prior = resample(p_joint_prior, epsilon == 0.05)  # resample from uniform belief
+            # print("resampled:", p_theta)
+            # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
+            p_joint_prime = np.empty((len(lambdas), len(theta_list)))
+
+            "Compute joint probability p(lambda, theta) for each lambda and theta"
+            # for t, (s, a) in enumerate(traj_h):  # enumerate through past traj
+            #     if t == 0:  # initially there's only one state and not past
+            #         for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
+            #             for l,_lambda in enumerate(lambdas):
+            #                 #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+            #                 #a_i = self.action_set.index(a)
+            #                 if theta == theta_list[0]:
+            #                     p_action_l = self.past_scores1[_lambda][t] #get prob of action done at time t
+            #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+            #                     p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
+            #                 else: #theta 2
+            #                     p_action_l = self.past_scores2[_lambda][t]
+            #                     # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+            #                     p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
+            #
+            #     else:  # for state action pair that is not at time zero
+            #         for theta_t, theta in enumerate(theta_list):  # cycle through theta at time t or K
+            #             #p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+            #             for l, _lambda in enumerate(lambdas):
+            #                 if theta == theta_list[0]:
+            #                     p_action_l = self.past_scores1[_lambda][t]
+            #                     for theta_past in range(
+            #                             len(theta_list)):  # cycle through theta probability from past time K-1
+            #                         for l_past in range(len(lambdas)):
+            #                             p_joint_prime[l][theta_t] += p_action_l * p_joint_prior[l_past][theta_past]
+            #                 else:
+            #                     p_action_l = self.past_scores2[_lambda][t]
+            #                     for theta_past in range(
+            #                             len(theta_list)):  # cycle through theta probability from past time K-1
+            #                         for l_past in range(len(lambdas)):
+            #                             p_joint_prime[l][theta_t] += p_action_l * p_joint_prior[l_past][theta_past]
+
+            "another joint update algorithm, without cycling through traj and only update with prior:"
+            t = self.frame
+            # TODO: use [-1] or [t]???
+            for theta_t, theta in enumerate(theta_list):  # cycle through list of thetas
+                for l, _lambda in enumerate(lambdas):
+                    # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
+                    # a_i = self.action_set.index(a)
+                    p_action = action_prob(traj_h[-1][0], traj_m[-1][0], _lambda,
+                                           theta)  # get prob of action done at time t
+                    a_i = self.action_set.index(traj_h[-1][1]) # extract action index
+                    p_action_l = p_action[a_i] #
+                    if theta == theta_list[0]:
+                        # p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
+                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
+                    else:  # theta 2
+                        # p_action_l = self.past_scores2[_lambda][t]
+                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t] # update p]
+
+            "In the case p_theta is 2d array:"
+            # print(p_theta_prime, sum(p_theta_prime))
+            p_joint_prime /= np.sum(p_joint_prime)  # normalize
+
+            "get best lambda from distribution"
+            suited_lambdas = np.empty(len(intent_list))
+            for t, theta in enumerate(p_joint_prime.transpose()):
+                suited_lambdas[t] = self.lambdas[np.argmax(theta)]
+
+            assert 0.9 <= np.sum(p_joint_prime) <= 1.1  # check if it is properly normalized
+            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
+            return p_joint_prime, suited_lambdas
+
+        ############################# Beginnning of the algoirthm ####################333333
+        "#calling functions for baseline inference"
+        joint_probability = joint_prob(theta_list=self.thetas, lambdas=self.lambdas,
+                                       traj_h=self.traj_h, traj_m=self.traj_m, epsilon=0.05,
+                                       priors=self.theta_priors)
+
+        "#take a snapshot of the theta prob for next time step"
+        p_joint, best_lambdas = joint_probability
+
+         "getting the predicted action"
+        p_theta = np.zeros(len(self.thetas))
+        for i, p_t in enumerate(p_joint.transpose()):  # get marginal prob of theta: p(theta) from joint prob p(lambda, theta)
+            p_theta[i] = sum(p_t)
+        theta_idx = np.argmax(p_theta)
+        theta_h = self.thetas[theta_idx]
+        p_a = action_prob(curr_state_h, curr_state_m, best_lambdas[theta_idx], theta=theta_h)
+        # p_a = action_prob(curr_state_h, curr_state_m, _lambda=self.lambdas[-1], theta=theta_h)  # for verification with decision model
+        predicted_action = self.action_set[np.argmax(p_a)]
+
+        return {'predicted_intent_other': [p_joint, best_lambdas],
+                   'predicted_actions_other': predicted_action}
+
 
     #@staticmethod
     def empathetic_inference(self, agent, sim):
