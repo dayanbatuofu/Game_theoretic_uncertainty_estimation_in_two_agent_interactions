@@ -8,8 +8,9 @@ from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import VisUtils
-from models import constants as C #for terminal state check (car length)
+from models import constants as C  # for terminal state check (car length)
 import pdb
+
 
 class Simulation:
 
@@ -27,7 +28,6 @@ class Simulation:
         self.decision_type_h = decision_type[0]
         self.decision_type_m = decision_type[1]
         self.inference_type = inference_type
-        #print("decision type:", decision_type)
         self.env = env
         self.agents = []
         self.theta_priors = None
@@ -41,7 +41,7 @@ class Simulation:
 
         if self.n_agents == 2:
             # simulations with 2 cars
-            #Note that variable annotation is not supported in python 3.5
+            # Note that variable annotation is not supported in python 3.5
 
             inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self) for i in range(n_agents)]
             decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self) for i in range(n_agents)]
@@ -80,17 +80,17 @@ class Simulation:
             # termination criteria
             if self.frame >= 10:  # TODO: modify frame limit
                 break
-            #pdb.set_trace()
+            # pdb.set_trace()
             x_H = self.agents[0].state[self.frame][0]  # sy_H ??
             x_M = self.agents[1].state[self.frame][0]  # sx_M
             y_H = self.agents[0].state[self.frame][1]  # sy_H
             y_M = self.agents[1].state[self.frame][1]  # sy_M
             if self.env.name == "merger":
-                if (y_H >= 50 and y_M > 50):
+                if y_H >= 50 and y_M > 50:
                     print("terminating on vehicle merger:")
                     break
             else:
-                if (y_H >= 10 and x_M <= -10):
+                if y_H >= 10 and x_M <= -10:
                     # road width = 2.0 m
                     # if crossed the intersection, done or max time reached
                     # if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
