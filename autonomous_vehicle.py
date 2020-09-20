@@ -103,11 +103,11 @@ class AutonomousVehicle:
             print("ID:", self.id, "action:", u, "old vel:", vx, vy, "new vel:", vx_new, vy_new)
             return sx_new, sy_new, vx_new, vy_new
 
-        if self.env.name == "merger":
-            self.state.append(f_environment(self.state[-1], action, self.sim.dt))
+        # if self.env.name == "merger":
+        #     self.state.append(f_environment(self.state[-1], action, self.sim.dt))
 
-        else:  # using dynamics defined in dynamics.py, for easier access
-            self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))
+        # else:  # using dynamics defined in dynamics.py, for easier access
+        #     self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))
         # def f_environment(x, u, dt): # x, y, theta, velocity
         #     sx, sy, theta, vy = x[0], x[1], x[2], x[3]
         #     if self.id == 0 or self.id == 1:
@@ -132,6 +132,33 @@ class AutonomousVehicle:
         # else:
             #self.state.append(f(self.state[-1], action, self.sim.dt))
 
+        def f_environment_sc(x, u, dt): # x, y, heading, velocity steering, velocity 
+            sx, sy, theta, delta, vy = x[0], x[1], x[2], x[3], x[4]
+            L = 3 # length of the vehicle 
+            if self.id == 0 or self.id == 1:
+                vy_new = vy + u[1] * dt #* vy / (np.linalg.norm([vx, vy]) + 1e-12)
+                delta_new = delta + u[0] * dt
+                if vy_new < self.min_speed:
+                    vy_new = self.min_speed
+                else:
+                    vy_new = max(min(vy_new, self.max_speed), self.min_speed)
+                sx_new = sx + (vy_new) * dt *np.cos(theta)
+                sy_new = sy + (vy_new) * dt *np.sin(theta)
+                theta_new = theta + vy_new/L*np.tan(delta_new) *dt
+            else:
+                vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
+                sx_new = sx + (vx + vx_new) * dt * 0.5
+                sy_new = sy + (vy + vy_new) * dt * 0.5
+                theta_new = theta + u[0]
+            print("ID:", self.id, "action:", u[0],"," ,u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
+            return sx_new, sy_new, theta_new, delta_new, vy_new
+        if self.env.name == "merger":
+            self.state.append(f_environment_sc(self.state[-1], action, self.sim.dt))
+        else:
+            #self.state.append(f(self.state[-1], action, self.sim.dt))
+            self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))
+
         return
 
 
@@ -141,7 +168,7 @@ class dummy(object):
 
 
 if __name__ == '__main__':
-    Car1 = {"initial_state": [[200, 200, 0, 0]], "par": 1, "initial_action":1}
+    Car1 = {"initial_state": [[200, 200, 0, 0, 0]], "par": 1, "initial_action":1}
     from environment import *
     env = Environment("merger")
     sim = dummy()
