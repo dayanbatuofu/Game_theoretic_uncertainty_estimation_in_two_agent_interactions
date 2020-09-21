@@ -18,7 +18,6 @@ class Environment:
         self.sim = sim
         # TODO: unify units for all parameters
 
-
         if self.name == 'intersection':
             self.car_width = 0.66
             self.car_length = 1.33
@@ -46,7 +45,6 @@ class Environment:
                             ]
 
         elif self.name == 'trained_intersection':
-            #TODO: modify initial state to match with trained model
             self.n_agents = 2
 
             self.car_width = 2  # m
@@ -122,7 +120,7 @@ class Environment:
             pass
         
         elif self.name == 'merger':
-            #TODO: modify initial state to match with trained model
+            # TODO: modify initial state to match with trained model
             self.n_agents = 2
 
             self.car_width = 2  # m
@@ -154,20 +152,21 @@ class Environment:
             max_speed = np.sqrt((sy_H - 1 - C.CONSTANTS.CAR_LENGTH * 0.5) * 2.
                                 * abs(merger.MAX_DECELERATION))
             vy_H = np.random.uniform(max_speed * 0.1, max_speed * 0.5)
-            print("merging ", "initial pos:", -sy_M, -sy_H, "initial vel:", vy_M, -vy_H, )
+            print("merging ", "initial vel:", vy_M, -vy_H, "initial pos:", -sy_M, -sy_H)
             self.car_par = [{"sprite": "grey_car_sized.png",
-                             "initial_state": [[0, -sy_M, 0.,0., vy_M]],  # pos_x, pos_y, theta, heading, velocity
+                             "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
-                             "initial_action": [0., 0.],  # accel  #TODO: add steering angle
+                             "initial_action": [0.],  # accel  #TODO: add steering angle
                              "par": 1,  # aggressiveness
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
-                             "initial_state": [[self.car_width+0.2, -sy_H, 0., 0., vy_H]], #should be having negative velocity
+                             "initial_state": [[self.car_width+0.2, -sy_H, 0, vy_H]], #should be having negative velocity
                              "desired_state": [0, 0.4],
-                             "initial_action": [0., 0.],
+                             "initial_action": [0.],
                              "par": 1,
                              "orientation": 0.},
                             ]
+
         elif self.name == 'single_agent':
             # TODO: implement Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
             self.n_agents = 2  # one agent is observer

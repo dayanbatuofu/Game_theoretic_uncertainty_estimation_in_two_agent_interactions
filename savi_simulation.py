@@ -8,8 +8,9 @@ from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import VisUtils
-from models import constants as C #for terminal state check (car length)
+from models import constants as C  # for terminal state check (car length)
 import pdb
+
 
 class Simulation:
 
@@ -26,7 +27,7 @@ class Simulation:
         self.decision_type = decision_type
         self.decision_type_h = decision_type[0]
         self.decision_type_m = decision_type[1]
-        #print("decision type:", decision_type)
+        self.inference_type = inference_type
         self.env = env
         self.agents = []
         self.theta_priors = None
@@ -37,11 +38,23 @@ class Simulation:
         self.theta_list = [1, 1000]
         self.lambda_list = [0.001, 0.005, 0.01, 0.05]
         self.action_set = [-8, -4, 0, 4, 8]
-        self.action_set_combo= [[-8,-1], [-8, 0], [-8,1], [-4, -1], [-4, 0], [-4, 1], [0, -1], [0,0], [0,1], [4, -1], [4, 0], [4, 1], [8,-1], [8, 0], [8,1]]
+        self.action_set_combo = [[-8, -1], [-8, 0], [-8, 1], [-4, -1], [-4, 0],
+                                 [-4, 1], [0, -1], [0, 0], [0, 1], [4, -1],
+                                 [4, 0], [4, 1], [8, -1], [8, 0], [8, 1]]  # merging case actions
+        # ----------------------------------------------------------------------------------------
+        # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
+        # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
+        #          [theta2, lambda1], [theta2, lambda2], [theta2, lambda3], [theta2, lambda4] ]
+        # ----------------------------------------------------------------------------------------
+        self.beta_set = []
+        '1D version of beta'
+        for i, theta in enumerate(self.theta_list):
+            for j, _lambda in enumerate(self.lambda_list):
+                self.beta_set.append([theta, _lambda])
 
         if self.n_agents == 2:
             # simulations with 2 cars
-            #Note that variable annotation is not supported in python 3.5
+            # Note that variable annotation is not supported in python 3.5
 
             inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self) for i in range(n_agents)]
             decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self) for i in range(n_agents)]
@@ -80,17 +93,17 @@ class Simulation:
             # termination criteria
             if self.frame >= 10:  # TODO: modify frame limit
                 break
-            #pdb.set_trace()
+            # pdb.set_trace()
             x_H = self.agents[0].state[self.frame][0]  # sy_H ??
             x_M = self.agents[1].state[self.frame][0]  # sx_M
             y_H = self.agents[0].state[self.frame][1]  # sy_H
             y_M = self.agents[1].state[self.frame][1]  # sy_M
             if self.env.name == "merger":
-                if (y_H >= 50 and y_M > 50):
+                if y_H >= 50 and y_M > 50:
                     print("terminating on vehicle merger:")
                     break
             else:
-                if (y_H >= 10 and x_M <= -10):
+                if y_H >= 10 and x_M <= -10:
                     # road width = 2.0 m
                     # if crossed the intersection, done or max time reached
                     # if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
@@ -126,7 +139,9 @@ class Simulation:
         self.vis.draw_dist()
         if self.drawing_prob:
             self.vis.draw_intent()
+        print("-------Simulation results:-------")
         print("Frames:", self.frame)
+        print("Initial belief:", self.agents[1].initial_belief)
         print("states of H:", self.agents[0].state)
         print("states of H predicted by M:", self.agents[1].predicted_states_other)
         print("Action taken by H:", self.agents[0].action)

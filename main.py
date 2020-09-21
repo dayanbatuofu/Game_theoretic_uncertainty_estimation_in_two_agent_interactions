@@ -30,8 +30,8 @@ parser.add_argument('--gpu', type=int, default=0)
 """
 environment parameters
 """
-parser.add_argument('--env_name', type=str, choices=['intersection', 'trained_intersection', 'lane_change', 'merger'],
-                    default='merger')
+parser.add_argument('--env_name', type=str, choices=['test_intersection', 'trained_intersection', 'lane_change', 'merger'],
+                    default='trained_intersection')
 
 """
 agent parameters
@@ -43,11 +43,10 @@ parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseli
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'baseline', 'baseline2', 'complete_information'
                              , 'reactive_point', 'reactive_uncertainty'],
-                    default=['baseline', 'reactive_uncertainty'])
-                    #default=['baseline', 'baseline'])
+                    default=['reactive_uncertainty', 'reactive_uncertainty'])
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning
-#TODO: add agent decision args
+# TODO: add agent decision args
 # parser.add_argument('', type=str, choices=[], default=[])
 args = parser.parse_args()
 
