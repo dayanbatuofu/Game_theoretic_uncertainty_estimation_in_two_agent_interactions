@@ -30,9 +30,9 @@ class AutonomousVehicle:
         self.planned_actions_set = []
         self.planned_trajectory_set = []
         # TODO: decide lambdas and weight in env
-        self.belief = self.initial_belief(self.env.car_par[0]['par'], self.env.car_par[1]['par'],
-                                          self.sim.lambda_list[-1], self.sim.lambda_list[-1],
-                                          weight=0.8)
+        self.initial_belief = self.initial_belief(self.env.car_par[0]['par'], self.env.car_par[1]['par'],
+                                                  self.sim.lambda_list[-1], self.sim.lambda_list[-1],
+                                                  weight=0.8)
         # Initialize prediction variables
         self.predicted_intent_all = []
         self.predicted_intent_other = []

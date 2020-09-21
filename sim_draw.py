@@ -257,13 +257,11 @@ class VisUtils:
 
     def draw_axes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
-        #pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing
         for a in self.env.bounds:
-            pg.draw.line(self.screen, RED, (0,0), (10,10), 3)
+            # pg.draw.line(self.screen, RED, (0,0), (10,10), 3)
             bound_x, bound_y = a[0], a[1]
 
             if bound_x:
-            
                 b_min, b_max = bound_x[0], bound_x[1]
                 _bound1 = self.c2p((b_min, 0))
                 _bound2 = self.c2p((b_max, 0))
@@ -273,22 +271,23 @@ class VisUtils:
                 pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2), 1),
                              (((bounds[1] + bounds[0])/2), self.screen_height * self.coordinate_scale,
                               ), bounds[1] - bounds[0])
-                #pdb.set_trace()
-                pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2+ road_width), 1),
-                             (((bounds[1] + bounds[0])/2+road_width), self.screen_height * self.coordinate_scale,
-                              ), bounds[1] - bounds[0])
-            
-            #pdb.set_trace()
-            '''
+
+                # pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2+ road_width), 1),
+                #              (((bounds[1] + bounds[0])/2+road_width), self.screen_height * self.coordinate_scale,
+                #               ), bounds[1] - bounds[0])
+
             if bound_y:
                 b_min, b_max = bound_y[0], bound_y[1]
                 _bound1 = self.c2p((0, b_min))
                 _bound2 = self.c2p((0, b_max))
                 bounds = np.array([_bound1[1], _bound2[1]])
-                pg.draw.line(self.screen, RED, ((((bounds[1] + bounds[0]) / 2)+ bounds[1]- bounds[0]),1),
-                             ((((bounds[1] + bounds[0])/2)+ bounds[1]- bounds[0]) , self.screen_height * self.coordinate_scale,
-                              ), bounds[1] - bounds[0])
-            '''
+                pg.draw.line(self.screen, LIGHT_GREY, (1, (bounds[1] + bounds[0]) / 2),
+                             (self.screen_width * self.coordinate_scale,
+                              (bounds[1] + bounds[0]) / 2), bounds[0] - bounds[1])
+                # pg.draw.line(self.screen, RED, ((((bounds[1] + bounds[0]) / 2)+ bounds[1]- bounds[0]),1),
+                #              ((((bounds[1] + bounds[0])/2)+ bounds[1]- bounds[0]) , self.screen_height * self.coordinate_scale,
+                #               ), bounds[1] - bounds[0])
+
     def draw_axes_lanes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
         #pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing

@@ -50,6 +50,11 @@ class DecisionModel:
         self.true_intents = []
         for i, par_i in enumerate(self.sim.env.car_par):
             self.true_intents.append(par_i["par"])
+        self.action_set = self.sim.action_set
+        self.action_set_combo = self.sim.action_set_combo
+        self.theta_list = self.sim.theta_list
+        self.lambda_list = self.sim.lambda_list
+        self.beta_set = self.sim.beta_set
 
     @staticmethod
     def constant_speed():
@@ -73,13 +78,15 @@ class DecisionModel:
                 optimizers[i].step()
 
     def baseline(self):
-        # randomly pick one of the nash equilibrial policy
-
+        """
+        Choose action according to given intent, using the NFSP trained model
+        :return:
+        """
         "sorting states to obtain action from pre-trained model"
-        #y direction only for M, x direction only for HV
+        # y direction only for M, x direction only for HV
         p1_state = self.sim.agents[0].state[self.sim.frame]
         p2_state = self.sim.agents[1].state[self.sim.frame]
-        action_set = [-8, -4, 0, 4, 8]
+        action_set = self.action_set
 
         args = get_args()
 
@@ -102,16 +109,8 @@ class DecisionModel:
             def trained_q_function(state_h, state_m):
                 """
                 Import Q function from nfsp given states
-                :param state_h:
-                :param state_m:
-                :return:
                 """
-                q_set = get_models()[0]  # 0: q func, 1: policy
-                # Q = q_set[0]  # use na_na for now
-
-                "Q values for given state over a set of actions:"
-                # Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
-                return q_set
+                return get_models()[0]  # 0: q func, 1: policy
 
             def q_values_pair(state_h, state_m, theta_h, theta_m):
                 q_set = trained_q_function(state_h, state_m)
@@ -151,11 +150,6 @@ class DecisionModel:
             def action_prob(state_h, state_m, _lambda, theta_h, theta_m):
                 """
                 calculate action prob for both agents
-                :param state_h:
-                :param state_m:
-                :param _lambda:
-                :param theta:
-                :return:
                 """
                 # TODO: do we need beta_m???
 
@@ -193,9 +187,8 @@ class DecisionModel:
                 return exp_Q_pair  # [exp_Q_h, exp_Q_m]
 
             "calling function for Boltzmann model"
-            intent_list = ['na_na', 'a_na']
             theta_h, theta_m = self.true_intents
-            p_actions = action_prob(p1_state, p2_state, self.sim.lambda_list[-1], theta_h, theta_m)
+            p_actions = action_prob(p1_state, p2_state, self.lambda_list[-1], theta_h, theta_m)
             assert (not pa == 0 for pa in p_actions)
             actions = []
             for p_a in p_actions:
@@ -212,6 +205,7 @@ class DecisionModel:
         return {'action': actions}
 
     def baseline2(self):
+        # TODO: not in use
         """
         This is for H to act according to the models (Policy)
         :return:
@@ -284,13 +278,13 @@ class DecisionModel:
 
     def reactive_point(self):
         """
-        Get appropriate action based on predicted intent of the other agent (H)
-        :return:
+        Get appropriate action based on predicted intent of the other agent and self intent
+        :return: appropriate action for both agents
         """
         # implement reactive planning based on point estimates of future trajectories
         # TODO: import HJI BVP model
         "----------This is placeholder until we have BVP result-------------"
-        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2)= get_models()[0]
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2) = get_models()[0]
 
         "sorting states to obtain action from pre-trained model"
         # y direction only for M, x direction only for HV
@@ -313,24 +307,21 @@ class DecisionModel:
             => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
             :return: Normalized probability distributions of available actions at a given state and lambda
             """
-            #q_vals = q_values(state_h, state_m, intent=intent)
             exp_Q = []
             "Q*lambda"
-            q_vals = q_vals.detach().numpy() #detaching tensor
+            q_vals = q_vals.detach().numpy()  # detaching tensor
             Q = [q * _lambda for q in q_vals]
             "Q*lambda/(sum(Q*lambda))"
-
             for q in Q:
                 exp_Q.append(np.exp(q))
 
             "normalizing"
             exp_Q /= sum(exp_Q)
-            #print("exp_Q normalized:", exp_Q)
             assert len(exp_Q) == len(self.sim.action_set)
             return exp_Q
 
         "action for H"
-        q_h = Q_a_na  # TODO: GROUND TRUTH
+        q_h = Q_a_na  # TODO: Choose from GROUND TRUTH and prediction of other
         q_vals_h = q_h.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
         lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
         p_action_h = action_prob(q_vals_h, lambda_h)
@@ -338,7 +329,8 @@ class DecisionModel:
         # action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
 
         "action for M: we know our intent, get best response to H's intent"
-        theta_list = self.sim.theta_list
+        theta_list = self.theta_list
+        # TODO: use predicted lambda
         lambda_m = self.sim.lambda_list[-1]  # the most rational coefficient
         p_joint_h = self.sim.agents[1].predicted_intent_other[-1][0]
         p_theta = np.zeros(len(theta_list))
@@ -374,6 +366,10 @@ class DecisionModel:
         return {'action': actions}
 
     def reactive_uncertainty(self):
+        """
+        Choose action from Nash Equilibrium, according to the inference model
+        :return: actions for both agents
+        """
         # implement reactive planning based on inference of future trajectories
         # TODO: import HJI BVP model
         "----------This is placeholder until we have BVP result-------------"
@@ -382,66 +378,61 @@ class DecisionModel:
 
         "sorting states to obtain action from pre-trained model"
         # y direction only for M, x direction only for HV
-        p1_state = self.sim.agents[0].state[-1]
-        p2_state = self.sim.agents[1].state[-1]
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
 
         p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
         p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
 
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        print("predicted_intent_all", self.sim.agents[1].predicted_intent_all)
+        if self.sim.frame == 0:
+            p_beta = self.sim.agents[0].initial_belief
+            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
+            beta_h = self.beta_set[beta_pair_id[0]]
+            beta_m = self.beta_set[beta_pair_id[1]]
+
+        else:
+            beta_h, beta_m  = self.sim.agents[1].predicted_intent_all[-1][1]
+        action_set = self.action_set
+
         args = get_args()
-
-        def action_prob(q_vals, _lambda):
-            """
-            Equation 1
-            Noisy-rational model
-            calculates probability distribution of action given hardmax Q values
-            Uses:
-            1. Softmax algorithm
-            2. Q-value given state and theta(intent)
-            3. lambda: "rationality coefficient"
-            => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
-            :return: Normalized probability distributions of available actions at a given state and lambda
-            """
-            # q_vals = q_values(state_h, state_m, intent=intent)
-            exp_Q = []
-            "Q*lambda"
-            q_vals = q_vals.detach().numpy()  # detaching tensor
-            Q = [q * _lambda for q in q_vals]
-            "Q*lambda/(sum(Q*lambda))"
-
-            for q in Q:
-                exp_Q.append(np.exp(q))
-
-            "normalizing"
-            exp_Q /= sum(exp_Q)
-            print("exp_Q normalized:", exp_Q)
-            return exp_Q
-
-        # TODO: get action from NE instead of separate marginal p_beta_i
-        "action for H"
-        q_h = Q_a_na  # TODO: GROUND TRUTH
-        q_vals_h = q_h.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
-        lambda_h = self.sim.lambda_list[-1]  # the most rational coefficient
-        p_action_h = action_prob(q_vals_h, lambda_h)
-        # TODO: DRAW action instead of pulling highest mass
-        action1 = np.argmax(p_action_h)
-        # action1 = policy_a_na.act(t.FloatTensor(p1_state).to(args.device))
-
-        "action for M: choose action based on the equilibrium intent set"
-        # TODO: DRAW action instead of pulling highest mass
-        action2 = self.sim.agents[1].predicted_actions_self[-1]
-
-        action_set = [-8, -4, 0, 4, 8]
-        # if self.sim.agents[0]:
-        #     action = action_set[action1]
-        # else:
-        #     action = action_set[action2]
-        action1 = action_set[action1]
-        #action2 = action_set[action2]
-        actions = [action1, action2]
+        betas = [beta_h, beta_m]
+        lamb_id =[]
+        theta_id = []
+        for b in betas:
+            lamb_id.append(lambda_list.index(b[1]))
+            theta_id.append(theta_list.index(b[0]))
+        " the following assumes 2 thetas"
+        # TODO: create a function for this
+        if theta_id[0] == 0:
+            if theta_id[1] == 0:
+                q_1 = Q_na_na_2
+                q_2 = Q_na_na
+            else:  # 1: na, 2:a
+                q_1 = Q_na_a
+                q_2 = Q_a_na
+        else:  # 1: A
+            if theta_id[1] == 0:
+                q_1 = Q_a_na
+                q_2 = Q_na_a
+            else:
+                q_1 = Q_a_a_2
+                q_2 = Q_a_a
+        q1_vals = q_1.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
+        q2_vals = q_2.forward(t.FloatTensor(p2_state).to(t.device("cpu")))
+        p_action1 = self.action_prob(q1_vals, beta_h[1])
+        p_action2 = self.action_prob(q2_vals, beta_m[1])
+        actions = []
+        for p_a in (p_action1, p_action2):
+            p_a = np.array(p_a).tolist()
+            "drawing action from action set using the distribution"
+            action = random.choices(action_set, weights=p_a, k=1)
+            actions.append(action[0])  # TODO: check why it's list
+        print(actions)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
-        # actions = {"1": action1, "2": action2}
-        # actions = [action1, action2]
+
         return {'action': actions}
 
     # create long term loss as a pytorch object
@@ -461,3 +452,35 @@ class DecisionModel:
             states = self.sim.update(states, [action1[i], action2[i]])
 
         return l
+
+    "-------------Utilities:---------------"
+    def action_prob(self, q_vals, _lambda):
+        """
+        Equation 1
+        Noisy-rational model
+        calculates probability distribution of action given hardmax Q values
+        Uses:
+        1. Softmax algorithm
+        2. Q-value given state and theta(intent)
+        3. lambda: "rationality coefficient"
+        => P(uH|xH;beta,theta) = exp(beta*QH(xH,uH;theta))/sum_u_tilde[exp(beta*QH(xH,u_tilde;theta))]
+        :return: Normalized probability distributions of available actions at a given state and lambda
+        """
+        # q_vals = q_values(state_h, state_m, intent=intent)
+        exp_Q = []
+        "Q*lambda"
+        q_vals = q_vals.detach().numpy()  # detaching tensor
+        Q = [q * _lambda for q in q_vals]
+        "Q*lambda/(sum(Q*lambda))"
+
+        for q in Q:
+            exp_Q.append(np.exp(q))
+
+        "normalizing"
+
+        exp_Q /= sum(exp_Q)
+        # TODO: do the assertion work???
+        assert (not pa == 0 for pa in exp_Q)
+        assert (np.isnan(pa) for pa in exp_Q)
+        print("exp_Q:", exp_Q)
+        return exp_Q

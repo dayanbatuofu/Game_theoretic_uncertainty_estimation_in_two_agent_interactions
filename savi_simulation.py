@@ -38,7 +38,19 @@ class Simulation:
         self.theta_list = [1, 1000]
         self.lambda_list = [0.001, 0.005, 0.01, 0.05]
         self.action_set = [-8, -4, 0, 4, 8]
-        self.action_set_combo= [[-8,-1], [-8, 0], [-8,1], [-4, -1], [-4, 0], [-4, 1], [0, -1], [0,0], [0,1], [4, -1], [4, 0], [4, 1], [8,-1], [8, 0], [8,1]]
+        self.action_set_combo = [[-8, -1], [-8, 0], [-8, 1], [-4, -1], [-4, 0],
+                                 [-4, 1], [0, -1], [0, 0], [0, 1], [4, -1],
+                                 [4, 0], [4, 1], [8, -1], [8, 0], [8, 1]]  # merging case actions
+        # ----------------------------------------------------------------------------------------
+        # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
+        # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
+        #          [theta2, lambda1], [theta2, lambda2], [theta2, lambda3], [theta2, lambda4] ]
+        # ----------------------------------------------------------------------------------------
+        self.beta_set = []
+        '1D version of beta'
+        for i, theta in enumerate(self.theta_list):
+            for j, _lambda in enumerate(self.lambda_list):
+                self.beta_set.append([theta, _lambda])
 
         if self.n_agents == 2:
             # simulations with 2 cars
@@ -129,7 +141,7 @@ class Simulation:
             self.vis.draw_intent()
         print("-------Simulation results:-------")
         print("Frames:", self.frame)
-        print("Initial belief:", self.agents[1].belief )
+        print("Initial belief:", self.agents[1].initial_belief)
         print("states of H:", self.agents[0].state)
         print("states of H predicted by M:", self.agents[1].predicted_states_other)
         print("Action taken by H:", self.agents[0].action)

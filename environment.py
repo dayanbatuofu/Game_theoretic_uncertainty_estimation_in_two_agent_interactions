@@ -120,7 +120,7 @@ class Environment:
             pass
         
         elif self.name == 'merger':
-            #TODO: modify initial state to match with trained model
+            # TODO: modify initial state to match with trained model
             self.n_agents = 2
 
             self.car_width = 2  # m
@@ -166,6 +166,7 @@ class Environment:
                              "par": 1,
                              "orientation": 0.},
                             ]
+
         elif self.name == 'single_agent':
             # TODO: implement Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
             self.n_agents = 2  # one agent is observer
