@@ -2041,6 +2041,228 @@ class InferenceModel:
         "---------------------------"
 
 
+    def empathetic_inference_2U(self, agent, sim):
+        # NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
+        "importing agents information from Autonomous Vehicle (sim.agents)"
+        self.frame = self.sim.frame
+        curr_state_h = sim.agents[0].state[self.frame]
+        last_action_h = sim.agents[0].action[self.frame]
+        last_state_h = sim.agents[0].state[self.frame - 1]
+        curr_state_m = sim.agents[1].state[self.frame]
+        last_action_m = sim.agents[1].action[self.frame]
+        last_state_m = sim.agents[1].state[self.frame - 1]
+
+        self.traj_h.append([last_state_h, last_action_h])
+        self.traj_m.append([last_state_m, last_action_m])
+
+        def trained_q_function(state_h, state_m):
+            """
+            Import Q function from nfsp given states
+            :param state_h:
+            :param state_m:
+            :return:
+            """
+            # Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2
+            q_set = get_models()[0] #0: q func, 1: policy
+            # Q = q_set[0]  # use na_na for now
+            # TODO: maybe store it as a dictionary?
+            "Q values for given state over a set of actions:"
+            # Q_vals = Q.forward(torch.FloatTensor(state).to(torch.device("cpu")))
+            return q_set
+
+        def q_values_pair(state_h, state_m, theta_h, theta_m):
+            """
+            extracts the Q function and obtain Q value given current state configuration
+            :param state_h:
+            :param state_m:
+            :param intent:
+            :return:
+            """
+            q_set = trained_q_function(state_h, state_m)
+            "Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2"
+
+            #TODO: generalize to iterate
+            "thetas: na, a"
+            id_h = self.thetas.index(theta_h)
+            id_m = self.thetas.index(theta_m)
+            if id_h == 0:
+                if id_m == 0: #TODO: IMPORTANT: CHECK WHICH ONE IS NA2 IN DECISION
+                    Q_h = q_set[0]
+                    Q_m = q_set[1]
+                elif id_m == 1:  # M is aggressive
+                    Q_h = q_set[2]
+                    Q_m = q_set[3]
+                else:
+                    print("ID FOR THETA DOES NOT EXIST")
+            elif id_h == 1:
+                if id_m == 0:
+                    Q_h = q_set[3]
+                    Q_m = q_set[2]
+                elif id_m == 1:  #TODO: IMPORTANT: CHECK WHICH ONE IS A2 IN DECISION
+                    Q_h = q_set[4]
+                    Q_m = q_set[5]
+                else:
+                    print("ID FOR THETA DOES NOT EXIST")
+            # if intent == "na_na":
+            #     Q_h = q_set[0]
+            #     Q_m = q_set[1]
+            # else:  # use a_na
+            #     Q_h = q_set[3]
+            #     Q_m = q_set[2]
+
+            "Need state for agent H: xH, vH, xM, vM"
+            # state_h = [state_h[0], state_h[2], state_m[1], state_m[3]]
+            # state_m = [state_m[1], state_m[3], state_h[0], state_h[2]]
+            state_h = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
+            state_m = [state_m[0], abs(state_m[2]), -state_h[1], abs(state_h[3])]
+
+            "Q values for each action"
+            Q_vals_h = Q_h.forward(torch.FloatTensor(state_h).to(torch.device("cpu")))
+            Q_vals_m = Q_m.forward(torch.FloatTensor(state_m).to(torch.device("cpu")))
+            "detaching tensor"
+            Q_vals_h = Q_vals_h.detach().numpy()
+            Q_vals_m = Q_vals_m.detach().numpy()
+            Q_vals_h = Q_vals_h.tolist()
+            Q_vals_m = Q_vals_m.tolist()
+            # TODO: add multiple Q pairs under certain beta pair (ie. Q_na_na)
+            return [Q_vals_h, Q_vals_m]
+
+        def resample(priors, epsilon):
+            """
+            Equation 3
+            Resamples the belief P(k-1) from initial belief P0 with some probability of epsilon.
+            :return: resampled belief P(k-1) on lambda and theta
+            """
+
+            if isinstance(priors[0], list):
+                initial_belief = np.ones((len(priors), len(priors[0]))) / (len(priors)*len(priors[0]))
+            elif type(priors[0]) is np.array:
+                initial_belief = np.ones((len(priors), len(priors[0]))) / (len(priors) * len(priors[0]))
+            else:  # 1D array
+                initial_belief = np.ones(len(priors))/len(priors)
+            resampled_priors = (1 - epsilon) * priors + epsilon * initial_belief
+            return resampled_priors
+
+        def action_prob_Q(state_h, state_m, Q_h, Q_m, beta_h, beta_m):
+            """
+            Equation 1
+            calculate action prob for both agents given Q_h and Q_m
+            :param state_h:
+            :param state_m:
+            :param _lambda:
+            :param theta:
+            :return: [p_action_H, p_action_M], where p_action = [p_a1, ..., p_a5]
+            """
+            action_set = self.action_set
+
+            theta_h, lambda_h = beta_h
+            theta_m, lambda_m = beta_m
+
+            "Q*lambda"
+            q_vals_pair = [Q_h, Q_m]
+            exp_Q_pair = []
+            _lambda = [lambda_h, lambda_m]
+            "testing lambda (TEMPORARY)"
+            for i, q_vals in enumerate(q_vals_pair):
+                exp_Q = []
+                Q = [q * _lambda[i] for q in q_vals]
+                # print("Q*lambda:", Q)
+                "Q*lambda/(sum(Q*lambda))"
+                # np.exp(Q, out=Q)
+
+                for q in Q:
+                    exp_Q.append(np.exp(q))
+                # print("EXP_Q:", exp_Q)
+
+                "normalizing"
+                # normalize(exp_Q, norm = 'l1', copy = False)
+                exp_Q /= sum(exp_Q)
+                # print("exp_Q normalized:", exp_Q)
+                exp_Q_pair.append(exp_Q)
+
+            return exp_Q_pair  # [exp_Q_h, exp_Q_m]
+
+        def prob_q_vals(prior, state_h, state_m, traj_h, traj_m, beta_h, beta_m):
+            """
+            Equation 6
+            Calculates Q function pairs probabilities for use in beta pair probabilities calculation,
+            since each beta pair may map to MULTIPLE Q function/value pair.
+
+            :requires: p_action_h, p_pair_prob(k-1) or prior, q_pairs
+            :param:
+            q_pairs: all Q function pairs (QH, QM)
+            p_action_h
+            p_q2
+
+            :return:[Q_pairs, P(QH, QM|D(k))], where Q_pairs = [Q_NA_NA, ..., Q_A_A]
+            """
+
+            # get all q pairs
+            q_pairs = []
+            "q_pairs (QH, QM): [[Q_na_na, Q_na_na2], [Q_na_a, Q_a_na], [Q_a_na, Q_na_a], [Q_a_a, Q_a_a2]]"
+            for t_m in self.thetas:
+                for t_h in self.thetas:
+                    q_pairs.append(q_values_pair(state_h, state_m, t_h, t_m))  # [q_vals_h, q_vals_m]
+
+            # Size of P(Q2|D) should be the size of possible Q2
+            if prior is None:
+                prior = np.ones(len(q_pairs))/len(q_pairs)
+            else:
+                "resample from initial/uniform distribution"
+                prior = resample(prior, epsilon=0.05)
+
+            p_q2 = np.empty(len(q_pairs))
+
+            # assuming 1D array of q functions
+            "Calculating probability of each Q pair: Equation 6"
+            past_state_h, action_h = traj_h[-1]
+            past_state_m, action_m = traj_m[-1]
+            ah = self.action_set.index(action_h)
+            am = self.action_set.index(action_m)
+            for i, q in enumerate(q_pairs):  # iterate through pairs of equilibria
+                p_action = action_prob_Q(past_state_h, past_state_m, q[0], q[1], beta_h, beta_m)  # action prob for last time step!
+                p_action_h = p_action[0][ah]
+                p_action_m = p_action[1][am]
+                p_a_pair = p_action_h * p_action_m
+                "P(Q2|D(k)) = P(uH, uM|x(k), QH, QM) * P(Q2|D(k-1)) / sum(~)"
+                p_q2[i] = p_a_pair * prior[i]
+
+            p_q2 /= sum(p_q2)  # normalize
+            print(p_q2)
+            assert round(sum(p_q2)) == 1  # check if properly normalized
+
+            return q_pairs, p_q2
+
+
+        if self.frame == 0:  # initially guess the beta
+            # TODO: use the initial env car_par to get this!
+            # last_theta_h = self.thetas[0]
+            # last_lambda_h = self.lambdas[-1]  # start large
+            # last_theta_m = self.thetas[0]
+            # last_lambda_m = self.lambdas[-1]
+            last_theta_h = self.sim.env.car_par[0]['par']
+            last_lambda_h = self.lambdas[-1]  # TODO: change this according to initial setup
+            last_theta_m = self.sim.env.car_par[1]['par']
+            last_lambda_m = self.lambdas[-1]
+            last_beta_h, last_beta_m = [last_theta_h, last_lambda_h], [last_theta_m, last_lambda_m]
+
+        else:  # get previously predicted beta
+            last_beta_h, last_beta_m = self.past_beta[-1]
+            last_theta_h, last_lambda_h = last_beta_h
+            last_theta_m, last_lambda_m = last_beta_m
+            "TEST: fixing the lambda to check"
+            # lambda_h, lambda_m = self.lambdas[-1], self.lambdas[-1]
+            # beta_h, beta_m = self.betas[-1], self.betas[3]  #H:A, M: NA
+
+        'intent and rationality inference'
+        # TODO: check if this is right: using traj[-1] to calculate p_action
+        # q2 = q_values_pair(curr_state_h, curr_state_m, theta_h, theta_m)
+        q_pairs, p_q2_d = prob_q_vals(self.q2_prior, curr_state_h, curr_state_m,
+                                      traj_h=self.traj_h, traj_m=self.traj_m,
+                                      beta_h=last_beta_h, beta_m=last_beta_m)  # betas are used for action_prob
+        # print("Q pairs at time {0}:".format(self.frame), q_pairs, len(q_pairs))
+        # p_beta_q = prob_beta_given_q(beta_h, beta_m,
+
     @staticmethod
     def less_inference():
         # implement Bobu et al. "LESS is More:
