@@ -76,19 +76,21 @@ class Environment:
             max_speed = np.sqrt((sx_H - 1 - C.CONSTANTS.CAR_LENGTH * 0.5) * 2.
                                 * abs(intersection.MAX_DECELERATION))
             vx_H = np.random.uniform(max_speed * 0.1, max_speed * 0.5)
-            #print("initial vel:", vy_M, -vx_H, "initial pos:", -sy_M, sx_H)
-
+            # theta_list = [1, 1000]
+            # lambda_list = [0.001, 0.005, 0.01, 0.05]
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
                              "initial_action": [0.],  # accel  #TODO: add steering angle
                              "par": 1,  # aggressiveness: check sim.theta_list
+                             "belief": (1, 0.005),  # belief of other's params (beta: (theta, lambda))
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
                              "initial_state": [[sx_H, 0, -vx_H, 0]], #should be having negative velocity
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
                              "par": 1,  # aggressiveness: check sim.theta_list
+                             "belief": (1, 0.005),
                              "orientation": -90.},
                             ]
 

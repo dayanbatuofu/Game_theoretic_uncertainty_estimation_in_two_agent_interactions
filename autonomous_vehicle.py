@@ -8,6 +8,7 @@ from sim_data import DataUtil
 import pygame as pg
 import dynamics
 
+
 class AutonomousVehicle:
     """
     States:
@@ -30,9 +31,9 @@ class AutonomousVehicle:
         self.planned_actions_set = []
         self.planned_trajectory_set = []
         # TODO: decide lambdas and weight in env
-        self.initial_belief = self.initial_belief(self.env.car_par[0]['par'], self.env.car_par[1]['par'],
-                                                  self.sim.lambda_list[-1], self.sim.lambda_list[-1],
-                                                  weight=0.8)
+        self.initial_belief = self.get_initial_belief(self.env.car_par[0]['belief'][0], self.env.car_par[1]['belief'][0],
+                                                      self.env.car_par[0]['belief'][1], self.env.car_par[1]['belief'][1],
+                                                      weight=0.8)
         # Initialize prediction variables
         self.predicted_intent_all = []
         self.predicted_intent_other = []
@@ -45,7 +46,6 @@ class AutonomousVehicle:
         self.predicted_actions_self = [0]
         self.predicted_states_self = []
         self.predicted_states_other = []
-        #if sim.decision_type == 'baseline':
         self.min_speed = 0.1
         self.max_speed = 30
 
@@ -54,7 +54,7 @@ class AutonomousVehicle:
         frame = sim.frame
 
         # take a snapshot of the state at beginning of the frame before agents update their states
-        snapshot = sim.snapshot() #snapshot = agent.copy() => snapshot taken before updating
+        snapshot = sim.snapshot()  # snapshot = agent.copy() => snapshot taken before updating
 
         # perform inference
         inference = self.inference_model.infer(snapshot, sim)
@@ -151,12 +151,12 @@ class AutonomousVehicle:
         if self.env.name == "merger":
             self.state.append(f_environment_sc(self.state[-1], action, self.sim.dt))
         else:
-            #self.state.append(f(self.state[-1], action, self.sim.dt))
+            # self.state.append(f(self.state[-1], action, self.sim.dt))
             self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))
 
         return
 
-    def initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
+    def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
         """
         Obtain initial belief of the params
         :param theta_h:
@@ -169,6 +169,8 @@ class AutonomousVehicle:
         # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
+        # beta_list = self.sim.beta_set
+
         # beta_list = np.zeros((len(lambda_list), len(theta_list)))  # 2D type
         # beta_list = np.zeros(len(lambda_list)* len(theta_list))  # 1D type
         beta_list = []  # 1D list type (or 2D in terms of lambda, theta)
@@ -179,8 +181,6 @@ class AutonomousVehicle:
                 # beta_list[i][j] = _beta  # np type
         if self.sim.inference_type[1] == 'empathetic':
             # beta_list = beta_list.flatten()
-            # TODO: higher prob for right theta, or beta (including lambda)?
-            # TODO: how to limit decimals
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
                 for j, beta_m in enumerate(beta_list):  # M: the columns
@@ -232,7 +232,8 @@ class AutonomousVehicle:
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-        belief /= np.sum(belief)  # normalize
+        # THIS SHOULD NOT NEED TO BE NORMALIZED!
+        # print(belief, np.sum(belief))
         assert round(np.sum(belief)) == 1
         return belief
 

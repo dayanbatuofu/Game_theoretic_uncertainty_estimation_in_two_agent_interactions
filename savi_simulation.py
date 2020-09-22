@@ -30,13 +30,15 @@ class Simulation:
         self.inference_type = inference_type
         self.env = env
         self.agents = []
+        self.sharing_belief = True  # TODO: set condition for this
         self.theta_priors = None
         self.drawing_prob = True  # if function for displaying future states are enabled
         # define simulation
         car_parameter = self.env.car_par
         "theta and lambda pairs (betas):"
         self.theta_list = [1, 1000]
-        self.lambda_list = [0.001, 0.005, 0.01, 0.05]
+        # self.lambda_list = [0.001, 0.005, 0.01, 0.05]
+        self.lambda_list = [0.001, 0.005]
         self.action_set = [-8, -4, 0, 4, 8]
         self.action_set_combo = [[-8, -1], [-8, 0], [-8, 1], [-4, -1], [-4, 0],
                                  [-4, 1], [0, -1], [0, 0], [0, 1], [4, -1],
@@ -140,10 +142,14 @@ class Simulation:
         if self.drawing_prob:
             self.vis.draw_intent()
         print("-------Simulation results:-------")
+        print("inference types:", self.inference_type)
+        print("decision types:", self.decision_type)
+        print("initial intents:", self.env.car_par[0]['par'], self.env.car_par[1]['par'])
         print("Frames:", self.frame)
+        print("len of action and states:", len(self.agents[0].action), len(self.agents[0].state))
         print("Initial belief:", self.agents[1].initial_belief)
-        print("states of H:", self.agents[0].state)
-        print("states of H predicted by M:", self.agents[1].predicted_states_other)
+        # print("states of H:", self.agents[0].state)
+        # print("states of H predicted by M:", self.agents[1].predicted_states_other)
         print("Action taken by H:", self.agents[0].action)
         print("Action of H predicted by M:", self.agents[1].predicted_actions_other)
         print("Action taken by M:", self.agents[1].action)

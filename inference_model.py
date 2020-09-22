@@ -1385,10 +1385,10 @@ class InferenceModel:
         "importing agents information from Autonomous Vehicle (sim.agents)"
         self.frame = self.sim.frame
         curr_state_h = sim.agents[0].state[self.frame]
-        last_action_h = sim.agents[0].action[self.frame]
+        last_action_h = sim.agents[0].action[self.frame - 1]
         last_state_h = sim.agents[0].state[self.frame - 1]
         curr_state_m = sim.agents[1].state[self.frame]
-        last_action_m = sim.agents[1].action[self.frame]
+        last_action_m = sim.agents[1].action[self.frame - 1]
         last_state_m = sim.agents[1].state[self.frame - 1]
 
         self.traj_h.append([last_state_h, last_action_h])
@@ -1443,6 +1443,8 @@ class InferenceModel:
                     Q_m = q_set[5]
                 else:
                     print("ID FOR THETA DOES NOT EXIST")
+            else:
+                print("ID FOR THETA DOES NOT EXIST")
 
             "Need state for agent H: xH, vH, xM, vM"
             state_h = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
@@ -1574,8 +1576,8 @@ class InferenceModel:
             # get all q pairs
             q_pairs = []
             "q_pairs (QH, QM): [[Q_na_na, Q_na_na2], [Q_na_a, Q_a_na], [Q_a_na, Q_na_a], [Q_a_a, Q_a_a2]]"
-            for t_m in self.theta_list:
-                for t_h in self.theta_list:
+            for t_h in self.theta_list:
+                for t_m in self.theta_list:
                     q_pairs.append(q_values_pair(state_h, state_m, t_h, t_m))  # [q_vals_h, q_vals_m]
 
             # Size of P(Q2|D) should be the size of possible Q2
@@ -1632,8 +1634,8 @@ class InferenceModel:
                 th = 1; tm = 1
             id = []
             "checking if given beta is a or na, in 1D betas:"
-            for i in index:  # (i, j) = (row, col). 8x8 2D array
-                if i < 4:  # NA
+            for i in index:  # (i, j) = (row, col). 4x4 2D array
+                if i < 2:  # NA  # TODO: generalize this
                     id.append(0)
                 else:  # A
                     id.append(1)
@@ -1672,6 +1674,7 @@ class InferenceModel:
                     #         p_beta_q2[i][j] = p_betas_prior[i][j] * p_q2_beta[k]
                     #     else:
                     #         p_beta_q2[i][j] += p_betas_prior[i][j] * p_q2_beta[k]
+            print(p_beta_q2)
             p_beta_q2 /= np.sum(p_beta_q2)
             # TODO: do they sum up to 1?
             # assert 0.99 <= np.sum(p_beta_q2) <= 1.01  # check if properly normalized
@@ -1713,6 +1716,7 @@ class InferenceModel:
             """
 
             actions = self.action_set
+
             def get_s_prime(_state_list, _actions):
                 _s_prime = []
 
@@ -1729,16 +1733,16 @@ class InferenceModel:
                 return _s_prime
 
             i = 0  # row counter
-            state_list = {}  # use dict to keep track of time step
+            _state_list = {}  # use dict to keep track of time step
             # state_list = []
             # state_list.append(state) #ADDING the current state!
             for t in range(0, T):
                 s_prime = get_s_prime(state, actions)  # separate pos and speed!
-                state_list[i] = s_prime
+                _state_list[i] = s_prime
                 # state_list.append(s_prime)
                 state = s_prime  # get s prime for the new states
                 i += 1  # move onto next row
-            return state_list
+            return _state_list
 
         def joint_action_prob(state_h, state_m, beta_h, beta_m):
             """
@@ -1980,6 +1984,7 @@ class InferenceModel:
         self.p_betas_prior = p_beta_d
 
         'getting best predicted betas'
+        # TODO: confirm if this works
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
         print("best betas ID at time {0}".format(self.frame), beta_pair_id)
 

@@ -351,23 +351,24 @@ class VisUtils:
         self.dist.append(dist)
 
     def calc_intent(self):
-        joint_infer_m = self.sim.agents[1].predicted_intent_self
-        # TODO: assign list of theta and lambda somewhere in sim
-        # theta_list = [1, 1000]
-        # lambda_list = [0.05, 0.1, 1, 10]
+        # TODO: use common knowledge instead
+        common_belief = self.sim.agents[1].predicted_intent_all
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
-        if not len(joint_infer_m) == 0:
+        if self.sim.sharing_belief:  # both agents uses same belief from empathetic inference
+            beta_h, beta_m = self.sim.agents[1].predicted_intent_all[-1][1]
+            self.intent_h.append(beta_h[0])
+            self.intent_m.append(beta_m[0])
+            self.lambda_h.append(beta_h[1])
+            self.lambda_m.append(beta_m[1])
+
+            joint_infer_m = self.sim.agents[1].predicted_intent_self
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             p_joint_m, lambda_m = joint_infer_m[-1]
-            # TODO: process the lambda
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
             sum_m = p_joint_m.sum(axis=0)
-            sum_m = np.ndarray.tolist(sum_m) # [theta1, theta2]
-            #TODO: add sum to list
-            idx_h = sum_h.index(max(sum_h))
-            idx_m = sum_m.index(max(sum_m))
+            sum_m = np.ndarray.tolist(sum_m)  # [theta1, theta2]
             for i in range(len(sum_h)):
                 if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
                     j = 0
@@ -376,35 +377,59 @@ class VisUtils:
                         self.intent_distri_m.append([])
                 self.intent_distri_h[i].append(sum_h[i])
                 self.intent_distri_m[i].append(sum_m[i])
-            H_intent = theta_list[idx_h]
-            M_intent = theta_list[idx_m]
-            self.intent_h.append(H_intent)
-            self.intent_m.append(M_intent)
-            self.lambda_h.append(lambda_h)
-            self.lambda_m.append(lambda_m)
-        else:
-            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
-            #print("-draw- p_joint_h: ", p_joint_h)
-            sum_h = p_joint_h.sum(axis=0)
-            sum_h = np.ndarray.tolist(sum_h)
-            for i in range(len(sum_h)):
-                if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
-                    j = 0
-                    while j in range(len(sum_h)):
-                        self.intent_distri_h.append([])
-                self.intent_distri_h[i].append(sum_h[i])
 
-            #print('sum of theta prob:', sum_h)
-            idx_h = sum_h.index(max(sum_h))
-            # TODO: assign list of theta and lambda somewhere in sim
-            H_intent = theta_list[idx_h]
-            print('probability of thetas H:', sum_h, 'H intent:', H_intent)
-            self.intent_h.append(H_intent)
-            self.lambda_h.append(lambda_h)
+
+        else:
+            joint_infer_m = self.sim.agents[1].predicted_intent_self
+            theta_list = self.sim.theta_list
+            lambda_list = self.sim.lambda_list
+            if not len(joint_infer_m) == 0:
+                p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
+                p_joint_m, lambda_m = joint_infer_m[-1]
+                # TODO: process the lambda
+                sum_h = p_joint_h.sum(axis=0)
+                sum_h = np.ndarray.tolist(sum_h)
+                sum_m = p_joint_m.sum(axis=0)
+                sum_m = np.ndarray.tolist(sum_m)  # [theta1, theta2]
+                # TODO: add sum to list
+                idx_h = sum_h.index(max(sum_h))
+                idx_m = sum_m.index(max(sum_m))
+                for i in range(len(sum_h)):
+                    if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
+                        j = 0
+                        while j in range(len(sum_h)):
+                            self.intent_distri_h.append([])
+                            self.intent_distri_m.append([])
+                    self.intent_distri_h[i].append(sum_h[i])
+                    self.intent_distri_m[i].append(sum_m[i])
+                H_intent = theta_list[idx_h]
+                M_intent = theta_list[idx_m]
+                self.intent_h.append(H_intent)
+                self.intent_m.append(M_intent)
+                self.lambda_h.append(lambda_h)
+                self.lambda_m.append(lambda_m)
+            else:
+                p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
+                # print("-draw- p_joint_h: ", p_joint_h)
+                sum_h = p_joint_h.sum(axis=0)
+                sum_h = np.ndarray.tolist(sum_h)
+                for i in range(len(sum_h)):
+                    if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
+                        j = 0
+                        while j in range(len(sum_h)):
+                            self.intent_distri_h.append([])
+                    self.intent_distri_h[i].append(sum_h[i])
+
+                # print('sum of theta prob:', sum_h)
+                idx_h = sum_h.index(max(sum_h))
+                # TODO: assign list of theta and lambda somewhere in sim
+                H_intent = theta_list[idx_h]
+                print('probability of thetas H:', sum_h, 'H intent:', H_intent)
+                self.intent_h.append(H_intent)
+                self.lambda_h.append(lambda_h)
 
     def draw_intent(self):
         joint_infer_m = self.sim.agents[1].predicted_intent_self
-        # TODO: assign list of theta and lambda somewhere in sim
         print(joint_infer_m)
         if not len(joint_infer_m) == 0:
             print("Lambdas:", self.lambda_h, self.lambda_m)
