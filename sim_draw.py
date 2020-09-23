@@ -148,9 +148,17 @@ class VisUtils:
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y + label_y_offset))
             action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
-            label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
+            if self.env.name == 'merger':
+                label = font.render("Car 1 action: " % action1, 1, (0, 0, 0))
+            else:
+                label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
+
             self.screen.blit(label, (label_x, label_y + 2 * label_y_offset))
-            label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
+            if self.env.name == 'merger':
+                label = font.render("Car 2 action: " % action2, 1, (0, 0, 0))
+            else:
+                label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
+
             self.screen.blit(label, (label_x, label_y + 3 * label_y_offset))
             label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
             self.screen.blit(label, (10, 10))
@@ -272,10 +280,10 @@ class VisUtils:
                              (((bounds[1] + bounds[0])/2), self.screen_height * self.coordinate_scale,
                               ), bounds[1] - bounds[0])
 
-                # pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2+ road_width), 1),
-                #              (((bounds[1] + bounds[0])/2+road_width), self.screen_height * self.coordinate_scale,
-                #               ), bounds[1] - bounds[0])
-
+                if self.env.name == 'merger':
+                    pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2+ road_width), 1),
+                             (((bounds[1] + bounds[0])/2+road_width), self.screen_height * self.coordinate_scale,
+                              ), bounds[1] - bounds[0])
             if bound_y:
                 b_min, b_max = bound_y[0], bound_y[1]
                 _bound1 = self.c2p((0, b_min))

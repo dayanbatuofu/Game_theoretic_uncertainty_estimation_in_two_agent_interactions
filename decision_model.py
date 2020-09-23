@@ -51,7 +51,7 @@ class DecisionModel:
         for i, par_i in enumerate(self.sim.env.car_par):
             self.true_intents.append(par_i["par"])
         self.action_set = self.sim.action_set
-        self.action_set_combo = self.sim.action_set_combo
+        #self.action_set_combo = self.sim.action_set_combo
         self.theta_list = self.sim.theta_list
         self.lambda_list = self.sim.lambda_list
         self.beta_set = self.sim.beta_set
@@ -395,6 +395,7 @@ class DecisionModel:
 
         else:
             beta_h, beta_m  = self.sim.agents[1].predicted_intent_all[-1][1]
+
         action_set = self.action_set
 
         args = get_args()

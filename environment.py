@@ -154,15 +154,15 @@ class Environment:
             vy_H = np.random.uniform(max_speed * 0.1, max_speed * 0.5)
             print("merging ", "initial vel:", vy_M, -vy_H, "initial pos:", -sy_M, -sy_H)
             self.car_par = [{"sprite": "grey_car_sized.png",
-                             "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
+                             "initial_state": [[0, -sy_M, 0,0, vy_M]],  # pos_x, pos_y, theta, delta, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
-                             "initial_action": [0.],  # accel  #TODO: add steering angle
+                             "initial_action": [[0., 0.]],  # accel  #TODO: add steering angle
                              "par": 1,  # aggressiveness
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
-                             "initial_state": [[self.car_width+0.2, -sy_H, 0, vy_H]], #should be having negative velocity
+                             "initial_state": [[self.car_width+0.2, -sy_H, 0,0, vy_H]], #should be having negative velocity
                              "desired_state": [0, 0.4],
-                             "initial_action": [0.],
+                             "initial_action": [[0., 0.]],
                              "par": 1,
                              "orientation": 0.},
                             ]
