@@ -43,7 +43,7 @@ parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseli
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'baseline', 'baseline2', 'complete_information'
                              , 'reactive_point', 'reactive_uncertainty'],
-                    default=['reactive_point', 'reactive_point'])
+                    default=['reactive_uncertainty', 'reactive_uncertainty'])
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning
 # TODO: add agent decision args

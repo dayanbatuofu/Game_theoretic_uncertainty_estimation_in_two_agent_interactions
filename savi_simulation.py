@@ -53,6 +53,8 @@ class Simulation:
         for i, theta in enumerate(self.theta_list):
             for j, _lambda in enumerate(self.lambda_list):
                 self.beta_set.append([theta, _lambda])
+        self.action_distri_1 = []
+        self.action_distri_2 = []
 
         if self.n_agents == 2:
             # simulations with 2 cars
@@ -147,6 +149,7 @@ class Simulation:
         print("initial intents:", self.env.car_par[0]['par'], self.env.car_par[1]['par'])
         print("Frames:", self.frame)
         print("len of action and states:", len(self.agents[0].action), len(self.agents[0].state))
+        print("action distribution", self.action_distri_1)
         print("Initial belief:", self.agents[1].initial_belief)
         # print("states of H:", self.agents[0].state)
         # print("states of H predicted by M:", self.agents[1].predicted_states_other)

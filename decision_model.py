@@ -342,15 +342,17 @@ class DecisionModel:
                 q_2 = Q_a_a
         q1_vals = q_1.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state).to(t.device("cpu")))
-        p_action1 = self.action_prob(q1_vals, beta_h[1])
-        p_action2 = self.action_prob(q2_vals, beta_m[1])
+        # TODO: what to use for lambda?? (use true beta for self
+        p_action1 = self.action_prob(q1_vals, _lambda=beta_h[1])
+        p_action2 = self.action_prob(q2_vals, _lambda=beta_m[1])
         actions = []
         for p_a in (p_action1, p_action2):
             p_a = np.array(p_a).tolist()
             "drawing action from action set using the distribution"
             action = random.choices(action_set, weights=p_a, k=1)
             actions.append(action[0])  # TODO: check why it's list
-
+        self.sim.action_distri_1.append(p_action1)
+        self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
         # actions = [action1, action2]
         return {'action': actions}
@@ -427,7 +429,8 @@ class DecisionModel:
             "drawing action from action set using the distribution"
             action = random.choices(action_set, weights=p_a, k=1)
             actions.append(action[0])  # TODO: check why it's list
-
+        self.sim.action_distri_1.append(p_action1)
+        self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
 
         return {'action': actions}
@@ -483,3 +486,8 @@ class DecisionModel:
         assert (np.isnan(pa) for pa in exp_Q)
         print("exp_Q:", exp_Q)
         return exp_Q
+
+    # TODO: get q vals given beta set
+    def get_q_vals(self):
+        return
+

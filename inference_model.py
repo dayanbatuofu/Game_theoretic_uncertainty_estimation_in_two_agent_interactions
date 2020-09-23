@@ -1997,6 +1997,7 @@ class InferenceModel:
         p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
 
         "getting most likely action for analysis purpose"
+        # TODO: this is not correct: empathetic vs non-empathetic
         p_actions = action_prob(curr_state_h, curr_state_m, new_beta_h, new_beta_m)  # for testing with decision
         predicted_actions = []
         for i, p_a in enumerate(p_actions):
@@ -2005,18 +2006,6 @@ class InferenceModel:
             id = p_a.index(max(p_a))
             predicted_actions.append(self.action_set[id])
 
-        # TODO: IMPORTANT: Best beta pair =/= Best beta !!!
-        # TODO: implement proposed:
-        # variables:
-        # predicted_intent_other: BH hat,
-        # predicted_intent_self: BM tilde,
-        # predicted_policy_other: QH hat,
-        # predicted_policy_self: QM tilde
-
-        # p_theta_prime, suited_lambdas <- predicted_intent other
-        # p_betas: [BH x BM]
-        # print("state list and prob for H: ", state_list, marginal_state)
-        # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
         "obtaining marginal state distribution for both agents"
         marginal_state_h = {}
         marginal_state_m = {}
@@ -2027,6 +2016,16 @@ class InferenceModel:
             print(marginal_state[t])
             assert round(sum(marginal_state_m[t])) == 1 and round(sum(marginal_state_h[t])) == 1
 
+        # IMPORTANT: Best beta pair =/= Best beta !!!
+        # p_theta_prime, suited_lambdas <- predicted_intent other
+        # p_betas: [BH x BM]
+        # print("state list and prob for H: ", state_list, marginal_state)
+        # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
+        # variables:
+        # predicted_intent_other: BH hat,
+        # predicted_intent_self: BM tilde,
+        # predicted_policy_other: QH hat,
+        # predicted_policy_self: QM tilde
         print("-inf- marginal state for m: ", marginal_state_m)
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
