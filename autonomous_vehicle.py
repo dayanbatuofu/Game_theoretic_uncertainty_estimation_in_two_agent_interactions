@@ -72,7 +72,7 @@ class AutonomousVehicle:
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)
-        print(action)
+        print("chosen action", action)
         self.dynamics(action)
 
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
@@ -137,8 +137,8 @@ class AutonomousVehicle:
                     vy_new = self.min_speed
                 else:
                     vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-                sx_new = sx + (vy_new) * dt *np.cos(theta)
-                sy_new = sy + (vy_new) * dt *np.sin(theta)
+                sx_new = sx + (vy_new) * dt *np.sin(theta)
+                sy_new = sy + (vy_new) * dt *np.cos(theta)
                 theta_new = theta + vy_new/L*np.tan(delta_new) *dt
             else:
                 vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)

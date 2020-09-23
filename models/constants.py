@@ -163,7 +163,7 @@ class CONSTANTS:
 
         # Left Car
         CAR_1 = CarParameters(SPRITE="grey_car_sized.png",
-                              INITIAL_STATE=[20., INITIAL_SPEED],  # initial distance in m and speed in m/s
+                              INITIAL_STATE=[20.,0., 0., 0., INITIAL_SPEED],  # initial distance in m and speed in m/s
                               aggressiveness=1,
                               gracefulness=0,
                               ORIENTATION=0,  # moving from bottom to top
@@ -171,7 +171,7 @@ class CONSTANTS:
 
         # Right Car
         CAR_2 = CarParameters(SPRITE="white_car_sized.png",
-                              INITIAL_STATE=[30., INITIAL_SPEED],
+                              INITIAL_STATE=[30., 0., 0., 0., INITIAL_SPEED],
                               aggressiveness=1,
                               gracefulness=0,
                               ORIENTATION=0,  # moving from right to left

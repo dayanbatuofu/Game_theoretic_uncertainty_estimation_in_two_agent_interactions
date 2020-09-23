@@ -3,8 +3,8 @@
 import torch
 import numpy as np
 import matplotlib
-from matplotlib import pyplot as plt
-from matplotlib.animation import FuncAnimation
+#from matplotlib import pyplot as plt
+#from matplotlib.animation import FuncAnimation
 import os
 import logging
 from torch.utils.data import DataLoader

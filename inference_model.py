@@ -22,6 +22,8 @@ class InferenceModel:
             self.infer = self.test_baseline_inference
         elif model == 'trained_baseline':
             self.infer = self.trained_baseline_inference
+        elif model == 'trained_baseline_2U':
+            self.infer = self.trained_baseline_inference_2U
         elif model == 'empathetic':
             self.infer = self.empathetic_inference
         else:
@@ -71,7 +73,7 @@ class InferenceModel:
         # self.action_set_combo = [[-8, -1], [-8, 0], [-8, 1], [-4, -1], [-4, 0],
         #                         [-4, 1], [0, -1], [0, 0], [0, 1], [4, -1],
         #                         [4, 0], [4, 1], [8, -1], [8, 0], [8, 1]]  # merging case actions
-        self.action_set_combo = self.sim.action_set_combo
+        #self.action_set_combo = self.sim.action_set_combo
 
         "for empathetic inference:"
         self.p_betas_prior = None
@@ -1169,6 +1171,7 @@ class InferenceModel:
             """
             theta_m = self.sim.env.car_par[1]["par"]
             action_set = self.action_set
+            #action_set = self.action_set_combo
             # if theta_h == self.thetas[0]:
             #     intent = "na_na"
             # else:
@@ -1335,7 +1338,145 @@ class InferenceModel:
 
             assert 0.9 <= np.sum(p_joint_prime) <= 1.1  # check if it is properly normalized
             print("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
-            return p_joint_prime, suited_lambdas
+            return p_joint_prime, suited_lambdas\
+
+        def get_state_list(state, T, dt):
+            #TODO: check if it works for this model
+            """
+            2D case: calculate an array of state (T x S at depth T)
+            1D case: calculate a list of state (1 X (1 + Action_set^T))
+            :param
+                state: current state
+                T: time horizon / look ahead
+                dt: time interval where the action will be executed, i.e. u*dt
+            :return:
+                list of resulting states from taking each action at a given state
+            """
+
+            actions = self.action_set
+
+            def get_s_prime(_state_list, _actions):
+                _s_prime = []
+
+                "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
+                # TODO: fix this!!!
+                if not isinstance(_state_list[0], tuple):
+                    # print("WARNING: state list is not composed of tuples!")
+                    _state_list = [_state_list]  # put it in a list to iterate
+
+                for s in _state_list:
+                    for a in _actions:
+                        # print("STATE", s)
+                        # _s_prime.append(calc_state(s, a, dt))
+                        #_s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
+                        _s_prime.append(dynamics.dynamics_2d(s, a, dt, self.min_speed, self.max_speed))
+                return _s_prime
+
+            i = 0  # row counter
+            state_list = {}  # use dict to keep track of time step
+            # state_list = []
+            # state_list.append(state) #ADDING the current state!
+            for t in range(0, T):
+                s_prime = get_s_prime(state, actions)  # separate pos and speed!
+                state_list[i] = s_prime
+                # state_list.append(s_prime)
+                state = s_prime  # get s prime for the new states
+                i += 1  # move onto next row
+
+            return state_list
+
+        def traj_prob(state_h, state_m, _lambda, theta, dt, prior=None):
+            """
+            Equation 4
+            refer to pp.mdp.py
+                Calculates probability of being in a set of states at time k+1: P(x(k+1)| lambda, theta)
+            :params:
+                state: current / observed state of H at time k
+                _lambda: given lambda/rational coefficient
+                dt: length of each time step
+                prior: probability of agent being at "state" at time k (default is 1)
+            :return:
+                possible resulting states at k+1 with probabilities for being at each one of them
+            """
+
+            "for now we consider prior = 1 for observed state at time k"
+            if prior == None:
+                p_traj = 1  # initialize
+            T = self.T
+            state_list = get_state_list(state_h, T, dt)  # get list of state given curr_state/init_state from self._init_
+
+            # p_states = np.zeros(shape=state_list)
+            p_states = []
+
+            # TODO: verify if it is working properly (plotting states? p_state seems correct)
+            "for the case where state list is 1D, note that len(state list) == number of time steps!"
+            for i in range(len(state_list)):
+                if i == 0:
+                    p_a = action_prob(state_h, state_m, _lambda, theta)
+                    p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
+                    # transition is deterministic -> 1, prob state(k) = 1
+                    # print("P STATES", p_states)
+
+                else:
+                    p_s_t = []  # storing p_states for time t (or i)
+                    for j, s in enumerate(state_list[i - 1]):
+                        # print(state_list[i-1])
+                        # print(p_states)
+                        # print(type(p_states[0]))
+                        # print("Current time:",i,"working on state:", j)
+                        # print(p_states[i-1][j])
+                        p_a = action_prob(state_h, state_m, _lambda, theta) * p_states[i - 1][j]
+                        p_s_t.extend(p_a.tolist())
+
+                    p_states.append(p_s_t)
+            assert round(np.sum(p_states[0])) == 1
+            return p_states, state_list
+
+        def marginal_state(state_h, state_m, p_theta, dt):
+            """
+            Equation 5
+            Get marginal: P(x(k+1)|D(k)) from P(x(k+1)|lambda, theta) and P(lambda, theta|D(k))
+            :param state_h:
+            :param state_m:
+            :param p_theta:
+            :param best_lambdas:
+            :param thetas:
+            :param dt:
+            :return:
+            """
+
+            "get required information"
+            #lamb1, lamb2 = best_lambdas
+            lambdas = self.lambda_list
+            theta1, theta2 = self.theta_list
+            # print("WATCH for p_state", traj_probabilities(state, lamb1))
+            "get P(x(k+1)|theta,lambda) for the 2 thetas"
+            p_state_beta1= traj_prob(state_h, state_m, lambdas[0], theta1, dt)[0]
+            # p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
+            # print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
+            # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
+            # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
+
+            "calculate marginal"
+            # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
+            p_state_D = {}
+            print(p_state_beta1)
+            for t in range(len(p_state_beta1)):
+                p_state_D[t] = np.zeros(len(p_state_beta1[t]))
+            for t, theta in enumerate(self.theta_list):
+                for l, lamb in enumerate(lambdas):
+                    _p_state_beta = traj_prob(state_h, state_m, lamb, theta, dt)[0]  # calculate p_state using beta
+                    for k in range(len(_p_state_beta)):  # k refers to the number of future time steps: currently max k=1
+                        for i in range(len(_p_state_beta[k])):
+                            p_state_D[k][i] += _p_state_beta[k][i] * p_theta[l][t]
+
+                    # print(p_state_Dk[i])
+            _state_list = get_state_list(state_h, self.T, dt)
+            print('p_state_D at time ', self.frame, ' :', p_state_D)
+            print("state of H:", state_h, _state_list)  # sx, sy, vx, vy
+            assert round(np.sum(p_state_D[0])) == 1  # check
+
+            return p_state_D, _state_list
 
         # --------------------- Beginning of the algorithm -----------------------
         "#calling functions for baseline inference"
@@ -1346,17 +1487,27 @@ class InferenceModel:
         "#take a snapshot of the theta prob for next time step"
         p_joint, best_lambdas = joint_probability
 
+        "calculate the marginal state distribution / prediction"
+        marginal_state_prob, states_list = marginal_state(curr_state_h, curr_state_m, p_joint, self.dt)
+
         "getting the predicted action"
         p_theta = np.zeros(len(self.theta_list))
         for i, p_t in enumerate(p_joint.transpose()):  # get marginal prob of theta: p(theta) from joint prob p(lambda, theta)
             p_theta[i] = sum(p_t)
         theta_idx = np.argmax(p_theta)
         theta_h = self.theta_list[theta_idx]
-        p_a = action_prob(curr_state_h, curr_state_m, best_lambdas[theta_idx], theta=theta_h)
+        p_a = action_prob(curr_state_h, curr_state_m, best_lambdas[theta_idx], theta_h=theta_h)
         # p_a = action_prob(curr_state_h, curr_state_m, _lambda=self.lambdas[-1], theta=theta_h)  # for verification with decision model
         predicted_action = self.action_set[np.argmax(p_a)]
 
+        "converting from array to list"
+        for m in range(len(marginal_state_prob)):
+            marginal_state_prob[m] = marginal_state_prob[m].tolist()
+        self.theta_priors = p_joint
+
+
         return {'predicted_intent_other': [p_joint, best_lambdas],
+                'predicted_states_other': [marginal_state_prob, states_list],
                 'predicted_actions_other': predicted_action}
 
     def empathetic_inference(self, agent, sim):

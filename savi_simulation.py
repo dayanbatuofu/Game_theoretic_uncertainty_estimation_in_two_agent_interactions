@@ -40,9 +40,15 @@ class Simulation:
         # self.lambda_list = [0.001, 0.005, 0.01, 0.05]
         self.lambda_list = [0.001, 0.005]
         self.action_set = [-8, -4, 0, 4, 8]
-        self.action_set_combo = [[-8, -1], [-8, 0], [-8, 1], [-4, -1], [-4, 0],
-                                 [-4, 1], [0, -1], [0, 0], [0, 1], [4, -1],
-                                 [4, 0], [4, 1], [8, -1], [8, 0], [8, 1]]  # merging case actions
+        #self.action_set_combo = [[-0.05,8], [0,-8], [0.05,-8], [-0.05,-4], [0,-4],
+                                # [0.05,-4], [-0.05,0], [0, 0], [0.05,0], [-0.05,4],
+                                 #[0,4], [0.05,4], [-0.05, 8], [0,8], [0.05,8]]  # merging case actions
+        self.action_set_combo = [[-0.05, -4], [0.05, -4], [0, 0], [0.05, 4], [-0.05, 0.4]]# CHANGE THIS LATER SUNNY
+
+        if self.env.name == 'merger':
+            self.action_set = self.action_set_combo
+
+
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],

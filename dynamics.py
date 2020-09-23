@@ -48,7 +48,7 @@ def dynamics_1d(x, u, dt, min_speed, max_speed):
     return sx_new, sy_new, vx_new, vy_new
 
 
-def dynamics_2d(state, u, dt, min_speed, max_speed):
+def dynamics_2d(x, u, dt, min_speed, max_speed):
     """
     In the case steering action is available
     :param state:
@@ -57,25 +57,20 @@ def dynamics_2d(state, u, dt, min_speed, max_speed):
     :return: resulting state from given current state and action
     """
 
-    sx, sy, theta, vy = x[0], x[1], x[2], x[3], x[4] # x, y, heading, velocity steering, velocity 
+    sx, sy, theta, delta, vy = x[0], x[1], x[2], x[3], x[4] # x, y, heading, velocity steering, velocity
     L = 3 # length of the vehicle 
-    if self.id == 0 or self.id == 1:
-        vy_new = vy + u[1] * dt #* vy / (np.linalg.norm([vx, vy]) + 1e-12)
-        delta_new = delta + u[0] * dt
-        if vy_new < self.min_speed:
-            vy_new = self.min_speed
-        else:
-            vy_new = max(min(vy_new, self.max_speed), self.min_speed)
-        sx_new = sx + (vy_new) * dt *np.cos(theta)
-        sy_new = sy + (vy_new) * dt *np.sin(theta)
-        theta_new = theta + vy_new/L*np.tan(delta_new) *dt
+
+    vy_new = vy + u[1] * dt #* vy / (np.linalg.norm([vx, vy]) + 1e-12)
+    delta_new = delta + u[0] * dt
+    if vy_new < min_speed:
+        vy_new = min_speed
     else:
-        vx_new = vx + u * dt * vx #/ (np.linalg.norm([vx, vy]) + 1e-12)
-        vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
-        sx_new = sx + (vx + vx_new) * dt * 0.5
-        sy_new = sy + (vy + vy_new) * dt * 0.5
-        theta_new = theta + u[0]
-    print("ID:", self.id, "action:", u[0],"," ,u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
+        vy_new = max(min(vy_new, max_speed), min_speed)
+    sx_new = sx + (vy_new) * dt *np.sin(theta)
+    sy_new = sy + (vy_new) * dt *np.cos(theta)
+    theta_new = theta + vy_new/L*np.tan(delta_new) *dt
+
+    #print("ID:", self.id, "action:", u[0],"," ,u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
     return sx_new, sy_new, theta_new, delta_new, vy_new
 
 
