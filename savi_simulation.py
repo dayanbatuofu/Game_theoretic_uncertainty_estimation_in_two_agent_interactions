@@ -4,6 +4,7 @@ import pygame as pg
 import datetime
 import pickle
 import torch as t
+import numpy as np
 from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
@@ -48,7 +49,9 @@ class Simulation:
         if self.env.name == 'merger':
             self.action_set = self.action_set_combo
 
-
+        self.true_intents = []
+        for i, par_i in enumerate(self.env.car_par):
+            self.true_intents.append(par_i["par"])
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
@@ -61,7 +64,11 @@ class Simulation:
                 self.beta_set.append([theta, _lambda])
         self.action_distri_1 = []
         self.action_distri_2 = []
-
+        self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0],
+                                                      self.env.car_par[0]['belief'][0],
+                                                      self.env.car_par[1]['belief'][1],
+                                                      self.env.car_par[0]['belief'][1],
+                                                      weight=0.8)  # note: use params from the other agent's belief
         if self.n_agents == 2:
             # simulations with 2 cars
             # Note that variable annotation is not supported in python 3.5
@@ -113,7 +120,7 @@ class Simulation:
                     print("terminating on vehicle merger:")
                     break
             else:
-                if y_H >= 10 and x_M <= -10:
+                if y_H >= 5 and x_M <= -5:
                     # road width = 2.0 m
                     # if crossed the intersection, done or max time reached
                     # if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
@@ -162,6 +169,80 @@ class Simulation:
         print("Action taken by H:", self.agents[0].action)
         print("Action of H predicted by M:", self.agents[1].predicted_actions_other)
         print("Action taken by M:", self.agents[1].action)
+
+    # TODO: store this somewhere else
+    def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
+        """
+        Obtain initial belief of the params
+        :param theta_h:
+        :param theta_m:
+        :param lambda_h:
+        :param lambda_m:
+        :param weight:
+        :return:
+        """
+        # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
+        theta_list = self.theta_list
+        lambda_list = self.lambda_list
+        beta_list = self.beta_set
+
+        if self.inference_type[1] == 'empathetic':
+            # beta_list = beta_list.flatten()
+            belief = np.ones((len(beta_list), len(beta_list)))
+            for i, beta_h in enumerate(beta_list):  # H: the rows
+                for j, beta_m in enumerate(beta_list):  # M: the columns
+                    if beta_h[0] == theta_h:  # check lambda
+                        belief[i][j] *= weight
+                        if beta_h[1] == lambda_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                        if beta_h[1] == lambda_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+
+                    if beta_m[0] == theta_m:  # check lambda
+                        belief[i][j] *= weight
+                        if beta_m[1] == lambda_m:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                        if beta_m[1] == lambda_m:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+
+                    # if beta_h == [lambda_h, theta_h] and beta_m == [lambda_m, theta_m]:
+                    #     belief[i][j] = weight
+                    # else:
+                    #     belief[i][j] = 1
+
+        # TODO: not in use! we only use the game theoretic inference
+        else:  # get belief on H agent only
+            belief = np.ones((len(lambda_list), len(theta_list)))
+            for i, lamb in enumerate(lambda_list):
+                for j, theta in enumerate(theta_list):
+                    if lamb == lambda_h:  # check lambda
+                        belief[i][j] *= weight
+                        if theta == theta_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                        if theta == theta_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+        # THIS SHOULD NOT NEED TO BE NORMALIZED!
+        # print(belief, np.sum(belief))
+        assert round(np.sum(belief)) == 1
+        return belief
 
     def reset(self):
         # reset the simulation

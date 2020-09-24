@@ -30,10 +30,9 @@ class AutonomousVehicle:
         self.trajectory = []
         self.planned_actions_set = []
         self.planned_trajectory_set = []
-        # TODO: decide lambdas and weight in env
-        self.initial_belief = self.get_initial_belief(self.env.car_par[0]['belief'][0], self.env.car_par[1]['belief'][0],
-                                                      self.env.car_par[0]['belief'][1], self.env.car_par[1]['belief'][1],
-                                                      weight=0.8)
+        self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0], self.env.car_par[0]['belief'][0],
+                                                      self.env.car_par[1]['belief'][1], self.env.car_par[0]['belief'][1],
+                                                      weight=0.8)  # note: use params from the other agent's belief
         # Initialize prediction variables
         self.predicted_intent_all = []
         self.predicted_intent_other = []
@@ -67,8 +66,8 @@ class AutonomousVehicle:
         action = plan["action"]
         if self.sim.decision_type[self.id] == "baseline" \
                 or self.sim.decision_type[self.id] == "baseline2" \
-                or self.sim.decision_type[self.id] == "reactive_point"\
-                or self.sim.decision_type[self.id] == "reactive_uncertainty":  #TODO: need to be able to check indivisual type
+                or self.sim.decision_type[self.id] == "non-empathetic"\
+                or self.sim.decision_type[self.id] == "empathetic":  #TODO: need to be able to check indivisual type
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)
@@ -169,46 +168,38 @@ class AutonomousVehicle:
         # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
-        # beta_list = self.sim.beta_set
+        beta_list = self.sim.beta_set
 
-        # beta_list = np.zeros((len(lambda_list), len(theta_list)))  # 2D type
-        # beta_list = np.zeros(len(lambda_list)* len(theta_list))  # 1D type
-        beta_list = []  # 1D list type (or 2D in terms of lambda, theta)
-        for i, lamb in enumerate(lambda_list):
-            for j, theta in enumerate(theta_list):
-                _beta = [lamb, theta]
-                beta_list.append(_beta)  # list type
-                # beta_list[i][j] = _beta  # np type
         if self.sim.inference_type[1] == 'empathetic':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
                 for j, beta_m in enumerate(beta_list):  # M: the columns
-                    if beta_h[0] == lambda_h:  # check lambda
+                    if beta_h[0] == theta_h:  # check lambda
                         belief[i][j] *= weight
-                        if beta_h[1] == theta_h:  # check theta
+                        if beta_h[1] == lambda_h:  # check theta
                             belief[i][j] *= weight
                         else:
-                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
                     else:
-                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-                        if beta_h[1] == theta_h:  # check theta
+                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                        if beta_h[1] == lambda_h:  # check theta
                             belief[i][j] *= weight
                         else:
-                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
 
-                    if beta_m[0] == lambda_m:  # check lambda
+                    if beta_m[0] == theta_m:  # check lambda
                         belief[i][j] *= weight
-                        if beta_m[1] == theta_m:  # check theta
+                        if beta_m[1] == lambda_m:  # check theta
                             belief[i][j] *= weight
                         else:
-                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
                     else:
-                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-                        if beta_m[1] == theta_m:  # check theta
+                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                        if beta_m[1] == lambda_m:  # check theta
                             belief[i][j] *= weight
                         else:
-                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
 
                     # if beta_h == [lambda_h, theta_h] and beta_m == [lambda_m, theta_m]:
                     #     belief[i][j] = weight

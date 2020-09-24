@@ -17,6 +17,7 @@ from models.rainbow.set_nfsp_models import get_models
 from models.rainbow.common.utils import epsilon_scheduler, beta_scheduler, update_target, print_log
 #from set_nfsp_models import get_models
 
+
 class DecisionModel:
     def __init__(self, model, sim):
         self.sim = sim
@@ -30,26 +31,18 @@ class DecisionModel:
             self.plan = self.baseline
         elif model == 'baseline2':  # doesn't do anything different yet!
             self.plan = self.baseline2
-        elif model == 'reactive_point':  # non-game, using NFSP, import estimated params to choose action
-            self.plan = self.reactive_point
-            # import estimated values; use estimation of other's param to get an action for self
-            # self.H_intent = self.sim.agents[1].predicted_intent_other
-            # self.H_action = self.sim.agents[1].predicted_actions_other
-        elif model == 'reactive_uncertainty':  # game, using NFSP, import inferred params for both agents
-            self.plan = self.reactive_uncertainty
-            # import estimated values; use estimation of other and self params to get an action for both
-            # self.H_intent = self.sim.agents[1].predicted_intent_other
-            # self.H_action = self.sim.agents[1].predicted_actions_other
-            # self.predicted_action_m = self.sim.agents[1].predicted_actions_self
+        elif model == 'non-empathetic':  # use estimated params of other and known param of self to choose action
+            self.plan = self.non_empathetic
+        elif model == 'empathetic':  # game, using NFSP, import inferred params for both agents
+            self.plan = self.empathetic
+            # import estimated values; use estimation of other and other's of self to get an action for both
         else:
             # placeholder for future development
             pass
 
         self.policy_or_Q = 'Q'
 
-        self.true_intents = []
-        for i, par_i in enumerate(self.sim.env.car_par):
-            self.true_intents.append(par_i["par"])
+        self.true_intents = self.sim.true_intents
         self.action_set = self.sim.action_set
         self.action_set_combo = self.sim.action_set_combo
         self.theta_list = self.sim.theta_list
@@ -187,7 +180,9 @@ class DecisionModel:
                 return exp_Q_pair  # [exp_Q_h, exp_Q_m]
 
             "calling function for Boltzmann model"
-            theta_h, theta_m = self.true_intents
+            beta_h, beta_m = self.true_intents
+            theta_h, lambda_h = beta_h
+            theta_m, lambda_m = beta_m
             p_actions = action_prob(p1_state, p2_state, self.lambda_list[-1], theta_h, theta_m)
             assert (not pa == 0 for pa in p_actions)
             actions = []
@@ -276,7 +271,7 @@ class DecisionModel:
         # actions = [action1, action2]
         return {'action': actions}
 
-    def reactive_point(self):
+    def non_empathetic(self):
         """
         Get appropriate action based on predicted intent of the other agent and self intent
         :return: appropriate action for both agents
@@ -302,9 +297,11 @@ class DecisionModel:
             beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
             beta_h = self.beta_set[beta_pair_id[0]]
             beta_m = self.beta_set[beta_pair_id[1]]
+            assert beta_h[0], beta_m[0] == self.true_intents
 
         else:
-            beta_h, beta_m = self.sim.agents[1].predicted_intent_all[-1][1]
+            p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
+
         action_set = self.action_set
 
         betas = [beta_h, beta_m]
@@ -313,33 +310,48 @@ class DecisionModel:
         for b in betas:
             lamb_id.append(lambda_list.index(b[1]))
             theta_id.append(theta_list.index(b[0]))
+        "getting true intent id"
         true_intent_id = []
-        for _intent in self.true_intents:
-            true_intent_id.append(self.true_intents.index(_intent))
+        for _beta in self.true_intents:
+            true_intent_id.append(self.theta_list.index(_beta[0]))
+        assert theta_list[true_intent_id[1]] == self.true_intents[1][0]
+
         "the following assumes 2 thetas"
         # TODO: create a function for this
-        "for agent 1 (H)"
+        "for agent 1 (H): using true self intent and guess of other's intent"
         if true_intent_id[0] == 0:
             if theta_id[1] == 0:
                 q_1 = Q_na_na_2
-            else:  # 1: na, 2:a
+            elif theta_id[1] == 1:  # 1: na, 2:a
                 q_1 = Q_na_a
-        else:  # 1: A
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        elif true_intent_id[0] == 1:  # 1: A
             if theta_id[1] == 0:
                 q_1 = Q_a_na
-            else:
+            elif theta_id[1] == 1:
                 q_1 = Q_a_a_2
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        else:
+            print("ERROR: THETA DOES NOT EXIST")
         "for agent 2 (M)"
         if true_intent_id[1] == 0:
             if theta_id[0] == 0:
                 q_2 = Q_na_na
-            else:  # 2: na, 1:a
+            elif theta_id[0] == 1:  # 2: na, 1:a
                 q_2 = Q_a_na
-        else:  # 2: A
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        elif true_intent_id[1] == 1:  # 2: A
             if theta_id[0] == 0:
                 q_2 = Q_na_a
-            else:
+            elif theta_id[0] == 1:
                 q_2 = Q_a_a
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        else:
+            print("ERROR: THETA DOES NOT EXIST")
         q1_vals = q_1.forward(t.FloatTensor(p1_state).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state).to(t.device("cpu")))
         # TODO: what to use for lambda?? (use true beta for self
@@ -357,7 +369,7 @@ class DecisionModel:
         # actions = [action1, action2]
         return {'action': actions}
 
-    def reactive_uncertainty(self):
+    def empathetic(self):
         """
         Choose action from Nash Equilibrium, according to the inference model
         :return: actions for both agents

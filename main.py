@@ -38,12 +38,12 @@ agent parameters
 """
 # choose inference model: none: complete information
 parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'trained_baseline', 'empathetic', 'trained_baseline_2U'],
-                    default=['trained_baseline', 'trained_baseline'])
+                    default=['none', 'empathetic'])  # use only empathetic for our simulation
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'baseline', 'baseline2', 'complete_information'
-                             , 'reactive_point', 'reactive_uncertainty'],
-                    default=['baseline', 'baseline'])
+                             , 'non-empathetic', 'empathetic'],
+                    default=['non-empathetic', 'non-empathetic'])
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning
 # TODO: add agent decision args

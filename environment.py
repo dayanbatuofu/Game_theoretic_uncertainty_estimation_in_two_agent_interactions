@@ -82,15 +82,15 @@ class Environment:
                              "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
                              "initial_action": [0.],  # accel  #TODO: add steering angle
-                             "par": 1,  # aggressiveness: check sim.theta_list
-                             "belief": (1, 0.005),  # belief of other's params (beta: (theta, lambda))
+                             "par": (1, 0.001),  # aggressiveness: check sim.theta_list
+                             "belief": (1000, 0.005),  # belief of other's params (beta: (theta, lambda))
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
-                             "initial_state": [[sx_H, 0, -vx_H, 0]], #should be having negative velocity
+                             "initial_state": [[sx_H, 0, -vx_H, 0]],  # should be having negative velocity
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
-                             "par": 1,  # aggressiveness: check sim.theta_list
-                             "belief": (1, 0.005),
+                             "par": (1, 0.001),  # aggressiveness: check sim.theta_list
+                             "belief": (1, 0.005),  # belief of other's params (beta: (theta, lambda))
                              "orientation": -90.},
                             ]
 

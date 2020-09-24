@@ -76,10 +76,11 @@ class InferenceModel:
         #self.action_set_combo = self.sim.action_set_combo
 
         "for empathetic inference:"
-        self.p_betas_prior = None
+        self.p_betas_prior = self.sim.initial_belief
         self.q2_prior = None
         self.past_beta = []
         self.beta_set = self.sim.beta_set
+        self.action_pair_score = []
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
@@ -1535,9 +1536,11 @@ class InferenceModel:
         # NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
         "importing agents information from Autonomous Vehicle (sim.agents)"
         self.frame = self.sim.frame
+        assert len(sim.agents[0].state) == len(sim.agents[0].action)
         curr_state_h = sim.agents[0].state[self.frame]
         last_action_h = sim.agents[0].action[self.frame - 1]
         last_state_h = sim.agents[0].state[self.frame - 1]
+
         curr_state_m = sim.agents[1].state[self.frame]
         last_action_m = sim.agents[1].action[self.frame - 1]
         last_state_m = sim.agents[1].state[self.frame - 1]
@@ -1650,7 +1653,7 @@ class InferenceModel:
                 "normalizing"
                 # normalize(exp_Q, norm = 'l1', copy = False)
                 exp_Q /= sum(exp_Q)
-
+                assert round(np.sum(exp_Q)) == 1
                 exp_Q_pair.append(exp_Q)
 
             return exp_Q_pair  # [exp_Q_h, exp_Q_m]
@@ -1689,6 +1692,7 @@ class InferenceModel:
                 # normalize(exp_Q, norm = 'l1', copy = False)
                 exp_Q /= sum(exp_Q)
                 # print("exp_Q normalized:", exp_Q)
+                assert round(np.sum(exp_Q)) == 1
                 exp_Q_pair.append(exp_Q)
 
             return exp_Q_pair  # [exp_Q_h, exp_Q_m]
@@ -1727,6 +1731,8 @@ class InferenceModel:
             # get all q pairs
             q_pairs = []
             "q_pairs (QH, QM): [[Q_na_na, Q_na_na2], [Q_na_a, Q_a_na], [Q_a_na, Q_na_a], [Q_a_a, Q_a_a2]]"
+            "or think of it: [[Q_na_na, Q_na_na2], [Q_na_a, Q_a_na], "
+            "                 [Q_a_na, Q_na_a],     [Q_a_a, Q_a_a2]] "
             for t_h in self.theta_list:
                 for t_m in self.theta_list:
                     q_pairs.append(q_values_pair(state_h, state_m, t_h, t_m))  # [q_vals_h, q_vals_m]
@@ -1739,7 +1745,7 @@ class InferenceModel:
                 prior = resample(prior, epsilon=0.05)
 
             p_q2 = np.empty(len(q_pairs))
-
+            scores = []
             # assuming 1D array of q functions
             "Calculating probability of each Q pair: Equation 6"
             past_state_h, action_h = traj_h[-1]
@@ -1751,11 +1757,12 @@ class InferenceModel:
                 p_action_h = p_action[0][ah]
                 p_action_m = p_action[1][am]
                 p_a_pair = p_action_h * p_action_m
+                scores.append(p_a_pair)
                 "P(Q2|D(k)) = P(uH, uM|x(k), QH, QM) * P(Q2|D(k-1)) / sum(~)"
                 p_q2[i] = p_a_pair * prior[i]
 
+            self.action_pair_score.append(scores)  # to compare the difference between action prob for q pairs
             p_q2 /= sum(p_q2)  # normalize
-            print(p_q2)
             assert round(sum(p_q2)) == 1  # check if properly normalized
 
             return q_pairs, p_q2
@@ -1785,8 +1792,10 @@ class InferenceModel:
                 th = 1; tm = 1
             id = []
             "checking if given beta is a or na, in 1D betas:"
+            half = len(self.beta_set)/2
+            assert half == 2  # TODO: this is for 4x4 2D
             for i in index:  # (i, j) = (row, col). 4x4 2D array
-                if i < 2:  # NA  # TODO: generalize this
+                if i < half:  # NA  # TODO: generalize this
                     id.append(0)
                 else:  # A
                     id.append(1)
@@ -1801,33 +1810,28 @@ class InferenceModel:
             Equation 8: using Bayes rule (prerequisite for Equation 7)
             Calculates probability of beta pair (Bh, BM_hat) given Q pair (QH, QM): P(Bh, BM_hat | QH, QM),
             for beta_pair_prob formula.
+            P(beta_H, beta_m|QH, QM) = P(QH, QM | beta_H, beta_m) * P(beta_H, beta_m | D(k-1)) / sum (P(QH, QM | beta_H, beta_m) * P(beta_H, beta_m | D(k-1)))
             --> GIVEN A PARTICULAR Q PAIR
             :return: P(beta_H, beta_m|QH, QM): 8x8 matrix given particular Q pair
             """
 
             "import prob of beta pair given D(k-1) from Equation 7: P(betas|D(k-1))"
-            if p_betas_prior is None:
+            if p_betas_prior is None:  # TODO: this should be using initial belief from sim
                 betas_len = len(self.beta_set)
-                p_betas_prior = np.ones((betas_len, betas_len)) / (betas_len * betas_len)
+                p_betas_prior = np.ones((betas_len, betas_len)) / (betas_len * betas_len)  # uniform prior
             else:
                 p_betas_prior = resample(p_betas_prior, epsilon=0.05)
-            "prob of Q pair given beta: equally distributed probabilities P(Qm, Qh | betas)"
 
             "calculate prob of beta pair given Q pair"
             p_beta_q2 = np.empty((len(p_betas_prior), len(p_betas_prior[0])))
             for i in range(len(p_betas_prior)):
                 for j in range(len(p_betas_prior[i])):
                     'getting P(Q2|betas), given beta id (i, j)'
-                    p_q2_beta = prob_q2_beta((i, j), q_id)
+                    p_q2_beta = prob_q2_beta((i, j), q_id)  # scalar
                     p_beta_q2[i][j] = p_q2_beta * p_betas_prior[i][j]
-                    # for k in range(len(p_q2_beta)):
-                    #     if k == 0:
-                    #         p_beta_q2[i][j] = p_betas_prior[i][j] * p_q2_beta[k]
-                    #     else:
-                    #         p_beta_q2[i][j] += p_betas_prior[i][j] * p_q2_beta[k]
-            print(p_beta_q2)
+
+            # print(p_beta_q2)
             p_beta_q2 /= np.sum(p_beta_q2)
-            # TODO: do they sum up to 1?
             # assert 0.99 <= np.sum(p_beta_q2) <= 1.01  # check if properly normalized
 
             return p_beta_q2
@@ -1838,20 +1842,18 @@ class InferenceModel:
             Calculates probability of beta pair (BH, BM_hat) given past observation D(k).
             :return: P(beta_H, beta_M | D(k)), 8x8
             """
-            "Calculate prob of beta pair given D(k) by summing over Q pair"
 
             # TODO: resample from initial belief! HOW??? (no prior is used!)
-            "resample from initial/uniform distribution"
-            p_betas_d = np.zeros((len(self.beta_set), len(self.beta_set)))
 
-            for i, q2 in enumerate(q_pairs):
-                p_betas_q2 = prob_beta_given_q(p_betas_prior=self.p_betas_prior,
-                                               q_id=i)
+            p_betas_d = np.zeros((len(self.beta_set), len(self.beta_set)))
+            "Calculate prob of beta pair given D(k) by summing over Q pair"
+            for i, q2 in enumerate(q_pairs):  # cycle through q pairs
+                p_betas_q2 = prob_beta_given_q(p_betas_prior=self.p_betas_prior, q_id=i)
                 for j in range(len(p_betas_q2)):
                     for k in range(len(p_betas_q2[j])):
                         p_betas_d[j][k] += p_betas_q2[j][k] * p_q2[i]
 
-            assert round(np.sum(p_betas_d)) == 1
+            assert round(np.sum(p_betas_d)) == 1  # make sure this calculation is correct; no need to normalize
             return p_betas_d
 
         def get_state_list(state, T, dt):
@@ -2148,7 +2150,7 @@ class InferenceModel:
         p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
 
         "getting most likely action for analysis purpose"
-        # TODO: this is not correct: empathetic vs non-empathetic
+        # TODO: this is not correct: empathetic vs non-empathetic (not the right beta)
         p_actions = action_prob(curr_state_h, curr_state_m, new_beta_h, new_beta_m)  # for testing with decision
         predicted_actions = []
         for i, p_a in enumerate(p_actions):
@@ -2181,10 +2183,10 @@ class InferenceModel:
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[0],
-                'predicted_intent_other': [p_beta_d_h, best_lambda_h],
+                'predicted_intent_other': [p_beta_d_h, new_beta_h],
                 'predicted_states_self': (marginal_state_m, get_state_list(curr_state_m, self.T, self.dt)),
                 'predicted_actions_self': predicted_actions[1],
-                'predicted_intent_self': [p_beta_d_m, best_lambda_m],
+                'predicted_intent_self': [p_beta_d_m, new_beta_m],
                 'predicted_intent_all': [p_beta_d, [new_beta_h, new_beta_m]]}
 
     @staticmethod
