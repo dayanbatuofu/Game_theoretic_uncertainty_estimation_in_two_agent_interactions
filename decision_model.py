@@ -42,7 +42,7 @@ class DecisionModel:
 
         self.policy_or_Q = 'Q'
 
-        self.true_intents = self.sim.true_intents
+        self.true_intents = self.sim.true_params
         self.action_set = self.sim.action_set
         self.action_set_combo = self.sim.action_set_combo
         self.theta_list = self.sim.theta_list

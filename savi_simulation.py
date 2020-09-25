@@ -49,9 +49,9 @@ class Simulation:
         if self.env.name == 'merger':
             self.action_set = self.action_set_combo
 
-        self.true_intents = []
+        self.true_params = []
         for i, par_i in enumerate(self.env.car_par):
-            self.true_intents.append(par_i["par"])
+            self.true_params.append(par_i["par"])
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],

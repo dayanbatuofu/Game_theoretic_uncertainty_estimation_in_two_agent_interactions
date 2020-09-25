@@ -41,9 +41,15 @@ class VisUtils:
             self.intent_distri_m = [[], []]  # theta1, theta2
             self.lambda_h = []
             self.lambda_m = []
+            self.true_params = self.sim.true_params
+            self.true_intent_h = []
+            self.true_intent_m = []
+            self.true_noise_h = []
+            self.true_noise_m = []
         self.frame = sim.frame
         self.dist = []
         self.sleep_between_step = False
+
 
         if not sim.decision_type_h == 'constant_speed' and not sim.decision_type_m == 'constant_speed':
             self.sleep_between_step = True
@@ -385,7 +391,10 @@ class VisUtils:
                         self.intent_distri_m.append([])
                 self.intent_distri_h[i].append(sum_h[i])
                 self.intent_distri_m[i].append(sum_m[i])
-
+            self.true_intent_h.append(self.true_params[0][0])
+            self.true_noise_h.append(self.true_params[0][1])
+            self.true_intent_m.append(self.true_params[1][0])
+            self.true_noise_m.append(self.true_params[1][1])
 
         else:
             joint_infer_m = self.sim.agents[1].predicted_intent_self
@@ -445,12 +454,14 @@ class VisUtils:
             fig2.suptitle('Predicted intent and rationality')
 
             ax1.plot(self.intent_h, label='predicted H intent')
+            ax1.plot(self.true_intent_h, label='true H intent', linestyle='--')
             ax1.legend()
             ax1.set_yticks(self.sim.theta_list)
             ax1.set_yticklabels(['na', 'a'])
             ax1.set(xlabel='time', ylabel='intent')
 
             ax2.plot(self.intent_m, label='predicted M intent')
+            ax2.plot(self.true_intent_m, label='true M intent', linestyle='--')
             ax2.legend()
             ax2.set_yticks(self.sim.theta_list)
             ax2.set_yticklabels(['na', 'a'])
@@ -492,6 +503,7 @@ class VisUtils:
             fig2, (ax1, ax2, ax3) = pyplot.subplots(3)
             fig2.suptitle('Predicted intent of H agent')
             ax1.plot(self.intent_h, label='predicted H intent')
+            ax1.plot(self.true_intent_h, label='true H intent', linestyle='--')
             ax1.legend()
             #TODO: get actual intent from decision model/ autonomous vehicle
             ax1.set_yticks([1, 1000])
