@@ -34,10 +34,10 @@ parser.add_argument('--env_name', type=str, choices=['test_intersection', 'train
                     default='trained_intersection')
 
 """
-agent parameters
+agent model parameters
 """
 # choose inference model: none: complete information
-parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'trained_baseline', 'empathetic', 'trained_baseline_2U'],
+parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic', 'trained_baseline_2U'],
                     default=['none', 'empathetic'])  # use only empathetic for our simulation
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,
@@ -45,7 +45,17 @@ parser.add_argument('--agent_decision', type=str,
                              , 'non-empathetic', 'empathetic'],
                     default=['non-empathetic', 'non-empathetic'])
 
+"""
+agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case
+"""
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning
+parser.add_argument('--agent_intent', type=int, choices=[1, 1000], default=[1, 1])
+parser.add_argument('--agent_noise', type=float, choices=[0.001, 0.005], default=[0.001, 0.001])
+parser.add_argument('--agent_intent_belief', type=int, choices=[1, 1000], default=[1, 1])
+parser.add_argument('--agent_noise_belief', type=float, choices=[0.001, 0.005], default=[0.001, 0.001])
+parser.add_argument('--belief_weight', type=float, default=0.8)
+
+
 # TODO: add agent decision args
 # parser.add_argument('', type=str, choices=[], default=[])
 args = parser.parse_args()
@@ -57,7 +67,8 @@ if __name__ == "__main__":
     logger.info(args)
     device = t.device('cuda:' + str(args.gpu) if t.cuda.is_available() else 'cpu')
 
-    e = Environment(args.env_name)
+    e = Environment(args.env_name, args.agent_intent, args.agent_noise, args.agent_intent_belief,
+                    args.agent_noise_belief)
     assert len(args.agent_inference) == e.n_agents and len(args.agent_decision) == e.n_agents
 
     kwargs = {"env": e,
@@ -67,7 +78,8 @@ if __name__ == "__main__":
               "decision_type": args.agent_decision,
               "sim_dt": args.sim_dt,
               "sim_lr": args.sim_lr,
-              "sim_nepochs": args.sim_nepochs}
+              "sim_nepochs": args.sim_nepochs,
+              "belief_weight": args.belief_weight}  # add weight
     s = Simulation(**kwargs)
     s.run()
 

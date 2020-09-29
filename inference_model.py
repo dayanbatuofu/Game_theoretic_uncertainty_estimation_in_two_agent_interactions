@@ -20,8 +20,8 @@ class InferenceModel:
             self.infer = self.no_inference
         elif model == 'test_baseline':
             self.infer = self.test_baseline_inference
-        elif model == 'trained_baseline':
-            self.infer = self.trained_baseline_inference
+        elif model == 'nfsp_baseline':
+            self.infer = self.nfsp_baseline_inference
         elif model == 'trained_baseline_2U':
             self.infer = self.trained_baseline_inference_2U
         elif model == 'empathetic':
@@ -639,7 +639,7 @@ class InferenceModel:
         #
         #     pass
 
-    def trained_baseline_inference(self, agent, sim):
+    def nfsp_baseline_inference(self, agent, sim):
         """
         Use Q function from nfsp models
         Important equations implemented here:

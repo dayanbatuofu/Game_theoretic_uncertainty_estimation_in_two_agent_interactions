@@ -3,19 +3,24 @@ Environment class
 """
 import numpy as np
 from models import constants as C
-#from savi_simulation import Simulation as sim
 import savi_simulation as sim
 from models.rainbow.arguments import get_args
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
 import torch as t
+import random
+
 
 class Environment:
-
-    def __init__(self, env_name):
+    # add: intent, noise, intent belief, noise belief
+    def __init__(self, env_name, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief):
 
         self.name = env_name
         self.sim = sim
+        self.agent_intent = agent_intent
+        self.agent_noise = agent_noise
+        self.agent_intent_belief = agent_intent_belief
+        self.agent_noise_belief = agent_noise_belief
         # TODO: unify units for all parameters
 
         if self.name == 'intersection':
@@ -61,7 +66,7 @@ class Environment:
             # # BOUNDS: [agent1, agent2, ...], agent: [bounds along x, bounds along y], bounds: [min, max]
             # boundx = intersection.SCREEN_WIDTH
             # boundy = intersection.SCREEN_HEIGHT
-            #self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
+            # self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
             self.bounds = [[[-self.car_width/2, self.car_width/2], None], [None, [-self.car_width/2, self.car_width/2]]]
             # first car moves bottom up, second car right to left
             "randomly pick initial states:"
@@ -81,20 +86,20 @@ class Environment:
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, -sy_M, 0, vy_M]],  # pos_x, pos_y, vel_x, vel_y, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
-                             "initial_action": [0.],  # accel  #TODO: add steering angle
-                             "par": (1, 0.001),  # aggressiveness: check sim.theta_list
-                             "belief": (1000, 0.001),  # belief of other's params (beta: (theta, lambda))
+                             "initial_action": [0.],  # accel
+                             "par": (self.agent_intent[0], self.agent_noise[0]),  # aggressiveness: check sim.theta_list
+                             "belief": (self.agent_intent_belief[0], self.agent_noise_belief[0]),  # belief of other's params (beta: (theta, lambda))
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
                              "initial_state": [[sx_H, 0, -vx_H, 0]],  # should be having negative velocity
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
-                             "par": (1, 0.001),  # aggressiveness: check sim.theta_list
-                             "belief": (1000, 0.001),  # belief of other's params (beta: (theta, lambda))
+                             "par": (self.agent_intent[1], self.agent_noise[1]),  # aggressiveness: check sim.theta_list
+                             "belief": (self.agent_intent_belief[1], self.agent_noise_belief[1]),  # belief of other's params (beta: (theta, lambda))
                              "orientation": -90.},
                             ]
 
-            # TODO: choose action base on decision type and intent
+            # choose action base on decision type and intent
             p1_state = self.car_par[0]["initial_state"][0]
             p2_state = self.car_par[1]["initial_state"][0]
             p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
@@ -103,19 +108,19 @@ class Environment:
             # (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2)
             q_sets = get_models()[0]
             args = get_args()
-            # TODO: define these somewhere else for general uses
+            # TODO: define these somewhere else for general uses (can't get it from sim...)
             lambda_list = [0.001, 0.005, 0.01, 0.05]
             action_set = [-8, -4, 0, 4, 8]
             for i in range(len(self.car_par)):
                 # TODO: assume other is NA?
-                if self.car_par[i]["par"] == 0:  # NA
+                if self.car_par[i]["par"][0] == 1:  # NA
                     qi = q_sets[0]
-                else:
+                elif self.car_par[i]["par"][0] == 1000:
                     qi = q_sets[3]
                 q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
-                p_a = self.action_prob(q_vals_i, lambda_list[-1])
-                action_i = action_set[np.argmax(p_a)]
-                self.car_par[i]["initial_action"] = [action_i]
+                p_a = self.action_prob(q_vals_i, self.car_par[i]["par"][1])
+                action_i = random.choices(action_set, weights=p_a, k=1)  # draw action using the distribution
+                self.car_par[i]["initial_action"] = [action_i[0]]
             print("initial params: ", self.car_par)
 
         elif self.name == 'bvp_intersection':

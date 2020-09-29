@@ -15,7 +15,7 @@ import pdb
 
 class Simulation:
 
-    def __init__(self, env, duration, n_agents, inference_type, decision_type, sim_dt, sim_lr, sim_nepochs):
+    def __init__(self, env, duration, n_agents, inference_type, decision_type, sim_dt, sim_lr, sim_nepochs, belief_weight):
 
         self.duration = duration
         self.n_agents = n_agents
@@ -64,11 +64,12 @@ class Simulation:
                 self.beta_set.append([theta, _lambda])
         self.action_distri_1 = []
         self.action_distri_2 = []
+        self.belief_weight = belief_weight
         self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0],
                                                       self.env.car_par[0]['belief'][0],
                                                       self.env.car_par[1]['belief'][1],
                                                       self.env.car_par[0]['belief'][1],
-                                                      weight=0.8)  # note: use params from the other agent's belief
+                                                      weight=self.belief_weight)  # note: use params from the other agent's belief
         if self.n_agents == 2:
             # simulations with 2 cars
             # Note that variable annotation is not supported in python 3.5
