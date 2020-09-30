@@ -43,7 +43,7 @@ parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseli
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'baseline', 'baseline2', 'complete_information'
                              , 'non-empathetic', 'empathetic'],
-                    default=['non-empathetic', 'non-empathetic'])
+                    default=['empathetic', 'empathetic'])
 
 """
 agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case
@@ -79,7 +79,7 @@ if __name__ == "__main__":
               "sim_dt": args.sim_dt,
               "sim_lr": args.sim_lr,
               "sim_nepochs": args.sim_nepochs,
-              "belief_weight": args.belief_weight}  # add weight
+              "belief_weight": args.belief_weight}
     s = Simulation(**kwargs)
     s.run()
 

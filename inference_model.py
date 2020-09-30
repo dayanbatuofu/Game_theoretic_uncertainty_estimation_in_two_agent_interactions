@@ -14,6 +14,7 @@ from models.rainbow.set_nfsp_models import get_models
 import dynamics
 import pdb
 
+
 class InferenceModel:
     def __init__(self, model, sim):  # model = inference type, sim = simulation class
         if model == 'none':
@@ -38,8 +39,7 @@ class InferenceModel:
         self.T = 1  # one step look ahead/ Time Horizon
         self.dt = sim.dt  # default is 1s: assigned in main.py
         self.car_par = sim.env.car_par
-        # self.min_speed = sim.agents[0].min_speed
-        # self.max_speed = sim.agents[0].max_speed
+        # TODO: organize params
         self.min_speed = 0.1
         self.max_speed = 30
         "---goal states (for baseline)---"
@@ -540,7 +540,7 @@ class InferenceModel:
             print("state of H:", state_list) #sx, sy, vx, vy
 
             assert 0.99 <= np.sum(p_state_D[0]) <= 1.001  #check
-            #return {'predicted_policy_other': [p_state_D, state_list]}
+            # return {'predicted_policy_other': [p_state_D, state_list]}
             return p_state_D, state_list
 
         "------------------------------"
@@ -557,11 +557,10 @@ class InferenceModel:
         "calculate the marginal state distribution / prediction"
         best_lambdas = joint_probability[1]
         marginal_state = marginal_prob(state=curr_state_h, p_theta=self.theta_priors,
-                                       best_lambdas=best_lambdas, dt=1) #IMPORTANT: set dt to desired look ahead
-        #TODO: logging the data for verification?
-        return {'predicted_intent_other': joint_probability,
-                'predicted_states_other': marginal_state} #TODO: CHECK WHAT TO RETURN
+                                       best_lambdas=best_lambdas, dt=1)  # IMPORTANT: set dt to desired look ahead
 
+        return {'predicted_intent_other': joint_probability,
+                'predicted_states_other': marginal_state}
 
         # def lambda_update( self, lambdas, traj, priors, goals, k):
         #     #This function is not in use! But it is a good reference for update algorithm
@@ -597,47 +596,6 @@ class InferenceModel:
         #
         #     pass
 
-
-        "functions for references, not in use:"
-            # def state_probabilities_infer(self, traj, goal, state_priors, thetas, theta_priors, lambdas, T):
-        #     #TODO: maybbe we dont need this function? as our transition is deterministic and have only one destination
-        #     #Not in use
-        #     """
-        #     refer to state.py and occupancy.py
-        #     Infer the state probabilities before observation of lambda and theta.
-        #     Equation 4: P(x(k+1);lambda, theta) = P(u(k)|x(k);lambda,theta) * P(x(k),lambda, theta)
-        #                                         = action_probabilities * p_state(t-1)
-        #     params:
-        #     T: time horizon for state probabilities inference
-        #     :return:
-        #     probability of theta
-        #     probability the agent is at each state given correct theta
-        #     corresponding lambda
-        #     """
-        #     #TODO theta_priors could be None!! Design the function around it!
-        #     p_theta, lambdas = self.theta_joint_update(thetas, theta_priors, traj,goal, epsilon = 0.05)
-        #     # TODO: modify the following sample code:
-        #
-        #
-        #     def infer_simple(self, T):
-        #         p_state = np.zeros([T+1, self.states])
-        #         p_state[0][self.initial_state] = 1 #start with prob of 1 at starting point
-        #         p_action = self.baseline_inference.action_probabilities()
-        #         for t in range(1, T + 1):
-        #             p = p_state[t - 1]
-        #             p_prime = p_state[t]
-        #             p_prime *= p_action #TODO: check this calculation! Maybe need p_action for each time step
-        #         return p_state
-        #
-        #     # Take the weighted sum of the occupancy given each individual destination.
-        #     # iterate through multiple thetas
-        #     for theta, lamb, p_action, p_theta in zip(thetas, lambdas, p_actions, p_theta):
-        #         p_state = infer_simple(T)
-        #         np.multiply(p_state, p_theta, out=p_state)
-        #         #TODO: I am confused... need to check back for how to calculate p_state in our case
-        #
-        #
-        #     pass
 
     def nfsp_baseline_inference(self, agent, sim):
         """
@@ -1601,12 +1559,12 @@ class InferenceModel:
                 print("ID FOR THETA DOES NOT EXIST")
 
             "Need state for agent H: xH, vH, xM, vM"
-            state_h = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
-            state_m = [state_m[0], abs(state_m[2]), -state_h[1], abs(state_h[3])]
+            p1_state_nn = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
+            p2_state_nn = [state_m[0], abs(state_m[2]), -state_h[1], abs(state_h[3])]
 
             "Q values for each action"
-            Q_vals_h = Q_h.forward(torch.FloatTensor(state_h).to(torch.device("cpu")))
-            Q_vals_m = Q_m.forward(torch.FloatTensor(state_m).to(torch.device("cpu")))
+            Q_vals_h = Q_h.forward(torch.FloatTensor(p1_state_nn).to(torch.device("cpu")))
+            Q_vals_m = Q_m.forward(torch.FloatTensor(p2_state_nn).to(torch.device("cpu")))
             "detaching tensor"
             Q_vals_h = Q_vals_h.detach().numpy()
             Q_vals_m = Q_vals_m.detach().numpy()
@@ -2098,7 +2056,7 @@ class InferenceModel:
             # last_lambda_h = self.lambdas[-1]  # start large
             # last_theta_m = self.thetas[0]
             # last_lambda_m = self.lambdas[-1]
-            p_beta = self.sim.agents[0].initial_belief
+            p_beta = self.sim.initial_belief
             beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
             last_beta_h = self.beta_set[beta_pair_id[0]]
             last_beta_m = self.beta_set[beta_pair_id[1]]

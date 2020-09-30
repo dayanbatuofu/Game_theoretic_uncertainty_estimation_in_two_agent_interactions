@@ -30,9 +30,9 @@ class AutonomousVehicle:
         self.trajectory = []
         self.planned_actions_set = []
         self.planned_trajectory_set = []
-        self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0], self.env.car_par[0]['belief'][0],
-                                                      self.env.car_par[1]['belief'][1], self.env.car_par[0]['belief'][1],
-                                                      weight=0.8)  # note: use params from the other agent's belief
+        # self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0], self.env.car_par[0]['belief'][0],
+        #                                               self.env.car_par[1]['belief'][1], self.env.car_par[0]['belief'][1],
+        #                                               weight=0.8)  # note: use params from the other agent's belief
         # Initialize prediction variables
         self.predicted_intent_all = []
         self.predicted_intent_other = []
@@ -155,78 +155,78 @@ class AutonomousVehicle:
 
         return
 
-    def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
-        """
-        Obtain initial belief of the params
-        :param theta_h:
-        :param theta_m:
-        :param lambda_h:
-        :param lambda_m:
-        :param weight:
-        :return:
-        """
-        # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
-        theta_list = self.sim.theta_list
-        lambda_list = self.sim.lambda_list
-        beta_list = self.sim.beta_set
-
-        if self.sim.inference_type[1] == 'empathetic':
-            # beta_list = beta_list.flatten()
-            belief = np.ones((len(beta_list), len(beta_list)))
-            for i, beta_h in enumerate(beta_list):  # H: the rows
-                for j, beta_m in enumerate(beta_list):  # M: the columns
-                    if beta_h[0] == theta_h:  # check lambda
-                        belief[i][j] *= weight
-                        if beta_h[1] == lambda_h:  # check theta
-                            belief[i][j] *= weight
-                        else:
-                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-                    else:
-                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                        if beta_h[1] == lambda_h:  # check theta
-                            belief[i][j] *= weight
-                        else:
-                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-
-                    if beta_m[0] == theta_m:  # check lambda
-                        belief[i][j] *= weight
-                        if beta_m[1] == lambda_m:  # check theta
-                            belief[i][j] *= weight
-                        else:
-                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-                    else:
-                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                        if beta_m[1] == lambda_m:  # check theta
-                            belief[i][j] *= weight
-                        else:
-                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-
-                    # if beta_h == [lambda_h, theta_h] and beta_m == [lambda_m, theta_m]:
-                    #     belief[i][j] = weight
-                    # else:
-                    #     belief[i][j] = 1
-
-        # TODO: not in use! we only use the game theoretic inference
-        else:  # get belief on H agent only
-            belief = np.ones((len(lambda_list), len(theta_list)))
-            for i, lamb in enumerate(lambda_list):
-                for j, theta in enumerate(theta_list):
-                    if lamb == lambda_h:  # check lambda
-                        belief[i][j] *= weight
-                        if theta == theta_h:  # check theta
-                            belief[i][j] *= weight
-                        else:
-                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                    else:
-                        belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-                        if theta == theta_h:  # check theta
-                            belief[i][j] *= weight
-                        else:
-                            belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-        # THIS SHOULD NOT NEED TO BE NORMALIZED!
-        # print(belief, np.sum(belief))
-        assert round(np.sum(belief)) == 1
-        return belief
+    # def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
+    #     """
+    #     Obtain initial belief of the params
+    #     :param theta_h:
+    #     :param theta_m:
+    #     :param lambda_h:
+    #     :param lambda_m:
+    #     :param weight:
+    #     :return:
+    #     """
+    #     # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
+    #     theta_list = self.sim.theta_list
+    #     lambda_list = self.sim.lambda_list
+    #     beta_list = self.sim.beta_set
+    #
+    #     if self.sim.inference_type[1] == 'empathetic':
+    #         # beta_list = beta_list.flatten()
+    #         belief = np.ones((len(beta_list), len(beta_list)))
+    #         for i, beta_h in enumerate(beta_list):  # H: the rows
+    #             for j, beta_m in enumerate(beta_list):  # M: the columns
+    #                 if beta_h[0] == theta_h:  # check lambda
+    #                     belief[i][j] *= weight
+    #                     if beta_h[1] == lambda_h:  # check theta
+    #                         belief[i][j] *= weight
+    #                     else:
+    #                         belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+    #                 else:
+    #                     belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+    #                     if beta_h[1] == lambda_h:  # check theta
+    #                         belief[i][j] *= weight
+    #                     else:
+    #                         belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+    #
+    #                 if beta_m[0] == theta_m:  # check lambda
+    #                     belief[i][j] *= weight
+    #                     if beta_m[1] == lambda_m:  # check theta
+    #                         belief[i][j] *= weight
+    #                     else:
+    #                         belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+    #                 else:
+    #                     belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+    #                     if beta_m[1] == lambda_m:  # check theta
+    #                         belief[i][j] *= weight
+    #                     else:
+    #                         belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+    #
+    #                 # if beta_h == [lambda_h, theta_h] and beta_m == [lambda_m, theta_m]:
+    #                 #     belief[i][j] = weight
+    #                 # else:
+    #                 #     belief[i][j] = 1
+    #
+    #     # TODO: not in use! we only use the game theoretic inference
+    #     else:  # get belief on H agent only
+    #         belief = np.ones((len(lambda_list), len(theta_list)))
+    #         for i, lamb in enumerate(lambda_list):
+    #             for j, theta in enumerate(theta_list):
+    #                 if lamb == lambda_h:  # check lambda
+    #                     belief[i][j] *= weight
+    #                     if theta == theta_h:  # check theta
+    #                         belief[i][j] *= weight
+    #                     else:
+    #                         belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+    #                 else:
+    #                     belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+    #                     if theta == theta_h:  # check theta
+    #                         belief[i][j] *= weight
+    #                     else:
+    #                         belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+    #     # THIS SHOULD NOT NEED TO BE NORMALIZED!
+    #     # print(belief, np.sum(belief))
+    #     assert round(np.sum(belief)) == 1
+    #     return belief
 
 
 # dummy class

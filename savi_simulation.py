@@ -164,7 +164,7 @@ class Simulation:
         print("Frames:", self.frame)
         print("len of action and states:", len(self.agents[0].action), len(self.agents[0].state))
         print("action distribution", self.action_distri_1)
-        print("Initial belief:", self.agents[1].initial_belief)
+        print("Initial belief:", self.initial_belief)
         # print("states of H:", self.agents[0].state)
         # print("states of H predicted by M:", self.agents[1].predicted_states_other)
         print("Action taken by H:", self.agents[0].action)

@@ -102,9 +102,9 @@ class Environment:
             # choose action base on decision type and intent
             p1_state = self.car_par[0]["initial_state"][0]
             p2_state = self.car_par[1]["initial_state"][0]
-            p1_state = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
-            p2_state = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
-            pi_state = [p1_state, p2_state]
+            p1_state_nn = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+            p2_state_nn = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+            pi_state = [p1_state_nn, p2_state_nn]
             # (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2)
             q_sets = get_models()[0]
             args = get_args()
@@ -199,12 +199,13 @@ class Environment:
         elif self.name == 'lane_change':
             pass
         elif self.name == 'random':
-            #TODO: add randomized initial conditions
+            # TODO: add randomized initial conditions
             pass
         else:
 
             pass
 
+    # TODO: implement this in another file for general usage
     def action_prob(self, q_vals, _lambda):
         """
         Equation 1
