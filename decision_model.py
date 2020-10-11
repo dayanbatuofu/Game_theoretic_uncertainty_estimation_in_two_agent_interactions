@@ -21,8 +21,7 @@ from models.rainbow.common.utils import epsilon_scheduler, beta_scheduler, updat
 class DecisionModel:
     def __init__(self, model, sim):
         self.sim = sim
-        # TODO: check the info imported from inference is the right frame!
-        # assert self.sim.frame == len(self.sim.agents[1].predicted_intent_other) - 1
+        self.frame = self.sim.frame
         if model == 'constant_speed':
             self.plan = self.constant_speed
         elif model == 'complete_information':
@@ -33,6 +32,10 @@ class DecisionModel:
             self.plan = self.non_empathetic
         elif model == 'empathetic':  # game, using NFSP, import inferred params for both agents
             self.plan = self.empathetic
+        elif model == 'bvp_non-empathetic':
+            self.plan = self.bvp_non_empathetic
+        elif model == 'bvp_empathetic':
+            self.plan = self.bvp_empathetic
             # import estimated values; use estimation of other and other's of self to get an action for both
         else:
             # placeholder for future development
@@ -239,6 +242,182 @@ class DecisionModel:
         return {'action': actions}
 
     def empathetic(self):
+        """
+        Choose action from Nash Equilibrium, according to the inference model
+        :return: actions for both agents
+        """
+        # implement reactive planning based on inference of future trajectories
+        # TODO: import HJI BVP model
+        "----------This is placeholder until we have BVP result-------------"
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
+        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
+
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+
+        p1_state_nn = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+        p2_state_nn = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+        if self.sim.frame == 0:
+            p_beta = self.sim.initial_belief
+            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
+            beta_h = self.beta_set[beta_pair_id[0]]
+            beta_m = self.beta_set[beta_pair_id[1]]
+
+        else:
+            beta_h, beta_m  = self.sim.agents[1].predicted_intent_all[-1][1]
+
+
+        args = get_args()
+        betas = [beta_h, beta_m]
+        lamb_id =[]
+        theta_id = []
+        for b in betas:
+            lamb_id.append(lambda_list.index(b[1]))
+            theta_id.append(theta_list.index(b[0]))
+        " the following assumes 2 thetas"
+        # TODO: create a function for this
+        if theta_id[0] == 0:
+            if theta_id[1] == 0:
+                q_1 = Q_na_na_2
+                q_2 = Q_na_na
+            elif theta_id[1] == 1:  # 1: na, 2:a
+                q_1 = Q_na_a
+                q_2 = Q_a_na
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+
+        elif theta_id[0] == 1:  # 1: A
+            if theta_id[1] == 0:
+                q_1 = Q_a_na
+                q_2 = Q_na_a
+            elif theta_id[1] == 1:
+                q_1 = Q_a_a_2
+                q_2 = Q_a_a
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        else:
+            print("ERROR: THETA DOES NOT EXIST")
+        q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
+        q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
+        p_action1 = self.action_prob(q1_vals, beta_h[1])
+        p_action2 = self.action_prob(q2_vals, beta_m[1])
+        actions = []
+        for p_a in (p_action1, p_action2):
+            p_a = np.array(p_a).tolist()
+            "drawing action from action set using the distribution"
+            action = random.choices(action_set, weights=p_a, k=1)
+            actions.append(action[0])  # TODO: check why it's list
+        self.sim.action_distri_1.append(p_action1)
+        self.sim.action_distri_2.append(p_action2)
+        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+
+        return {'action': actions}
+
+    def bvp_non_empathetic(self):
+        """
+        Get appropriate action based on predicted intent of the other agent and self intent
+        :return: appropriate action for both agents
+        """
+        # implement reactive planning based on point estimates of future trajectories
+        # TODO: import HJI BVP model
+        "----------This is placeholder until we have BVP result-------------"
+        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2) = get_models()[0]
+
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        p1_state_nn = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
+        p2_state_nn = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+
+        args = get_args()
+
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        if self.sim.frame == 0:
+            p_beta = self.sim.initial_belief
+            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
+            beta_h = self.beta_set[beta_pair_id[0]]
+            beta_m = self.beta_set[beta_pair_id[1]]
+            assert beta_h[0], beta_m[0] == self.true_params
+
+        else:
+            p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
+
+        action_set = self.action_set
+
+        betas = [beta_h, beta_m]
+        lamb_id = []
+        theta_id = []
+        for b in betas:
+            lamb_id.append(lambda_list.index(b[1]))
+            theta_id.append(theta_list.index(b[0]))
+        "getting true intent id"
+        true_intent_id = []
+        for _beta in self.true_params:
+            true_intent_id.append(self.theta_list.index(_beta[0]))
+        assert theta_list[true_intent_id[1]] == self.true_params[1][0]
+
+        "the following assumes 2 thetas"
+        # TODO: create a function for this
+        "for agent 1 (H): using true self intent and guess of other's intent"
+        if true_intent_id[0] == 0:
+            if theta_id[1] == 0:
+                q_1 = Q_na_na_2
+            elif theta_id[1] == 1:  # 1: na, 2:a
+                q_1 = Q_na_a
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        elif true_intent_id[0] == 1:  # 1: A
+            if theta_id[1] == 0:
+                q_1 = Q_a_na
+            elif theta_id[1] == 1:
+                q_1 = Q_a_a_2
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        else:
+            print("ERROR: THETA DOES NOT EXIST")
+        "for agent 2 (M)"
+        if true_intent_id[1] == 0:
+            if theta_id[0] == 0:
+                q_2 = Q_na_na
+            elif theta_id[0] == 1:  # 2: na, 1:a
+                q_2 = Q_a_na
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        elif true_intent_id[1] == 1:  # 2: A
+            if theta_id[0] == 0:
+                q_2 = Q_na_a
+            elif theta_id[0] == 1:
+                q_2 = Q_a_a
+            else:
+                print("ERROR: THETA DOES NOT EXIST")
+        else:
+            print("ERROR: THETA DOES NOT EXIST")
+        q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
+        q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
+        # TODO: what to use for lambda?? (use true beta for self
+        p_action1 = self.action_prob(q1_vals, _lambda=beta_h[1])
+        p_action2 = self.action_prob(q2_vals, _lambda=beta_m[1])
+        actions = []
+        for p_a in (p_action1, p_action2):
+            p_a = np.array(p_a).tolist()
+            "drawing action from action set using the distribution"
+            action = random.choices(action_set, weights=p_a, k=1)
+            actions.append(action[0])  # TODO: check why it's list
+        self.sim.action_distri_1.append(p_action1)
+        self.sim.action_distri_2.append(p_action2)
+        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # actions = [action1, action2]
+        return {'action': actions}
+
+    def bvp_empathetic(self):
         """
         Choose action from Nash Equilibrium, according to the inference model
         :return: actions for both agents

@@ -67,7 +67,7 @@ class AutonomousVehicle:
         if self.sim.decision_type[self.id] == "baseline" \
                 or self.sim.decision_type[self.id] == "baseline2" \
                 or self.sim.decision_type[self.id] == "non-empathetic"\
-                or self.sim.decision_type[self.id] == "empathetic":  #TODO: need to be able to check indivisual type
+                or self.sim.decision_type[self.id] == "empathetic":  # TODO: need to be able to check indivisual type
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)

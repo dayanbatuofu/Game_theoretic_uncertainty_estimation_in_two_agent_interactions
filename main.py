@@ -30,19 +30,22 @@ parser.add_argument('--gpu', type=int, default=0)
 """
 environment parameters
 """
-parser.add_argument('--env_name', type=str, choices=['test_intersection', 'trained_intersection', 'lane_change', 'merger'],
+parser.add_argument('--env_name', type=str, choices=['test_intersection', 'trained_intersection', 'bvp_intersection',
+                                                     'lane_change', 'merger'],
                     default='trained_intersection')
 
 """
 agent model parameters
 """
 # choose inference model: none: complete information
-parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic', 'trained_baseline_2U'],
+parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic',
+                                                            'bvp_empathetic_inference', 'trained_baseline_2U'],
                     default=['none', 'empathetic'])  # use only empathetic for our simulation
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,
-                    choices=['constant_speed', 'baseline', 'baseline2', 'complete_information'
-                             , 'non-empathetic', 'empathetic'],
+                    choices=['constant_speed', 'baseline', 'baseline2', 'complete_information',
+                             'non-empathetic', 'empathetic',
+                             'bvp_non-empathetic', 'bvp_empathetic'],
                     default=['empathetic', 'empathetic'])
 
 """

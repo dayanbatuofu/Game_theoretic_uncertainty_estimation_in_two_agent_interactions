@@ -50,7 +50,6 @@ class VisUtils:
         self.dist = []
         self.sleep_between_step = False
 
-
         if not sim.decision_type_h == 'constant_speed' and not sim.decision_type_m == 'constant_speed':
             self.sleep_between_step = True
             self.screen_width = 10  # 50
@@ -81,7 +80,51 @@ class VisUtils:
             #self.origin = np.array([-15.0, 15.0])
             self.origin = np.array([0, 0])
 
-        else:
+        elif self.env.name == 'bvp_intersection':  # TODO: check env name for BVP
+            self.screen_width = 10  # 50
+            self.screen_height = 10  # 50
+            self.coordinate_scale = 80
+            self.zoom = 0.1
+            self.asset_location = 'assets/'
+            self.fps = 24  # max framework
+
+            self.car_width = 1.5
+            self.car_length = 3
+
+            # load_path = 'examples/vehicle/data_train.mat'
+            # self.train_data = scipy.io.loadmat(load_path)
+            # self.new_data = self.generate(self.train_data)
+            # self.T = self.new_data['t']
+            #
+            # self.car_par = [{'sprite': 'grey_car_sized.png',
+            #                  'state': self.new_data['X'][:2, :],  # pos_x, vel_x
+            #                  'orientation': 0.},
+            #                 {'sprite': 'white_car_sized.png',
+            #                  'state': self.new_data['X'][2:, :],  # pos_x, vel_x
+            #                  'orientation': -90.}
+            #                 ]
+
+            img_width = int(self.car_width * self.coordinate_scale * self.zoom)
+            img_height = int(self.car_length * self.coordinate_scale * self.zoom)
+
+            "initialize pygame"
+            pg.init()
+            self.screen = pg.display.set_mode((self.screen_width * self.coordinate_scale,
+                                               self.screen_height * self.coordinate_scale))
+
+            # self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
+            #                                                                        + self.car_par[i]['sprite']),
+            #                                                          (img_width, img_height)),
+            #                                       - self.car_par[i]['orientation']) for i in range(len(self.car_par))]
+            self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
+                                                                                   + self.sim.agents[i].car_par[
+                                                                                       "sprite"]),
+                                                                     (img_width, img_height)),
+                                                  -self.sim.agents[i].car_par["orientation"])
+                              for i in range(self.sim.n_agents)]
+            self.origin = np.array([25, 25])
+
+        elif self.env.name == 'trained_intersection':  # TODO: check name
             self.screen_width = 5
             self.screen_height = 5
             self.asset_location = "assets/"
@@ -107,9 +150,12 @@ class VisUtils:
 
             self.origin = np.array([1.0, -1.0])
 
+        else:
+            print("WARNING: NO INTERSECTION NAME FOUND")
+
         "Draw Axis Lines"
         self.screen.fill((255, 255, 255))
-        self.draw_axes() #calling draw axis function
+        self.draw_axes()  # calling draw axis function
         pg.display.flip()
         pg.display.update()
 
@@ -365,8 +411,9 @@ class VisUtils:
         self.dist.append(dist)
 
     def calc_intent(self):
-        # TODO: use common knowledge instead
-        common_belief = self.sim.agents[1].predicted_intent_all
+        # TODO: use single cell probability instead of marginal!!!!!
+        # TODO: store distribution of lambda (NN, N)
+        # p_beta_d, beta_pair = self.sim.agents[1].predicted_intent_all[self.frame]
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
         if self.sim.sharing_belief:  # both agents uses same belief from empathetic inference
@@ -376,9 +423,20 @@ class VisUtils:
             self.lambda_h.append(beta_h[1])
             self.lambda_m.append(beta_m[1])
 
+            "get highest row/col -> compare distribution of that col/row!!"
+            # TODO: use the common knowledge
+            # TODO: under construction:
+            # =========================
+            # beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
+            # p_beta_dt = p_beta_d.transpose()
+            # p_b_m = p_beta_d[beta_pair_id[1]]  # []
+            # p_b_h = p_beta_dt[beta_pair_id[1]]
+            # =========================
+
             joint_infer_m = self.sim.agents[1].predicted_intent_self
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             p_joint_m, lambda_m = joint_infer_m[-1]
+
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
             sum_m = p_joint_m.sum(axis=0)
@@ -391,6 +449,7 @@ class VisUtils:
                         self.intent_distri_m.append([])
                 self.intent_distri_h[i].append(sum_h[i])
                 self.intent_distri_m[i].append(sum_m[i])
+
             self.true_intent_h.append(self.true_params[0][0])
             self.true_noise_h.append(self.true_params[0][1])
             self.true_intent_m.append(self.true_params[1][0])
@@ -444,26 +503,33 @@ class VisUtils:
                 print('probability of thetas H:', sum_h, 'H intent:', H_intent)
                 self.intent_h.append(H_intent)
                 self.lambda_h.append(lambda_h)
+                self.true_intent_h.append(self.true_params[0][0])
+                self.true_noise_h.append(self.true_params[0][1])
 
     def draw_intent(self):
         joint_infer_m = self.sim.agents[1].predicted_intent_self
-        print(joint_infer_m)
+        theta_list = self.sim.theta_list
+        lambda_list = self.sim.lambda_list
         if not len(joint_infer_m) == 0:
-            print("Lambdas:", self.lambda_h, self.lambda_m)
+            # print("Lambdas:", self.lambda_h, self.lambda_m)
+            # print('true intent:', self.true_intent_h, self.true_intent_m)
+            # print('predicted intent:', self.intent_h, self.intent_m)
+            # print('intent distribution:', self.intent_distri_h, self.intent_distri_m)
+
             fig2, (ax1, ax2, ax3, ax4, ax5) = pyplot.subplots(5, figsize=(5, 8))
             fig2.suptitle('Predicted intent and rationality')
 
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.plot(self.true_intent_h, label='true H intent', linestyle='--')
             ax1.legend()
-            ax1.set_yticks(self.sim.theta_list)
+            ax1.set_yticks(theta_list)
             ax1.set_yticklabels(['na', 'a'])
             ax1.set(xlabel='time', ylabel='intent')
 
             ax2.plot(self.intent_m, label='predicted M intent')
             ax2.plot(self.true_intent_m, label='true M intent', linestyle='--')
             ax2.legend()
-            ax2.set_yticks(self.sim.theta_list)
+            ax2.set_yticks(theta_list)
             ax2.set_yticklabels(['na', 'a'])
             ax2.set(xlabel='time', ylabel='intent')
 
@@ -476,8 +542,6 @@ class VisUtils:
             ax3.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
             ax3.legend(loc="lower right")
             ax3.set_yticks([0.25, 0.5, 0.75])
-            # for i, v in enumerate(self.intent_distri_h[0]):
-            #     ax3.text(v + 0.05, i + 0.2, str(v), color='blue', fontweight='bold')
             ax3.set(xlabel='time', ylabel='H distri')
 
             w = 0.15
@@ -491,10 +555,11 @@ class VisUtils:
             ax4.set(xlabel='time', ylabel='M distri')
 
             "plotting lambdas"
+            print('lambdas', self.lambda_h, self.lambda_m)
             ax5.plot(self.lambda_h, label='H ration')
             ax5.plot(self.lambda_m, label='M ration', linestyle='--')
             ax5.legend()
-            ax5.set_yticks(self.sim.lambda_list)
+            ax5.set_yticks(lambda_list)
             ax5.set(xlabel='time', ylabel='intent')
 
         else:
@@ -505,20 +570,19 @@ class VisUtils:
             ax1.plot(self.intent_h, label='predicted H intent')
             ax1.plot(self.true_intent_h, label='true H intent', linestyle='--')
             ax1.legend()
-            #TODO: get actual intent from decision model/ autonomous vehicle
+            # TODO: get actual intent from decision model/ autonomous vehicle
             ax1.set_yticks([1, 1000])
             ax1.set_yticklabels(['na', 'a'])
             ax1.set(xlabel='time', ylabel='intent')
 
             w = 0.15
-            #TODO: generalize for more than two thetas
             x = list(range(0, len(self.intent_h)))
             x1 = [i-w for i in x]
             x2 = [i+w for i in x]
             ax2.bar(x1, self.intent_distri_h[0], width=0.15, label='theta 1')
             ax2.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
             ax2.legend()
-            ax2.set_yticks([0.25, 0.5, 0.75])
+            ax2.set_yticks([0.15, 0.5, 0.85])
             ax2.set(xlabel='time', ylabel='probability')
 
             "plotting lambda h"
@@ -527,7 +591,7 @@ class VisUtils:
             ax3.set_yticks(self.sim.lambda_list)
             ax3.set(xlabel='time', ylabel='intent')
 
-        #TODO: plot actual distributions
+        # TODO: plot actual distributions
         #pyplot.tight_layout()
         pyplot.show()
 
