@@ -50,7 +50,7 @@ class VisUtils:
         self.dist = []
         self.sleep_between_step = False
 
-        if not sim.decision_type_h == 'constant_speed' and not sim.decision_type_m == 'constant_speed':
+        if self.env.name == 'trained_intersection':
             self.sleep_between_step = True
             self.screen_width = 10  # 50
             self.screen_height = 10  # 50
@@ -81,6 +81,7 @@ class VisUtils:
             self.origin = np.array([0, 0])
 
         elif self.env.name == 'bvp_intersection':  # TODO: check env name for BVP
+            self.sleep_between_step = True
             self.screen_width = 10  # 50
             self.screen_height = 10  # 50
             self.coordinate_scale = 80
@@ -90,19 +91,6 @@ class VisUtils:
 
             self.car_width = 1.5
             self.car_length = 3
-
-            # load_path = 'examples/vehicle/data_train.mat'
-            # self.train_data = scipy.io.loadmat(load_path)
-            # self.new_data = self.generate(self.train_data)
-            # self.T = self.new_data['t']
-            #
-            # self.car_par = [{'sprite': 'grey_car_sized.png',
-            #                  'state': self.new_data['X'][:2, :],  # pos_x, vel_x
-            #                  'orientation': 0.},
-            #                 {'sprite': 'white_car_sized.png',
-            #                  'state': self.new_data['X'][2:, :],  # pos_x, vel_x
-            #                  'orientation': -90.}
-            #                 ]
 
             img_width = int(self.car_width * self.coordinate_scale * self.zoom)
             img_height = int(self.car_length * self.coordinate_scale * self.zoom)
@@ -122,7 +110,7 @@ class VisUtils:
                                                                      (img_width, img_height)),
                                                   -self.sim.agents[i].car_par["orientation"])
                               for i in range(self.sim.n_agents)]
-            self.origin = np.array([25, 25])
+            self.origin = np.array([35, 35])
 
         elif self.env.name == 'trained_intersection':  # TODO: check name
             self.screen_width = 5
@@ -155,7 +143,10 @@ class VisUtils:
 
         "Draw Axis Lines"
         self.screen.fill((255, 255, 255))
-        self.draw_axes()  # calling draw axis function
+        if self.env.name == 'bvp_intersection':
+            self.bvp_draw_axes()
+        else:
+            self.draw_axes()
         pg.display.flip()
         pg.display.update()
 
@@ -169,17 +160,38 @@ class VisUtils:
 
         for k in range(1, steps + 1):
             self.screen.fill((255, 255, 255))
-            self.draw_axes()
+            if self.env.name == 'bvp_intersection':
+                self.bvp_draw_axes()
+            else:
+                self.draw_axes()
             # Draw Images
             for i in range(self.sim.n_agents):
                 "getting pos of agent"
+                # TODO: check car image alignment (pos is the front of the vehicle)
                 pos_old = np.array(self.sim.agents[i].state[frame][:2])
-                pos_new = np.array(self.sim.agents[i].state[frame+1][:2])  # get 0 and 1 element (not include 2)
+                pos_new = np.array(self.sim.agents[i].state[frame+1][:2])  # get 0th and 1st element (not include 2)
+                # if self.sim.env.name == 'bvp_intersection':
+                #     if i == 0:  # y direction
+                #         pos_old[1] -= self.car_length / 2
+                #         pos_new[1] -= self.car_length / 2
+                #     else:  # x direction
+                #         pos_old[0] -= self.car_length / 2
+                #         pos_new[0] -= self.car_length / 2
+
                 "smooth out the movement between each step"
                 pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
                 "transform pos"
-                pixel_pos_car = self.c2p(pos)
+                if self.env.name == 'bvp_intersection':
+                    if i == 0:
+                        pixel_pos_car = self.bvp_c2p((35, pos[1]))
+                    elif i == 1:
+                        pixel_pos_car = self.bvp_c2p((pos[0], 35))
+                    else:
+                        print("AGENT EXCEEDS 2!")
+                else:
+                    pixel_pos_car = self.c2p(pos)
                 size_car = self.car_image[i].get_size()
+                "update car display"
                 self.screen.blit(self.car_image[i],
                                  (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
                 if self.sleep_between_step:
@@ -347,6 +359,11 @@ class VisUtils:
                 # pg.draw.line(self.screen, RED, ((((bounds[1] + bounds[0]) / 2)+ bounds[1]- bounds[0]),1),
                 #              ((((bounds[1] + bounds[0])/2)+ bounds[1]- bounds[0]) , self.screen_height * self.coordinate_scale,
                 #               ), bounds[1] - bounds[0])
+
+    def bvp_draw_axes(self):
+        # draw lanes based on environment
+        pg.draw.line(self.screen, LIGHT_GREY, self.c2p((35, -50)), self.c2p((36.5, 100)), 35)
+        pg.draw.line(self.screen, LIGHT_GREY, self.c2p((100, 35)), self.c2p((-50, 36.5)), 35)
 
     def draw_axes_lanes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
@@ -669,3 +686,20 @@ class VisUtils:
             + self.screen_height * self.coordinate_scale * 0.5)
 
         return np.array([x, y])
+
+    def bvp_c2p(self, coordinates):
+        """
+        coordinates = x, y position in your environment(vehicle position)
+        """
+        # TODO: fix this
+        x = self.coordinate_scale * (- coordinates[0] + self.origin[0] + self.screen_width / 2)
+        y = self.coordinate_scale * (- coordinates[1] + self.origin[1] + self.screen_height / 2)
+        x = int(
+            (x - self.screen_width * self.coordinate_scale * 0.5) * self.zoom
+            + self.screen_width * self.coordinate_scale * 0.5)
+        y = int(
+            (y - self.screen_height * self.coordinate_scale * 0.5) * self.zoom
+            + self.screen_height * self.coordinate_scale * 0.5)
+        'returns x, y for the pygame window'
+        return np.array([x, y])
+

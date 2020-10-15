@@ -15,7 +15,7 @@ import pdb
 
 class Simulation:
 
-    def __init__(self, env, duration, n_agents, inference_type, decision_type, sim_dt, sim_lr, sim_nepochs, belief_weight):
+    def __init__(self, env, duration, n_agents, inference_type, decision_type, sim_dt, sim_lr, sim_par, sim_nepochs, belief_weight):
 
         self.duration = duration
         self.n_agents = n_agents
@@ -32,18 +32,23 @@ class Simulation:
         self.env = env
         self.agents = []
         self.sharing_belief = True  # TODO: set condition for this
-        self.theta_priors = None
+        self.theta_priors = None  # TODO: calculate theta_prior here
         self.drawing_prob = True  # if function for displaying future states are enabled
+        if env.name == 'bvp_intersection':  # don't draw future states
+            self.drawing_prob = False
         # define simulation
         car_parameter = self.env.car_par
         "theta and lambda pairs (betas):"
-        self.theta_list = [1, 1000]
+        # self.theta_list = [1, 1000]
         # self.lambda_list = [0.001, 0.005, 0.01, 0.05]
-        self.lambda_list = [0.001, 0.005]
-        self.action_set = [-8, -4, 0, 4, 8]
-        #self.action_set_combo = [[-0.05,8], [0,-8], [0.05,-8], [-0.05,-4], [0,-4],
-                                # [0.05,-4], [-0.05,0], [0, 0], [0.05,0], [-0.05,4],
-                                 #[0,4], [0.05,4], [-0.05, 8], [0,8], [0.05,8]]  # merging case actions
+        # self.lambda_list = [0.001, 0.005]
+        # self.action_set = [-8, -4, 0, 4, 8]
+        self.theta_list = sim_par["theta"]
+        self.lambda_list = sim_par["lambda"]
+        self.action_set = sim_par["action_set"]
+        # self.action_set_combo = [[-0.05,8], [0,-8], [0.05,-8], [-0.05,-4], [0,-4],
+        #                          [0.05,-4], [-0.05,0], [0, 0], [0.05,0], [-0.05,4],
+        #                          [0,4], [0.05,4], [-0.05, 8], [0,8], [0.05,8]]  # merging case actions
         self.action_set_combo = [[-0.05, -4], [0.05, -4], [0, 0], [0.05, 4], [-0.05, 0.4]]# CHANGE THIS LATER SUNNY
 
         if self.env.name == 'merger':
@@ -52,6 +57,9 @@ class Simulation:
         self.true_params = []
         for i, par_i in enumerate(self.env.car_par):
             self.true_params.append(par_i["par"])
+        self.belief_params = []
+        for i, par_i in enumerate(self.env.car_par):
+            self.belief_params.append(par_i["belief"])
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
@@ -70,9 +78,12 @@ class Simulation:
                                                       self.env.car_par[1]['belief'][1],
                                                       self.env.car_par[0]['belief'][1],
                                                       weight=self.belief_weight)  # note: use params from the other agent's belief
+
         if self.n_agents == 2:
             # simulations with 2 cars
             # Note that variable annotation is not supported in python 3.5
+
+            self.current_q_values = {0: None, 1: None}  # TODO: get q values for current frame
 
             inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self) for i in range(n_agents)]
             decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self) for i in range(n_agents)]
@@ -119,6 +130,10 @@ class Simulation:
             if self.env.name == "merger":
                 if y_H >= 50 and y_M > 50:
                     print("terminating on vehicle merger:")
+                    break
+            elif self.env.name == 'bvp_intersection':
+                if y_H >= 37 and x_M >= 37:
+                    print("terminating on vehicle passed intersection:", y_H, x_M)
                     break
             else:
                 if y_H >= 5 and x_M <= -5:
@@ -187,7 +202,7 @@ class Simulation:
         lambda_list = self.lambda_list
         beta_list = self.beta_set
 
-        if self.inference_type[1] == 'empathetic':
+        if self.inference_type[1] == 'empathetic' or self.inference_type[1] == 'bvp_empathetic':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
@@ -281,6 +296,9 @@ class Simulation:
         #     # [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
         #     # print("Simulation video output saved to %s." % self.output_dir)
         # print("Simulation ended.")
+        pass
+
+    def get_current_q(self):  # TODO: get current q for both agents
         pass
 
 

@@ -12,6 +12,7 @@ sys.path.append('/models/rainbow/')
 from models.rainbow.arguments import get_args
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
+from HJI_Vehicle.NN_output import get_Q_value
 #sys.path.append('/models/intersection_simple_nfsp/')
 #from arguments import get_args
 from models.rainbow.common.utils import epsilon_scheduler, beta_scheduler, update_target, print_log
@@ -42,8 +43,10 @@ class DecisionModel:
             pass
 
         self.policy_or_Q = 'Q'
+        self.noisy = False
 
         self.true_params = self.sim.true_params
+        self.belief_params = self.sim.initial_belief
         self.action_set = self.sim.action_set
         self.action_set_combo = self.sim.action_set_combo
         self.theta_list = self.sim.theta_list
@@ -131,13 +134,17 @@ class DecisionModel:
                 print("ERROR: THETA DOES NOT EXIST")
             q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
             q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
-            p_action1 = self.action_prob(q1_vals, beta_h[1])
-            p_action2 = self.action_prob(q2_vals, beta_m[1])
+            p_action1 = self.nfsp_action_prob(q1_vals, beta_h[1])
+            p_action2 = self.nfsp_action_prob(q2_vals, beta_m[1])
             actions = []
             for p_a in (p_action1, p_action2):
-                p_a = np.array(p_a).tolist()
+                a_i = np.argmax(p_a)
                 "drawing action from action set using the distribution"
-                action = random.choices(action_set, weights=p_a, k=1)
+                if self.noisy:
+                    p_a = np.array(p_a).tolist()
+                    action = random.choices(action_set, weights=p_a, k=1)
+                else: # choose highest prob
+                    action = action_set[a_i]
                 actions.append(action[0])  # TODO: check why it's list
 
         # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
@@ -227,8 +234,8 @@ class DecisionModel:
         q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
         # TODO: what to use for lambda?? (use true beta for self
-        p_action1 = self.action_prob(q1_vals, _lambda=beta_h[1])
-        p_action2 = self.action_prob(q2_vals, _lambda=beta_m[1])
+        p_action1 = self.nfsp_action_prob(q1_vals, _lambda=beta_h[1])
+        p_action2 = self.nfsp_action_prob(q2_vals, _lambda=beta_m[1])
         actions = []
         for p_a in (p_action1, p_action2):
             p_a = np.array(p_a).tolist()
@@ -305,8 +312,8 @@ class DecisionModel:
             print("ERROR: THETA DOES NOT EXIST")
         q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
-        p_action1 = self.action_prob(q1_vals, beta_h[1])
-        p_action2 = self.action_prob(q2_vals, beta_m[1])
+        p_action1 = self.nfsp_action_prob(q1_vals, beta_h[1])
+        p_action2 = self.nfsp_action_prob(q2_vals, beta_m[1])
         actions = []
         for p_a in (p_action1, p_action2):
             p_a = np.array(p_a).tolist()
@@ -326,17 +333,13 @@ class DecisionModel:
         """
         # implement reactive planning based on point estimates of future trajectories
         # TODO: import HJI BVP model
-        "----------This is placeholder until we have BVP result-------------"
-        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2) = get_models()[0]
 
         "sorting states to obtain action from pre-trained model"
         # y direction only for M, x direction only for HV
         p1_state = self.sim.agents[0].state[self.sim.frame]
         p2_state = self.sim.agents[1].state[self.sim.frame]
-        p1_state_nn = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
-        p2_state_nn = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
-
-        args = get_args()
+        p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
 
         lambda_list = self.lambda_list
         theta_list = self.theta_list
@@ -346,70 +349,30 @@ class DecisionModel:
             beta_h = self.beta_set[beta_pair_id[0]]
             beta_m = self.beta_set[beta_pair_id[1]]
             assert beta_h[0], beta_m[0] == self.true_params
-
         else:
             p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
 
         action_set = self.action_set
 
-        betas = [beta_h, beta_m]
-        lamb_id = []
-        theta_id = []
-        for b in betas:
-            lamb_id.append(lambda_list.index(b[1]))
-            theta_id.append(theta_list.index(b[0]))
-        "getting true intent id"
-        true_intent_id = []
-        for _beta in self.true_params:
-            true_intent_id.append(self.theta_list.index(_beta[0]))
-        assert theta_list[true_intent_id[1]] == self.true_params[1][0]
+        # TODO: this is placeholder; probably not right to do this
+        "this is where non_empathetic is different: using true param of self"
+        true_beta_h, true_beta_m = self.true_params
+        p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
+        p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, true_beta_m)
 
-        "the following assumes 2 thetas"
-        # TODO: create a function for this
-        "for agent 1 (H): using true self intent and guess of other's intent"
-        if true_intent_id[0] == 0:
-            if theta_id[1] == 0:
-                q_1 = Q_na_na_2
-            elif theta_id[1] == 1:  # 1: na, 2:a
-                q_1 = Q_na_a
-            else:
-                print("ERROR: THETA DOES NOT EXIST")
-        elif true_intent_id[0] == 1:  # 1: A
-            if theta_id[1] == 0:
-                q_1 = Q_a_na
-            elif theta_id[1] == 1:
-                q_1 = Q_a_a_2
-            else:
-                print("ERROR: THETA DOES NOT EXIST")
-        else:
-            print("ERROR: THETA DOES NOT EXIST")
-        "for agent 2 (M)"
-        if true_intent_id[1] == 0:
-            if theta_id[0] == 0:
-                q_2 = Q_na_na
-            elif theta_id[0] == 1:  # 2: na, 1:a
-                q_2 = Q_a_na
-            else:
-                print("ERROR: THETA DOES NOT EXIST")
-        elif true_intent_id[1] == 1:  # 2: A
-            if theta_id[0] == 0:
-                q_2 = Q_na_a
-            elif theta_id[0] == 1:
-                q_2 = Q_a_a
-            else:
-                print("ERROR: THETA DOES NOT EXIST")
-        else:
-            print("ERROR: THETA DOES NOT EXIST")
-        q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
-        q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
-        # TODO: what to use for lambda?? (use true beta for self
-        p_action1 = self.action_prob(q1_vals, _lambda=beta_h[1])
-        p_action2 = self.action_prob(q2_vals, _lambda=beta_m[1])
         actions = []
         for p_a in (p_action1, p_action2):
+            # TODO: flatten p_a -> draw action id -> get action from set
             p_a = np.array(p_a).tolist()
             "drawing action from action set using the distribution"
-            action = random.choices(action_set, weights=p_a, k=1)
+            # TODO: need to obtain the mixed strategy array
+            # ===================================
+            p_a_s = []
+            for pa in p_a:
+                p_a_s.append(sum(pa))
+            assert len(p_a_s) == len(action_set)
+            # ===================================
+            action = random.choices(action_set, weights=p_a_s, k=1)  # p_a needs 1D array
             actions.append(action[0])  # TODO: check why it's list
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
@@ -424,75 +387,50 @@ class DecisionModel:
         """
         # implement reactive planning based on inference of future trajectories
         # TODO: import HJI BVP model
-        "----------This is placeholder until we have BVP result-------------"
-        (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
-        (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
 
         "sorting states to obtain action from pre-trained model"
         # y direction only for M, x direction only for HV
         p1_state = self.sim.agents[0].state[self.sim.frame]
         p2_state = self.sim.agents[1].state[self.sim.frame]
-
-        p1_state_nn = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
-        p2_state_nn = (p2_state[0], abs(p2_state[2]), -p1_state[1], abs(p1_state[3]))
+        p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        p2_state_nn = ([p2_state[0]], [p2_state[2]], [p1_state[1]], [p1_state[3]])
 
         lambda_list = self.lambda_list
         theta_list = self.theta_list
-        action_set = self.action_set
         if self.sim.frame == 0:
             p_beta = self.sim.initial_belief
             beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
             beta_h = self.beta_set[beta_pair_id[0]]
             beta_m = self.beta_set[beta_pair_id[1]]
-
+            assert beta_h[0], beta_m[0] == self.true_params
         else:
-            beta_h, beta_m  = self.sim.agents[1].predicted_intent_all[-1][1]
+            p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
 
+        action_set = self.action_set
 
-        args = get_args()
-        betas = [beta_h, beta_m]
-        lamb_id =[]
-        theta_id = []
-        for b in betas:
-            lamb_id.append(lambda_list.index(b[1]))
-            theta_id.append(theta_list.index(b[0]))
-        " the following assumes 2 thetas"
-        # TODO: create a function for this
-        if theta_id[0] == 0:
-            if theta_id[1] == 0:
-                q_1 = Q_na_na_2
-                q_2 = Q_na_na
-            elif theta_id[1] == 1:  # 1: na, 2:a
-                q_1 = Q_na_a
-                q_2 = Q_a_na
-            else:
-                print("ERROR: THETA DOES NOT EXIST")
+        # TODO: this is placeholder; probably not right to do this
+        "this is where empathetic is different: using predicted param of self"
+        true_beta_h, true_beta_m = self.true_params
+        p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, beta_m)
 
-        elif theta_id[0] == 1:  # 1: A
-            if theta_id[1] == 0:
-                q_1 = Q_a_na
-                q_2 = Q_na_a
-            elif theta_id[1] == 1:
-                q_1 = Q_a_a_2
-                q_2 = Q_a_a
-            else:
-                print("ERROR: THETA DOES NOT EXIST")
-        else:
-            print("ERROR: THETA DOES NOT EXIST")
-        q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
-        q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
-        p_action1 = self.action_prob(q1_vals, beta_h[1])
-        p_action2 = self.action_prob(q2_vals, beta_m[1])
         actions = []
         for p_a in (p_action1, p_action2):
+            # TODO: flatten p_a -> draw action id -> get action from set
             p_a = np.array(p_a).tolist()
             "drawing action from action set using the distribution"
-            action = random.choices(action_set, weights=p_a, k=1)
+            # TODO: need to obtain the mixed strategy array
+            # ===================================
+            p_a_s = []
+            for pa in p_a:
+                p_a_s.append(sum(pa))
+            assert len(p_a_s) == len(action_set)
+            # ===================================
+            action = random.choices(action_set, weights=p_a_s, k=1)
             actions.append(action[0])  # TODO: check why it's list
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
-
+        # actions = [action1, action2]
         return {'action': actions}
 
     # create long term loss as a pytorch object
@@ -514,7 +452,7 @@ class DecisionModel:
         return l
 
     "-------------Utilities:---------------"
-    def action_prob(self, q_vals, _lambda):
+    def nfsp_action_prob(self, q_vals, _lambda):
         """
         Equation 1
         Noisy-rational model
@@ -547,7 +485,51 @@ class DecisionModel:
         print("exp_Q:", exp_Q)
         return exp_Q
 
+    def bvp_action_prob(self, state_h, state_m, beta_h, beta_m):
+        """
+        Equation 1
+        calculate action prob for both agents
+        :param state_h:
+        :param state_m:
+        :param _lambda:
+        :param theta:
+        :return: [p_action_H, p_action_M], where p_action = [p_a1, ..., p_a5]
+        """
+
+        theta_h, lambda_h = beta_h
+        theta_m, lambda_m = beta_m
+        action_set = self.action_set
+
+        _lambda = [lambda_h, lambda_m]
+
+        "Need state for agent H: xH, vH, xM, vM"  # TODO: check if this is right
+        p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
+        p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
+
+        # TODO: math needs to be checked
+        _p_action_1 = np.zeros((len(action_set), len(action_set)))
+        _p_action_2 = np.zeros((len(action_set), len(action_set)))
+        for i, p_a_h in enumerate(_p_action_1):
+            for j, p_a_m in enumerate(_p_action_1[i]):
+                q1, q2 = get_Q_value(p1_state_nn, np.array([[action_set[i]], [action_set[j]]]), (1, 1))  # TODO: theta is not considered yet! all will get the same theta
+                lamb_Q1 = q1 * lambda_h
+                _p_action_1[i][j] = np.exp(lamb_Q1)
+                lamb_Q2 = q2 * lambda_m
+                _p_action_2[i][j] = np.exp(lamb_Q2)
+
+        "normalizing"  # TODO: check if this works
+        _p_action_1 /= np.sum(_p_action_1)
+        _p_action_2 /= np.sum(_p_action_2)
+        assert round(np.sum(_p_action_1)) == 1
+        assert round(np.sum(_p_action_2)) == 1
+
+        print("action prob 1 from bvp:", _p_action_1)
+        print("action prob 2 from bvp:", _p_action_1)
+        return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
+
     # TODO: get q vals given beta set
     def get_q_vals(self):
         return
+
+
 

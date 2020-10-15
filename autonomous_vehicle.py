@@ -64,10 +64,10 @@ class AutonomousVehicle:
 
         # update state
         action = plan["action"]
-        if self.sim.decision_type[self.id] == "baseline" \
-                or self.sim.decision_type[self.id] == "baseline2" \
-                or self.sim.decision_type[self.id] == "non-empathetic"\
-                or self.sim.decision_type[self.id] == "empathetic":  # TODO: need to be able to check indivisual type
+
+        if self.sim.decision_type[self.id] == 'constant_speed':
+            pass
+        else:
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)
@@ -149,7 +149,9 @@ class AutonomousVehicle:
             return sx_new, sy_new, theta_new, delta_new, vy_new
         if self.env.name == "merger":
             self.state.append(f_environment_sc(self.state[-1], action, self.sim.dt))
-        else:
+        elif self.env.name == 'bvp_intersection':
+            self.state.append(dynamics.bvp_dynamics_1d(self.state[self.sim.frame], action, self.sim.dt))
+        else:  # for nfsp intersection, or other intersection case
             # self.state.append(f(self.state[-1], action, self.sim.dt))
             self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))
 
