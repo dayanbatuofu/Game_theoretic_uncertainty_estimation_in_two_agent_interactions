@@ -20,12 +20,30 @@ class Environment:
         self.name = env_name
         self.sim = sim
         self.sim_par = sim_par
-        self.agent_intent = agent_intent
-        self.agent_noise = agent_noise
-        self.agent_intent_belief = agent_intent_belief
-        self.agent_noise_belief = agent_noise_belief
-        # TODO: unify units for all parameters
+        self.agent_intent = []
+        self.agent_noise = []
+        self.agent_intent_belief = []
+        self.agent_noise_belief = []
+        # TODO: process the intent and noise from main for generalization
+        for i in range(len(agent_intent)):
+            if agent_intent[i] == 'NA':
+                self.agent_intent.append(sim_par['theta'][0])
+            elif agent_intent[i] == 'A':
+                self.agent_intent.append(sim_par['theta'][1])
+            if agent_intent_belief[i] == 'NA':
+                self.agent_intent_belief.append(sim_par['theta'][0])
+            elif agent_intent_belief[i] == 'A':
+                self.agent_intent_belief.append(sim_par['theta'][1])
+            if agent_noise[i] == 'N':
+                self.agent_noise.append(sim_par['lambda'][0])
+            elif agent_noise[i] == 'NN':
+                self.agent_noise.append(sim_par['lambda'][1])
+            if agent_noise_belief[i] == 'N':
+                self.agent_noise_belief.append(sim_par['lambda'][0])
+            elif agent_noise_belief[i] == 'NN':
+                self.agent_noise_belief.append(sim_par['lambda'][1])
 
+        # TODO: unify units for all parameters
         if self.name == 'intersection':
             self.car_width = 0.66
             self.car_length = 1.33
@@ -166,7 +184,7 @@ class Environment:
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
                              "initial_action": [0.],  # accel TODO: this is using 0 as initial action for now
-                             "par": (self.agent_intent[1], self.agent_noise[1]),  # aggressiveness: check sim.theta_list
+                             "par": (self.agent_intent[0], self.agent_noise[0]),  # aggressiveness: check main
                              "belief": (self.agent_intent_belief[0], self.agent_noise_belief[0]),
                              # belief of other's params (beta: (theta, lambda))
                              "orientation": 0.},
@@ -174,7 +192,7 @@ class Environment:
                              "initial_state": [[sx_M, 0, vx_M, 0]],
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
-                             "par": (self.agent_intent[1], self.agent_noise[1]),  # aggressiveness: check sim.theta_list
+                             "par": (self.agent_intent[1], self.agent_noise[1]),  # aggressiveness: check main
                              "belief": (self.agent_intent_belief[1], self.agent_noise_belief[1]),
                              # belief of other's params (beta: (theta, lambda))
                              "orientation": -90.},

@@ -32,17 +32,15 @@ class Simulation:
         self.env = env
         self.agents = []
         self.sharing_belief = True  # TODO: set condition for this
-        self.theta_priors = None  # TODO: calculate theta_prior here
+        self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
+        self.saving_png = False  # TODO: implement this in run
         if env.name == 'bvp_intersection':  # don't draw future states
             self.drawing_prob = False
+
         # define simulation
         car_parameter = self.env.car_par
         "theta and lambda pairs (betas):"
-        # self.theta_list = [1, 1000]
-        # self.lambda_list = [0.001, 0.005, 0.01, 0.05]
-        # self.lambda_list = [0.001, 0.005]
-        # self.action_set = [-8, -4, 0, 4, 8]
         self.theta_list = sim_par["theta"]
         self.lambda_list = sim_par["lambda"]
         self.action_set = sim_par["action_set"]
@@ -54,9 +52,11 @@ class Simulation:
         if self.env.name == 'merger':
             self.action_set = self.action_set_combo
 
+        'getting ground truth betas'
         self.true_params = []
         for i, par_i in enumerate(self.env.car_par):
             self.true_params.append(par_i["par"])
+        'getting initial beliefs of others'
         self.belief_params = []
         for i, par_i in enumerate(self.env.car_par):
             self.belief_params.append(par_i["belief"])

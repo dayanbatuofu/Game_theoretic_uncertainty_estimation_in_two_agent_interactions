@@ -16,10 +16,13 @@ import math
 from inference_model import InferenceModel
 from autonomous_vehicle import AutonomousVehicle
 import time
+import glob
+import imageio
+import os
 import pdb
 
 LIGHT_GREY = (230, 230, 230)
-RED = (230, 0 ,0)
+RED = (230, 0, 0)
 
 
 class VisUtils:
@@ -703,3 +706,24 @@ class VisUtils:
         'returns x, y for the pygame window'
         return np.array([x, y])
 
+    # TODO: implement this
+    def make_gif(self):
+        """
+        Saving png and creating gif
+        :return:
+        """
+        path = 'sim_outputs/'
+
+        image = glob.glob(path + "*.png")
+        # print(image)
+        # episode_step_count = len(image)
+        img_list = image  # [path + "img" + str(i).zfill(3) + ".png" for i in range(episode_step_count)]
+
+        images = []
+        for filename in img_list:
+            images.append(imageio.imread(filename))
+        tag = 'theta1' + '=' + str(problem.theta1) + '_' + 'theta2' + '=' + str(problem.theta2) + '_' + 'time horizon' + '=' + str(config.t1)
+        imageio.mimsave(path + 'movie_' + tag + '.gif', images, 'GIF', duration=0.2)
+        # Delete images
+        [os.remove(path + file) for file in os.listdir(path) if ".png" in file]
+        return
