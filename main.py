@@ -75,13 +75,13 @@ if __name__ == "__main__":
     logger.info(args)
     device = t.device('cuda:' + str(args.gpu) if t.cuda.is_available() else 'cpu')
     if args.env_name == 'bvp_intersection':
-        sim_par = {"theta": [5, 1],
-                   "lambda": [0.001, 0.005],
-                   "action_set": [-5, -2, 0, 2, 5],
+        sim_par = {"theta": [5, 1],  # NA, A
+                   "lambda": [0.1, 1],  # N, NN
+                   "action_set": [-5, -2, 0, 5, 7],
                    }
     elif args.env_name == 'trained_intersection':
-        sim_par = {"theta": [1, 1000],
-                   "lambda": [0.001, 0.005],
+        sim_par = {"theta": [1, 1000],  # NA, A
+                   "lambda": [0.001, 0.005],  # N, NN
                    "action_set": [-8, -4, 0, 4, 8],
                    }
     else:

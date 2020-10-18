@@ -196,8 +196,19 @@ class DecisionModel:
                 action = random.choices(action_set, weights=p_a_s, k=1)  # p_a needs 1D array
                 actions.append(action[0])
             else:
-                action_id = np.unravel_index(p_a.argmax(), p_a.shape)
-                actions.append(action_set[action_id[i]])
+                # TODO: get u_k-1 for the other agent
+                ui = self.sim.agents[i-1].action[self.frame - 1]  # other agent's last action
+                ui_i = action_set.index(ui)
+                if i == 0:
+                    p_a_t = np.transpose(p_a)
+                    p_a_self = p_a_t[ui_i]
+                elif i == 1:
+                    p_a_self = p_a[ui_i]
+                else:
+                    print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+                action_id = np.argmax(p_a_self)
+                # action_id = np.unravel_index(p_a.argmax(), p_a.shape)
+                actions.append(action_set[action_id])
 
         # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
         return {'action': actions}
@@ -572,11 +583,13 @@ class DecisionModel:
         "normalizing"  # TODO: check if this works
         _p_action_1 /= np.sum(_p_action_1)
         _p_action_2 /= np.sum(_p_action_2)
+        print('p1 state:', p1_state_nn)
+        print("action prob 1 from bvp:", _p_action_1)
+        print("action prob 2 from bvp:", _p_action_2)
         assert round(np.sum(_p_action_1)) == 1
         assert round(np.sum(_p_action_2)) == 1
 
-        print("action prob 1 from bvp:", _p_action_1)
-        print("action prob 2 from bvp:", _p_action_1)
+
         return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 
     # TODO: get q vals given beta set

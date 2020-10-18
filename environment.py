@@ -171,14 +171,14 @@ class Environment:
             "randomly pick initial states:"
             # initial state: x: 15 to 20, v: 18 to 25
             # u: [-5 10]
-            sy_H = np.random.uniform(15, 20)
-            vy_H = np.random.uniform(18, 25)
-            sx_M = np.random.uniform(15, 20)
-            vx_M = np.random.uniform(18, 25)
-            # sy_H = 15
-            # vy_H = 18
-            # sx_M = 16
-            # vx_M = 19
+            # sy_H = np.random.uniform(15, 20)
+            # vy_H = np.random.uniform(18, 25)
+            # sx_M = np.random.uniform(15, 20)
+            # vx_M = np.random.uniform(18, 25)
+            sy_H = 15
+            vy_H = 18
+            sx_M = 18
+            vx_M = 18
 
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y

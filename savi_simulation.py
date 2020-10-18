@@ -78,7 +78,8 @@ class Simulation:
                                                       self.env.car_par[1]['belief'][1],
                                                       self.env.car_par[0]['belief'][1],
                                                       weight=self.belief_weight)  # note: use params from the other agent's belief
-
+        self.past_loss1 = []  # for storing loss of simulation
+        self.past_loss2 = []
         if self.n_agents == 2:
             # simulations with 2 cars
             # Note that variable annotation is not supported in python 3.5
@@ -118,9 +119,10 @@ class Simulation:
             if not self.paused:
                 for agent in self.agents:
                     agent.update(self)  # Run simulation
-
+            self.calc_loss()
             # termination criteria
-            if self.frame >= 10:  # TODO: modify frame limit
+            if self.frame >= 20:  # TODO: modify frame limit
+                print('Simulation ended with duration exceeded limit')
                 break
             # pdb.set_trace()
             x_H = self.agents[0].state[self.frame][0]  # sy_H ??
@@ -132,7 +134,7 @@ class Simulation:
                     print("terminating on vehicle merger:")
                     break
             elif self.env.name == 'bvp_intersection':
-                if y_H >= 37 and x_M >= 37:
+                if y_H >= 40 and x_M >= 40:
                     print("terminating on vehicle passed intersection:", y_H, x_M)
                     break
             else:
@@ -185,6 +187,8 @@ class Simulation:
         print("Action taken by H:", self.agents[0].action)
         print("Action of H predicted by M:", self.agents[1].predicted_actions_other)
         print("Action taken by M:", self.agents[1].action)
+        print("Loss of H (p1):", self.past_loss1)
+        print("Loss of M (p2):", self.past_loss1)
 
     # TODO: store this somewhere else
     def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
@@ -298,7 +302,38 @@ class Simulation:
         # print("Simulation ended.")
         pass
 
-    def get_current_q(self):  # TODO: get current q for both agents
+    def get_current_q(self):  # TODO: get current q for both agents, for faster calculation
         pass
 
+    def calc_loss(self):
+        """
+        Calculate loss function after each step
+        :return:
+        """
+        state_h = self.agents[0].state[self.frame]
+        state_m = self.agents[1].state[self.frame]
+        xh = t.tensor(state_h[1], requires_grad=True, dtype=t.float32)
+        xm = t.tensor(state_m[0], requires_grad=True, dtype=t.float32)
+        theta1 = 1
+        theta2 = 1
+        R1 = 70
+        R2 = 70
+        W1 = 1.5
+        W2 = 1.5
+        L1 = 3
+        L2 = 3
+        beta = 10000.
+        x1_in = (xh - R1 / 2 + theta2 * W2 / 2) * 10
+        x1_out = -(xh - R1 / 2 - W2 / 2 - L1) * 10
+        x2_in = (xm - R2 / 2 + theta1 * W1 / 2) * 10
+        x2_out = -(xm - R2 / 2 - W1 / 2 - L2) * 10
 
+        Collision_F_x = beta * t.sigmoid(x1_in) * t.sigmoid(x1_out) * \
+                        t.sigmoid(x2_in) * t.sigmoid(x2_out)
+        U1 = self.agents[0].action[self.frame]
+        U2 = self.agents[1].action[self.frame]
+        L1 = U1 ** 2 + Collision_F_x.detach().numpy()
+        L2 = U2 ** 2 + Collision_F_x.detach().numpy()
+        self.past_loss1.append(L1)
+        self.past_loss2.append(L2)
+        return

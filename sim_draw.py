@@ -206,15 +206,15 @@ class VisUtils:
             label_x = screen_w - 800
             label_y = 260
             label_y_offset = 30
-            pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
+            pos_h, speed_h = self.sim.agents[0].state[frame][1], self.sim.agents[0].state[frame][3]
             label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y))
-            pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
+            pos_m, speed_m = self.sim.agents[1].state[frame][0], self.sim.agents[1].state[frame][2]
             label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y + label_y_offset))
-            action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
+            action1, action2 = self.sim.agents[0].action[frame], self.sim.agents[1].action[frame]
             if self.env.name == 'merger':
                 label = font.render("Car 1 action: " % action1, 1, (0, 0, 0))
             else:
