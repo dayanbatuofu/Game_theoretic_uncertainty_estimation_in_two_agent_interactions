@@ -12,9 +12,8 @@ import pygame as pg
 import pygame.gfxdraw
 import numpy as np
 from matplotlib import pyplot
+from mpl_toolkits.mplot3d import Axes3D
 import math
-from inference_model import InferenceModel
-from autonomous_vehicle import AutonomousVehicle
 import time
 import glob
 import imageio
@@ -28,7 +27,6 @@ RED = (230, 0, 0)
 class VisUtils:
 
     def __init__(self, sim):
-        "for drawing state distribution"
 
         self.sim = sim
         self.env = sim.env
@@ -83,12 +81,12 @@ class VisUtils:
             #self.origin = np.array([-15.0, 15.0])
             self.origin = np.array([0, 0])
 
-        elif self.env.name == 'bvp_intersection':  # TODO: check env name for BVP
+        elif self.env.name == 'bvp_intersection':
             self.sleep_between_step = True
             self.screen_width = 10  # 50
             self.screen_height = 10  # 50
             self.coordinate_scale = 80
-            self.zoom = 0.1
+            self.zoom = 0.25
             self.asset_location = 'assets/'
             self.fps = 24  # max framework
 
@@ -365,8 +363,8 @@ class VisUtils:
 
     def bvp_draw_axes(self):
         # draw lanes based on environment
-        pg.draw.line(self.screen, LIGHT_GREY, self.c2p((35, -50)), self.c2p((36.5, 100)), 35)
-        pg.draw.line(self.screen, LIGHT_GREY, self.c2p((100, 35)), self.c2p((-50, 36.5)), 35)
+        pg.draw.line(self.screen, LIGHT_GREY, self.c2p((35, -50)), self.c2p((35, 100)), 35)
+        pg.draw.line(self.screen, LIGHT_GREY, self.c2p((100, 35)), self.c2p((-50, 35)), 35)
 
     def draw_axes_lanes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
@@ -676,7 +674,29 @@ class VisUtils:
                 else:
                     pg.draw.circle(self.screen, purple, (nx, ny), 6)
 
-        #pg.draw.circle()
+        # pg.draw.circle()
+
+    def plot_loss(self):
+        loss = self.sim.past_loss1
+        states_1 = self.sim.agents[0].state
+        states_2 = self.sim.agents[1].state
+        x1 = []
+        x2 = []
+        for i in range(len(states_1)-1):
+            x1.append(states_1[i][1])
+            x2.append(states_2[i][0])
+        print(x1)
+        print(loss)
+        assert len(x1) == len(loss)
+
+        fig = pyplot.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(x1, x2, loss)
+        ax.invert_xaxis()
+        ax.set_xlabel('P1 location')
+        ax.set_ylabel('P2 location')
+        ax.set_zlabel('Loss')
+        pyplot.show()
 
     def c2p(self, coordinates):
         x = self.coordinate_scale * (coordinates[0] - self.origin[0] + self.screen_width / 2)

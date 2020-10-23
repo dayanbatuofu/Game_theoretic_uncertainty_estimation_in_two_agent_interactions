@@ -58,7 +58,9 @@ def load_NN(model_path, return_stats=False):
     model_dict = loadmat(model_path)
 
     parameters = {'weights1': model_dict['weights1'][0],
-                  'biases1': model_dict['biases1'][0]}
+                  'biases1': model_dict['biases1'][0],
+                  'weights2': model_dict['weights2'][0],
+                  'biases2': model_dict['biases2'][0]}
 
     scaling = {'lb': model_dict['lb'], 'ub': model_dict['ub'],
                'A_lb': model_dict['A_lb'], 'A_ub': model_dict['A_ub'],

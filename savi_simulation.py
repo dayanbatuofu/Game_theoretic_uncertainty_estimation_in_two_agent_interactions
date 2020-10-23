@@ -121,7 +121,7 @@ class Simulation:
                     agent.update(self)  # Run simulation
             self.calc_loss()
             # termination criteria
-            if self.frame >= 20:  # TODO: modify frame limit
+            if self.frame >= 25:  # TODO: modify frame limit
                 print('Simulation ended with duration exceeded limit')
                 break
             # pdb.set_trace()
@@ -174,6 +174,7 @@ class Simulation:
         self.vis.draw_dist()
         if self.drawing_prob:
             self.vis.draw_intent()
+        self.vis.plot_loss()
         print("-------Simulation results:-------")
         print("inference types:", self.inference_type)
         print("decision types:", self.decision_type)
@@ -330,10 +331,12 @@ class Simulation:
 
         Collision_F_x = beta * t.sigmoid(x1_in) * t.sigmoid(x1_out) * \
                         t.sigmoid(x2_in) * t.sigmoid(x2_out)
-        U1 = self.agents[0].action[self.frame]
-        U2 = self.agents[1].action[self.frame]
-        L1 = U1 ** 2 + Collision_F_x.detach().numpy()
-        L2 = U2 ** 2 + Collision_F_x.detach().numpy()
+        # U1 = self.agents[0].action[self.frame]
+        # U2 = self.agents[1].action[self.frame]
+        # L1 = U1 ** 2 + Collision_F_x.detach().numpy()
+        # L2 = U2 ** 2 + Collision_F_x.detach().numpy()
+        L1 = 1*Collision_F_x.detach().numpy()
+        L2 = 1*Collision_F_x.detach().numpy()
         self.past_loss1.append(L1)
         self.past_loss2.append(L2)
         return

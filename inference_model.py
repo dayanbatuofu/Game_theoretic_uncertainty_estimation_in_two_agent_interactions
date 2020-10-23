@@ -2143,7 +2143,7 @@ class InferenceModel:
         # predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat,
         # predicted_policy_self: QM tilde
-        print("-inf- marginal state for m: ", marginal_state_m)
+        # print("-inf- marginal state for m: ", marginal_state_m)
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be M
                 'predicted_actions_other': predicted_actions[0],
@@ -2225,13 +2225,14 @@ class InferenceModel:
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
             for i, p_a_h in enumerate(_p_action_1):
                 for j, p_a_m in enumerate(_p_action_1[i]):
+                    # TODO: need to input thetas when models are ready
                     q1, q2 = get_Q_value(p1_state_nn, np.array([[action_set[i]], [action_set[j]]]), (1, 1))
                     lamb_Q1 = q1 * lambda_h
                     _p_action_1[i][j] = np.exp(lamb_Q1)
                     lamb_Q2 = q2 * lambda_m
                     _p_action_2[i][j] = np.exp(lamb_Q2)
 
-            "normalizing"  # TODO: check if this works
+            "normalizing"
             _p_action_1 /= np.sum(_p_action_1)
             _p_action_2 /= np.sum(_p_action_2)
             assert round(np.sum(_p_action_1)) == 1

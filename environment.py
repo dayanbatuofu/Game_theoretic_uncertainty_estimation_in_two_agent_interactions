@@ -177,7 +177,7 @@ class Environment:
             # vx_M = np.random.uniform(18, 25)
             sy_H = 15
             vy_H = 18
-            sx_M = 18
+            sx_M = 16
             vx_M = 18
 
             self.car_par = [{"sprite": "grey_car_sized.png",

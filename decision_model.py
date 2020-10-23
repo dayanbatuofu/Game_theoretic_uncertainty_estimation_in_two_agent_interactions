@@ -176,12 +176,11 @@ class DecisionModel:
 
         "Using true param of self and other"
         true_beta_h, true_beta_m = self.true_params
-        p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
-        p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
+        p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
+        # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
 
         actions = []
         for i, p_a in enumerate([p_action1, p_action2]):
-
             if self.noisy:
                 # TODO: flatten p_a -> draw action id -> get action from set
                 p_a = np.array(p_a).tolist()
@@ -572,9 +571,10 @@ class DecisionModel:
         # TODO: math needs to be checked
         _p_action_1 = np.zeros((len(action_set), len(action_set)))
         _p_action_2 = np.zeros((len(action_set), len(action_set)))
+        time = np.array([[self.frame]])
         for i, p_a_h in enumerate(_p_action_1):
             for j, p_a_m in enumerate(_p_action_1[i]):
-                q1, q2 = get_Q_value(p1_state_nn, np.array([[action_set[i]], [action_set[j]]]), (1, 1))  # TODO: theta is not considered yet! all will get the same theta
+                q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]), (5, 5))  # TODO: theta is not considered yet! all will get the same theta
                 lamb_Q1 = q1 * lambda_h
                 _p_action_1[i][j] = np.exp(lamb_Q1)
                 lamb_Q2 = q2 * lambda_m
@@ -588,7 +588,6 @@ class DecisionModel:
         print("action prob 2 from bvp:", _p_action_2)
         assert round(np.sum(_p_action_1)) == 1
         assert round(np.sum(_p_action_2)) == 1
-
 
         return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 

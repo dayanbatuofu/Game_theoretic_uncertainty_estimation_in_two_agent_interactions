@@ -17,6 +17,7 @@ np.seterr(over='warn', divide='warn', invalid='warn')
 warnings.filterwarnings('error')
 
 N_states = problem.N_states
+alpha = problem.alpha
 
 # Validation or training data?
 data_type = int_input('What kind of data? Enter 0 for validation, 1 for training:')
@@ -42,112 +43,277 @@ step = 0
 X0 = X0_pool[:, 0]
 X0_orignal = copy.deepcopy(X0)
 
+
 # ---------------------------------------------------------------------------- #
-for i in range(8):  # segment for speed v2, separate into 8 segment
-    for j in range(8):  # segment for speed v1, separate into 8 segment
-        for m in range(11):  # segment for speed x2, separate into 11 segment
-            for n in range(11):  # segment for speed x1, separate into 11 segment
-                print('Solving BVP #', N_sol + 1, 'of', Ns, '...', end='\r')
-                step += 1
-                print(step)
-                print(X0)
-                bc = problem.make_bc(X0)
+for m in range(11):  # segment for speed x2, separate into 11 segment
+    for n in range(11):  # segment for speed x1, separate into 11 segment
+        print('Solving BVP #', N_sol + 1, 'of', Ns, '...', end='\r')
 
-                start_time = time.time()
-                tol = 1e-3  # 1e-01
+        step += 1
+        print(step)
+        print(X0)
+        bc = problem.make_bc(X0)
 
-                # Initial guess is zeros
-                if N_sol == 0:
-                    X_guess = np.vstack((X0.reshape(-1, 1),
-                                         np.zeros((4 * N_states + 2, 1))))
-                else:
-                    X_guess = np.vstack((X0.reshape(-1, 1),
-                                         A_OUT[:, -1].reshape(-1, 1),
-                                         V_OUT[:, -1].reshape(-1, 1)))
-                    print('stop')
+        start_time = time.time()
+        tol = 5e-3  # 1e-01
 
-                # Without time marching for BVP_solver
-                t_guess1 = np.linspace(0., 5., 11)
-                X_guess1 = X_guess
-                for l in range(10):
+        # Initial guess setting
+        X_guess = np.vstack((X0.reshape(-1, 1),
+                             np.array([[alpha],
+                                       [-alpha * 5.],
+                                       [0.],
+                                       [0.],
+                                       [0.],
+                                       [0.],
+                                       [alpha],
+                                       [-alpha * 5.],
+                                       [0.],
+                                       [0.]])))
+
+        # Without time marching for BVP_solver
+        collision_lower = problem.R1 / 2 - problem.theta2 * problem.W1 / 2
+        collision_upper = problem.R1 / 2 + problem.W1 / 2 + problem.L1
+        X_guess1 = X_guess
+
+        n_sample = 200
+        delta_t = 5e-5
+        if X_guess[0, 0] >= X_guess[2, 0]:
+            t1 = 2 * (collision_lower - X_guess[2, 0]) / (2 * X_guess[3, 0] - 5)
+            t2 = (collision_upper - X_guess1[0, 0]) / X_guess1[1, 0]
+            if t1 < t2:
+                t = np.zeros(n_sample + 1)
+                for i in range(1, int(n_sample / 2) + 1):
+                    t[i] = t1 - (int(n_sample / 2) + 1 - i) * delta_t
+                    t[-i] = t1 + (int(n_sample / 2) + 1 - i) * delta_t
+                t_guess1 = np.hstack((0, t[1:int(n_sample / 2) + 1], t1, t[int(n_sample / 2) + 1:n_sample + 1], t2))
+                for i in range(n_sample + 2):
                     X_guess1 = np.hstack((X_guess1, X_guess))
+                for l in range(1, n_sample + 3):
+                    X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+                    X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+            else:
+                t = np.zeros(n_sample + 1)
+                for i in range(1, int(n_sample / 2) + 1):
+                    t[i] = t2 - (int(n_sample / 2) + 1 - i) * delta_t
+                    t[-i] = t2 + (int(n_sample / 2) + 1 - i) * delta_t
+                t_guess1 = np.hstack((0, t[1:int(n_sample / 2) + 1], t2, t[int(n_sample / 2) + 1:n_sample + 1]))
+                for i in range(n_sample + 1):
+                    X_guess1 = np.hstack((X_guess1, X_guess))
+                for l in range(1, n_sample + 2):
+                    X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+                    X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+        else:
+            t1 = 2 * (collision_lower - X_guess[0, 0]) / (2 * X_guess[1, 0] - 5)
+            t2 = (collision_upper - X_guess1[2, 0]) / X_guess1[3, 0]
+            if t1 < t2:
+                t = np.zeros(n_sample + 1)
+                for i in range(1, int(n_sample / 2) + 1):
+                    t[i] = t1 - (int(n_sample / 2) + 1 - i) * delta_t
+                    t[-i] = t1 + (int(n_sample / 2) + 1 - i) * delta_t
+                t_guess1 = np.hstack((0, t[1:int(n_sample / 2) + 1], t1, t[int(n_sample / 2) + 1:n_sample + 1], t2))
+                for i in range(n_sample + 2):
+                    X_guess1 = np.hstack((X_guess1, X_guess))
+                for l in range(1, n_sample + 3):
+                    X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+                    X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+            else:
+                t = np.zeros(n_sample + 1)
+                for i in range(1, int(n_sample / 2) + 1):
+                    t[i] = t2 - (int(n_sample / 2) + 1 - i) * delta_t
+                    t[-i] = t2 + (int(n_sample / 2) + 1 - i) * delta_t
+                t_guess1 = np.hstack((0, t[1:int(n_sample / 2) + 1], t2, t[int(n_sample / 2) + 1:n_sample + 1]))
+                for i in range(n_sample + 1):
+                    X_guess1 = np.hstack((X_guess1, X_guess))
+                for l in range(1, n_sample + 2):
+                    X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+                    X_guess1[11, l] = -alpha * (5 - t_guess1[l])
 
-                SOL = solve_bvp(problem.aug_dynamics, bc, t_guess1, X_guess1,
-                                verbose=0, tol=tol, max_nodes=2500)
+        if X_guess[0, 0] >= X_guess[2, 0]:
+            if t1 < t2:
+                for i in range(1, n_sample + 2):
+                    X_guess1[0, i] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[i]
+                    X_guess1[2, i] = X_guess1[2, 0] + t_guess1[i] / t1 * (collision_lower - X_guess1[2, 0])
+                    X_guess1[3, i] = X_guess1[3, 0] - 5 * t_guess1[i]
 
-                A_M1 = SOL.y[2 * N_states:6 * N_states, 0:1]
-                V1_M1 = -SOL.y[-2:-1]
-                V2_M1 = -SOL.y[-1:]
-                V_M1 = np.vstack((V1_M1, V2_M1))[:, 0:1]
+                X_guess1[0, -1] = collision_upper
+                X_guess1[2, -1] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[-1] - 2.5 * t_guess1[-1] ** 2
+                X_guess1[3, -1] = X_guess1[3, 0] - 5 * t_guess1[-1]
+            else:
+                for i in range(1, n_sample + 2):
+                    X_guess1[0, i] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[i]
+                    X_guess1[2, i] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[i] - 2.5 * t_guess1[i] ** 2
+                    X_guess1[3, i] = X_guess1[3, 0] - 5 * t_guess1[i]
+        else:
+            if t1 < t2:
+                for i in range(1, n_sample + 2):
+                    X_guess1[0, i] = X_guess1[0, 0] + t_guess1[i] / t1 * (collision_lower - X_guess1[0, 0])
+                    X_guess1[1, i] = X_guess1[1, 0] - 5 * t_guess1[i]
+                    X_guess1[2, i] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[i]
 
-                # With time marching for BVP_solver
-                t_guess2 = np.array([0.])
-                X_guess2 = X_guess
+                X_guess1[0, -1] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[-1] - 2.5 * t_guess1[-1] ** 2
+                X_guess1[1, -1] = X_guess1[1, 0] - 5 * t_guess1[-1]
+                X_guess1[2, -1] = collision_upper
+            else:
+                for i in range(1, n_sample + 2):
+                    X_guess1[0, i] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[i] - 2.5 * t_guess1[i] ** 2
+                    X_guess1[1, i] = X_guess1[3, 0] - 5 * t_guess1[i]
+                    X_guess1[2, i] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[i]
 
-                for k in range(config.tseq.shape[0]):
-                    t_guess2 = np.concatenate((t_guess2, config.tseq[k:k + 1]))
-                    X_guess2 = np.hstack((X_guess2, X_guess2[:, -1:]))
+        SOL = solve_bvp(problem.aug_dynamics, bc, t_guess1, X_guess1,
+                            verbose=2, tol=tol, max_nodes=2500)
 
-                    # try:
-                    SOL = solve_bvp(problem.aug_dynamics, bc, t_guess2, X_guess2,
-                                    verbose=0, tol=tol, max_nodes=2500)
+        t_M1 = SOL.x
+        X_M1 = SOL.y[:2 * N_states]
+        A_M1 = SOL.y[2 * N_states:6 * N_states]
+        V1_M1 = -SOL.y[-2:-1]
+        V2_M1 = -SOL.y[-1:]
+        V_M1 = np.vstack((V1_M1, V2_M1))
+        print(V_M1[:,0])
 
-                    t_guess2 = SOL.x
-                    X_guess2 = SOL.y
+        sol_time.append(time.time() - start_time)
 
-                A_M2 = SOL.y[2 * N_states:6 * N_states, 0:1]
-                V1_M2 = -SOL.y[-2:-1]
-                V2_M2 = -SOL.y[-1:]
-                V_M2 = np.vstack((V1_M2, V2_M2))[:, 0:1]
+        t_OUT = np.hstack((t_OUT, t_M1.reshape(1, -1)))
+        X_OUT = np.hstack((X_OUT, X_M1))
+        A_OUT = np.hstack((A_OUT, A_M1))
+        V_OUT = np.hstack((V_OUT, V_M1))
 
-                sol_time.append(time.time() - start_time)
+        N_sol += 1
 
-                # Justify which V1 and V2 is better to use in the next X_guess in the BVP solver
-                # The lambda should be changed because it is corresponding to the V
+        X0[0] = X0[0] + 0.5  # step for x1 is 0.5 m
+    X0[2] = X0[2] + 0.5  # step for x2 is 0.5 m
+    X0[0] = X0_orignal[0]
 
-                if V_M1[0, 0:1] > np.array([0]) or V_M2[0, 0:1] > np.array([0]):
-                    V[0, 0:1] = min(V_M1[0, 0:1], V_M2[0, 0:1])
-                    if V_M1[0, 0:1] < V_M2[0, 0:1]:
-                        A[:2 * N_states, 0:1] = A_M1[:2 * N_states, 0:1]
-                    else:
-                        A[:2 * N_states, 0:1] = A_M2[:2 * N_states, 0:1]
-                else:
-                    V[0, 0:1] = max(V_M1[0, 0:1], V_M2[0, 0:1])
-                    if V_M1[0, 0:1] > V_M2[0, 0:1]:
-                        A[:2 * N_states, 0:1] = A_M1[:2 * N_states, 0:1]
-                    else:
-                        A[:2 * N_states, 0:1] = A_M2[:2 * N_states, 0:1]
-
-                if V_M1[1, 0:1] > np.array([0]) or V_M2[1, 0:1] > np.array([0]):
-                    V[1, 0:1] = min(V_M1[1, 0:1], V_M2[1, 0:1])
-                    if V_M1[1, 0:1] < V_M2[1, 0:1]:
-                        A[2 * N_states:4 * N_states, 0:1] = A_M1[2 * N_states:4 * N_states, 0:1]
-                    else:
-                        A[2 * N_states:4 * N_states, 0:1] = A_M2[2 * N_states:4 * N_states, 0:1]
-                else:
-                    V[1, 0:1] = max(V_M1[1, 0:1], V_M2[1, 0:1])
-                    if V_M1[1, 0:1] > V_M2[1, 0:1]:
-                        A[2 * N_states:4 * N_states, 0:1] = A_M1[2 * N_states:4 * N_states, 0:1]
-                    else:
-                        A[2 * N_states:4 * N_states, 0:1] = A_M2[2 * N_states:4 * N_states, 0:1]
-
-                result1 = A_OUT
-                result2 = V_OUT
-
-                t_OUT = np.hstack((t_OUT, SOL.x.reshape(1, -1)[:, 0:1]))
-                X_OUT = np.hstack((X_OUT, SOL.y[:2 * N_states, 0:1]))
-                A_OUT = np.hstack((A_OUT, A))
-                V_OUT = np.hstack((V_OUT, V))
-
-                N_sol += 1
-
-                X0[0] = X0[0] + 0.5  # step for x1 is 0.5 m
-            X0[2] = X0[2] + 0.5  # step for x2 is 0.5 m
-            X0[0] = X0_orignal[0]
-        X0[1] = X0[1] + 1  # step for v1 is 1 m/s
-        X0[2] = X0_orignal[2]
-    X0[3] = X0[3] + 1  # step for v2 is 1 m/s
-    X0[1] = X0_orignal[1]
+# while N_sol < Ns:
+#     print('Solving BVP #', N_sol+1, 'of', Ns, '...', end='\r')
+#
+#     step += 1
+#     print(step)
+#     print(X0)
+#     bc = problem.make_bc(X0)
+#
+#     start_time = time.time()
+#     tol = 5e-3  # 1e-01
+#
+#     # Initial guess setting
+#     X_guess = np.vstack((X0.reshape(-1, 1),
+#                          np.array([[alpha],
+#                                    [-alpha * 5.],
+#                                    [0.],
+#                                    [0.],
+#                                    [0.],
+#                                    [0.],
+#                                    [alpha],
+#                                    [-alpha * 5.],
+#                                    [0.],
+#                                    [0.]])))
+#
+#     # Without time marching for BVP_solver
+#     collision_lower = problem.R1/2 - problem.theta2 * problem.W1/2
+#     collision_upper = problem.R1/2 + problem.W1/2 + problem.L1
+#     X_guess1 = X_guess
+#
+#     n_sample = 200
+#     delta_t = 5e-5
+#     if X_guess[0, 0] >= X_guess[2, 0]:
+#         t1 = 2 * (collision_lower - X_guess[2, 0]) / (2 * X_guess[3, 0] - 5)
+#         t2 = (collision_upper - X_guess1[0, 0]) / X_guess1[1, 0]
+#         if t1 < t2:
+#             t = np.zeros(n_sample+1)
+#             for i in range(1, int(n_sample/2) + 1):
+#                 t[i] = t1 - (int(n_sample/2) + 1 - i) * delta_t
+#                 t[-i] = t1 + (int(n_sample/2) + 1 - i) * delta_t
+#             t_guess1 = np.hstack((0, t[1:int(n_sample/2) + 1], t1, t[int(n_sample/2) + 1:n_sample + 1], t2))
+#             for i in range(n_sample + 2):
+#                 X_guess1 = np.hstack((X_guess1, X_guess))
+#             for l in range(1, n_sample + 3):
+#                 X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+#                 X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+#         else:
+#             t = np.zeros(n_sample + 1)
+#             for i in range(1, int(n_sample/2) + 1):
+#                 t[i] = t2 - (int(n_sample/2) + 1 - i) * delta_t
+#                 t[-i] = t2 + (int(n_sample/2) + 1 - i) * delta_t
+#             t_guess1 = np.hstack((0, t[1:int(n_sample/2) + 1], t2, t[int(n_sample/2) + 1:n_sample + 1]))
+#             for i in range(n_sample + 1):
+#                 X_guess1 = np.hstack((X_guess1, X_guess))
+#             for l in range(1, n_sample + 2):
+#                 X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+#                 X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+#     else:
+#         t1 = 2 * (collision_lower - X_guess[0, 0]) / (2 * X_guess[1, 0] - 5)
+#         t2 = (collision_upper - X_guess1[2, 0]) / X_guess1[3, 0]
+#         if t1 < t2:
+#             t = np.zeros(n_sample + 1)
+#             for i in range(1, int(n_sample/2) + 1):
+#                 t[i] = t1 - (int(n_sample/2) + 1 - i) * delta_t
+#                 t[-i] = t1 + (int(n_sample/2) + 1 - i) * delta_t
+#             t_guess1 = np.hstack((0, t[1:int(n_sample/2) + 1], t1, t[int(n_sample/2) + 1:n_sample + 1], t2))
+#             for i in range(n_sample + 2):
+#                 X_guess1 = np.hstack((X_guess1, X_guess))
+#             for l in range(1, n_sample + 3):
+#                 X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+#                 X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+#         else:
+#             t = np.zeros(n_sample + 1)
+#             for i in range(1, int(n_sample/2) + 1):
+#                 t[i] = t2 - (int(n_sample/2) + 1 - i) * delta_t
+#                 t[-i] = t2 + (int(n_sample/2) + 1 - i) * delta_t
+#             t_guess1 = np.hstack((0, t[1:int(n_sample/2) + 1], t2, t[int(n_sample/2) + 1:n_sample + 1]))
+#             for i in range(n_sample + 1):
+#                 X_guess1 = np.hstack((X_guess1, X_guess))
+#             for l in range(1, n_sample + 2):
+#                 X_guess1[5, l] = -alpha * (5 - t_guess1[l])
+#                 X_guess1[11, l] = -alpha * (5 - t_guess1[l])
+#
+#     if X_guess[0, 0] >= X_guess[2, 0]:
+#         if t1 < t2:
+#             for i in range(1, n_sample + 2):
+#                 X_guess1[0, i] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[i]
+#                 X_guess1[2, i] = X_guess1[2, 0] + t_guess1[i]/t1 * (collision_lower - X_guess1[2, 0])
+#                 X_guess1[3, i] = X_guess1[3, 0] - 5 * t_guess1[i]
+#
+#             X_guess1[0, -1] = collision_upper
+#             X_guess1[2, -1] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[-1] - 2.5 * t_guess1[-1] ** 2
+#             X_guess1[3, -1] = X_guess1[3, 0] - 5 * t_guess1[-1]
+#         else:
+#             for i in range(1, n_sample + 2):
+#                 X_guess1[0, i] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[i]
+#                 X_guess1[2, i] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[i] - 2.5 * t_guess1[i] ** 2
+#                 X_guess1[3, i] = X_guess1[3, 0] - 5 * t_guess1[i]
+#     else:
+#         if t1 < t2:
+#             for i in range(1, n_sample + 2):
+#                 X_guess1[0, i] = X_guess1[0, 0] + t_guess1[i]/t1 * (collision_lower - X_guess1[0, 0])
+#                 X_guess1[1, i] = X_guess1[1, 0] - 5 * t_guess1[i]
+#                 X_guess1[2, i] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[i]
+#
+#             X_guess1[0, -1] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[-1] - 2.5 * t_guess1[-1] ** 2
+#             X_guess1[1, -1] = X_guess1[1, 0] - 5 * t_guess1[-1]
+#             X_guess1[2, -1] = collision_upper
+#         else:
+#             for i in range(1, n_sample + 2):
+#                 X_guess1[0, i] = X_guess1[0, 0] + X_guess1[1, 0] * t_guess1[i] - 2.5 * t_guess1[i] ** 2
+#                 X_guess1[1, i] = X_guess1[3, 0] - 5 * t_guess1[i]
+#                 X_guess1[2, i] = X_guess1[2, 0] + X_guess1[3, 0] * t_guess1[i]
+#
+#     SOL = solve_bvp(problem.aug_dynamics, bc, t_guess1, X_guess1,
+#                     verbose=2, tol=tol, max_nodes=2500)
+#
+#     t_M1 = SOL.x
+#     X_M1 = SOL.y[:2 * N_states]
+#     A_M1 = SOL.y[2 * N_states:6 * N_states]
+#     V1_M1 = -SOL.y[-2:-1]
+#     V2_M1 = -SOL.y[-1:]
+#     V_M1 = np.vstack((V1_M1, V2_M1))
+#
+#     sol_time.append(time.time() - start_time)
+#
+#     t_OUT = np.hstack((t_OUT, t_M1.reshape(1, -1)))
+#     X_OUT = np.hstack((X_OUT, X_M1))
+#     A_OUT = np.hstack((A_OUT, A_M1))
+#     V_OUT = np.hstack((V_OUT, V_M1))
+#
+#     N_sol += 1
 
 # ---------------------------------------------------------------------------- #
 

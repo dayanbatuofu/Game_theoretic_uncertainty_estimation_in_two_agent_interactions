@@ -12,6 +12,7 @@ import os
 import argparse
 import utils
 import torch as t
+import numpy as np
 from environment import Environment
 from savi_simulation import Simulation
 
@@ -20,7 +21,7 @@ parser = argparse.ArgumentParser()
 simulation parameters
 """
 parser.add_argument('--sim_duration', type=int, default=100)  # time span for simulation
-parser.add_argument('--sim_dt', type=int, default=0.1)  # time step in simulation
+parser.add_argument('--sim_dt', type=int, default=0.05)  # time step in simulation
 parser.add_argument('--sim_lr', type=float, default=0.1)  # learning rate
 parser.add_argument('--sim_nepochs', type=int, default=100)  # number of training epochs
 parser.add_argument('--save', type=str, default='./experiment')  # save dir
@@ -58,9 +59,9 @@ parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning 
 # parser.add_argument('--agent_intent_belief', type=int, choices=[1, 1000], default=[1, 1])
 # parser.add_argument('--agent_noise_belief', type=float, choices=[0.001, 0.005], default=[0.001, 0.001])
 parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])
-parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['N', 'N'])
+parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['NA', 'NA'])
-parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['N', 'N'])
+parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--belief_weight', type=float, default=0.8)
 
 
@@ -74,10 +75,13 @@ if __name__ == "__main__":
     logger = utils.get_logger(logpath=os.path.join(args.save, 'logs'), filepath=os.path.abspath(__file__))
     logger.info(args)
     device = t.device('cuda:' + str(args.gpu) if t.cuda.is_available() else 'cpu')
+    close_action_set = np.linspace(-5, 10, 16)
+    close_action_set = close_action_set.tolist()
     if args.env_name == 'bvp_intersection':
         sim_par = {"theta": [5, 1],  # NA, A
-                   "lambda": [0.1, 1],  # N, NN
-                   "action_set": [-5, -2, 0, 5, 7],
+                   "lambda": [0.01, 0.05],  # N, NN
+                   "action_set": [-2, -1, 0, 1, 2, 3, 4, 5, 7, 10],
+                   # "action_set": close_action_set,
                    }
     elif args.env_name == 'trained_intersection':
         sim_par = {"theta": [1, 1000],  # NA, A

@@ -28,24 +28,40 @@ class FC_network(nn.Module):
             nn.Linear(layers[2], layers[3]),
             nn.Tanh(),
             nn.Linear(layers[3], layers[4]),
-            # nn.ReLU()
+            nn.Tanh()
         )
+        self.feature2 = nn.Sequential(
+            nn.Linear(layers[0], layers[1]),
+            nn.Tanh(),
+            nn.Linear(layers[1], layers[2]),
+            nn.Tanh(),
+            nn.Linear(layers[2], layers[3]),
+            nn.Tanh(),
+            nn.Linear(layers[3], layers[4]),
+            nn.Tanh()
+        )
+        # self.boundary = collision_upper
         print('------successfully FC initialization--------')
 
         if parameters is None:
             # the first NN initialization (weight and bias)
             nn.init.xavier_normal_(self.feature1[0].weight)
-            # nn.init.kaiming_normal_(self.feature1[0].weight)  # He to initialize weight when using ReLU
             nn.init.zeros_(self.feature1[0].bias)
             nn.init.xavier_normal_(self.feature1[2].weight)
-            # nn.init.kaiming_normal_(self.feature1[2].weight)
             nn.init.zeros_(self.feature1[2].bias)
             nn.init.xavier_normal_(self.feature1[4].weight)
-            # nn.init.kaiming_normal_(self.feature1[4].weight)
             nn.init.zeros_(self.feature1[4].bias)
-            # nn.init.xavier_normal_(self.feature1[6].weight)
-            nn.init.kaiming_normal_(self.feature1[6].weight)
+            nn.init.xavier_normal_(self.feature1[6].weight)
             nn.init.zeros_(self.feature1[6].bias)
+
+            nn.init.xavier_normal_(self.feature2[0].weight)
+            nn.init.zeros_(self.feature2[0].bias)
+            nn.init.xavier_normal_(self.feature2[2].weight)
+            nn.init.zeros_(self.feature2[2].bias)
+            nn.init.xavier_normal_(self.feature2[4].weight)
+            nn.init.zeros_(self.feature2[4].bias)
+            nn.init.xavier_normal_(self.feature2[6].weight)
+            nn.init.zeros_(self.feature2[6].bias)
 
         else:
             # the first NN initialization (weight and bias)
@@ -58,8 +74,22 @@ class FC_network(nn.Module):
             self.feature1[6].weight = nn.Parameter(torch.tensor(parameters['weights1'][3]).float())
             self.feature1[6].bias = nn.Parameter(torch.tensor(parameters['biases1'][3].flatten()).float())
 
+            self.feature2[0].weight = nn.Parameter(torch.tensor(parameters['weights2'][0]).float())
+            self.feature2[0].bias = nn.Parameter(torch.tensor(parameters['biases2'][0].flatten()).float())
+            self.feature2[2].weight = nn.Parameter(torch.tensor(parameters['weights2'][1]).float())
+            self.feature2[2].bias = nn.Parameter(torch.tensor(parameters['biases2'][1].flatten()).float())
+            self.feature2[4].weight = nn.Parameter(torch.tensor(parameters['weights2'][2]).float())
+            self.feature2[4].bias = nn.Parameter(torch.tensor(parameters['biases2'][2].flatten()).float())
+            self.feature2[6].weight = nn.Parameter(torch.tensor(parameters['weights2'][3]).float())
+            self.feature2[6].bias = nn.Parameter(torch.tensor(parameters['biases2'][3].flatten()).float())
+
     def forward(self, x):
-        x = self.feature1(x)
+        x1 = self.feature1(x)
+        x2 = self.feature2(x)
+        self.Lambda = 1/2 * (torch.sigmoid(-(x[:, 0] - torch.tensor(38.75, dtype=torch.float32, requires_grad=True)))
+                             + torch.sigmoid(-(x[:, 2] - torch.tensor(38.75, dtype=torch.float32, requires_grad=True))))
+        Lambda = torch.matmul(self.Lambda.reshape(-1, 1), torch.tensor(np.array([[1, 1]]), dtype=torch.float32, requires_grad=True))
+        x = x1 * Lambda + x2 * (1 - Lambda)
         return x
 
 
@@ -95,6 +125,8 @@ class HJB_network:
         self.t1 = config.t1
         self.N_states = problem.N_states
 
+        self.collision_upper = problem.R1 / 2 + problem.W1 / 2 + problem.L1
+
         # Initializes the neural network
         self.FC_network = FC_network(config.layers, parameters)
 
@@ -107,13 +139,15 @@ class HJB_network:
         for name, parameters in self.FC_network.named_parameters():
             parm[name] = parameters.detach().numpy()
 
-        weights, biases = [], []
+        weights1, biases1, weights2, biases2 = [], [], [], []
 
         for num in range(0, len(self.layers) + 2, 2):
-            weights.append(parm['feature1.{}.weight'.format(num)])
-            biases.append(parm['feature1.{}.bias'.format(num)].flatten())  # change the bias from 2-D to 1-D
+            weights1.append(parm['feature1.{}.weight'.format(num)])
+            biases1.append(parm['feature1.{}.bias'.format(num)].flatten())  # change the bias from 2-D to 1-D
+            weights2.append(parm['feature2.{}.weight'.format(num)])
+            biases2.append(parm['feature2.{}.bias'.format(num)].flatten())  # change the bias from 2-D to 1-D
 
-        return weights, biases
+        return weights1, biases1, weights2, biases2
 
     def make_eval_graph(self, t, X):
         '''Builds the NN computational graph.'''
@@ -269,48 +303,21 @@ class HJB_network:
         val_grad_err = []
         iternum = 0
 
-        # optimizer = torch.optim.Adam(self.FC_network.parameters(), lr=LR)
-        #
-        # for _ in range(EPISODE):
-        #     total_loss, _, _, _, _, _, _ = self.total_loss()
-        #
-        #     optimizer.zero_grad()
-        #     total_loss.backward(retain_graph=True)
-        #     optimizer.step()
-        #
-        #     iternum += 1
-        #     print(iternum)
-        #
-        # _, MAE_train, grad_MRL2_train, loss_V_train, loss_A_train, V_train, dVdX_train = self.total_loss()
-
-        interpolate = True
-        max_ls = 1000
-
-        optimizer = FullBatchLBFGS(self.FC_network.parameters(), lr=LR, history_size=10, line_search='Armijo',
-                                   debug=True)
-
-        def current_loss():
-            # optimizer.zero_grad()
-            total_loss, _, _, _, _, _, _ = self.total_loss()
-            optimizer.zero_grad()
-            total_loss.backward(retain_graph=True)
-            return total_loss
-
-        obj = current_loss()
+        optimizer = torch.optim.Adam(self.FC_network.parameters(), lr=LR)
 
         for _ in range(EPISODE):
-            def closure():
-                total_loss, _, _, _, _, _, _ = self.total_loss()
-                optimizer.zero_grad()
-                total_loss.backward(retain_graph=True)
-                return total_loss
+            total_loss, MAE_train, grad_MRL2_train, loss_V_train, loss_A_train, _, _ = self.total_loss()
 
-            options = {'closure': closure, 'current_loss': obj, 'eta': 2, 'max_ls': max_ls, 'interpolate': interpolate,
-                       'inplace': False}
-            optimizer.step(options)
+            optimizer.zero_grad()
+            total_loss.backward(retain_graph=True)
+            optimizer.step()
 
             iternum += 1
             print(iternum)
+            print(MAE_train.detach().numpy())
+            print(grad_MRL2_train.detach().numpy())
+            print(loss_V_train.detach().numpy())
+            print(loss_A_train.detach().numpy())
 
         _, MAE_train, grad_MRL2_train, loss_V_train, loss_A_train, V_train, dVdX_train = self.total_loss()
 
@@ -328,11 +335,9 @@ class HJB_network:
 
         V_val_scaled, V_val_descaled = self.make_eval_graph(t_val, X_val)
 
-        V_val_descaled_temp = torch.exp(V_val_descaled) - 3000
-
-        V_sum_1 = torch.sum(V_val_descaled_temp[-2:-1])  # This is V1
+        V_sum_1 = torch.sum(V_val_descaled[-2:-1])  # This is V1
         V_sum_1.requires_grad_()
-        V_sum_2 = torch.sum(V_val_descaled_temp[-1:])  # This is V2
+        V_sum_2 = torch.sum(V_val_descaled[-1:])  # This is V2
         V_sum_2.requires_grad_()
 
         dVdX_1 = torch.autograd.grad(V_sum_1, X_val, create_graph=True)[0]  # [lambda11;lambda12]
@@ -438,13 +443,6 @@ class HJB_network:
         print('Generated', X_OUT.shape[1], 'data from', Ns_sol,
               'BVP solutions in %.1f' % (time.time() - start_time), 'sec')
 
-        # data = {'t': t_OUT, 'X': X_OUT, 'A': A_OUT, 'V': V_OUT}
-        #
-        # data_V = data['V']
-        # for i in range(data_V.shape[1]):
-        #     data_V[0][i] = np.log(data_V[0][i] + 3000)
-        #     data_V[1][i] = np.log(data_V[1][i] + 3000)  # 5000 when beta = 10000
-
         data = {'X': X_OUT, 'A': A_OUT, 'V': V_OUT}
 
         data.update({
@@ -487,9 +485,6 @@ class HJB_network:
             torch.abs(self.V_train)
         )  # Value
 
-        if torch.isnan(self.MAE):
-            print('stop')
-
         self.grad_MRL2 = torch.mean(
             torch.sqrt(torch.sum((self.dVdX - self.A_train) ** 2, dim=0))
         ) / torch.mean(
@@ -498,6 +493,58 @@ class HJB_network:
 
         return self.loss, self.MAE, self.grad_MRL2, self.loss_V, self.loss_A, self.V_descaled, self.dVdX
 
+    def Q_value(self, X, t, U, theta1, theta2):
+        X_NN = torch.tensor(X, dtype=torch.float32, requires_grad=True)
+        t_NN = torch.tensor(t, dtype=torch.float32, requires_grad=True)
+        _, V_descaled = self.make_eval_graph(t_NN, X_NN)
+
+        # V1 = V_descaled[-2:-1].detach().numpy()
+        # V2 = V_descaled[-1:].detach().numpy()
+
+        V_sum1 = torch.sum(V_descaled[-2:-1])  # This is V1
+        V_sum1.requires_grad_()
+        V_sum2 = torch.sum(V_descaled[-1:])  # This is V2
+        V_sum2.requires_grad_()
+
+        dVdX1 = torch.autograd.grad(V_sum1, X_NN, create_graph=True)[0].detach().numpy()  # [lambda11;lambda12]
+        dVdX2 = torch.autograd.grad(V_sum2, X_NN, create_graph=True)[0].detach().numpy()  # [lambda21;lambda22]
+
+        A11 = dVdX1[:self.problem.N_states]
+        A12 = dVdX1[self.problem.N_states:2 * self.problem.N_states]
+        A21 = dVdX2[:self.problem.N_states]
+        A22 = dVdX2[self.problem.N_states:2 * self.problem.N_states]
+
+        # X_aug = np.vstack((X, dVdX1, dVdX2))
+        #
+        # U1, U2 = self.problem.U_star(X_aug)
+
+        U1 = U[-2:-1, :]
+        U2 = U[-1:, :]
+
+        X1 = X[:self.problem.N_states]
+        X2 = X[self.problem.N_states:2 * self.problem.N_states]
+
+        dXdt1 = np.matmul(self.problem.A, X1) + np.matmul(self.problem.B, U1)
+        dXdt2 = np.matmul(self.problem.A, X2) + np.matmul(self.problem.B, U2)
+
+        x1 = torch.tensor(X1[0], requires_grad=True, dtype=torch.float32)  # including x1,v1
+        x2 = torch.tensor(X2[0], requires_grad=True, dtype=torch.float32)  # including x2,v2
+
+        x1_in = (x1 - self.problem.R1 / 2 + theta2 * self.problem.W2 / 2) * 10  # 3
+        x1_out = -(x1 - self.problem.R1 / 2 - self.problem.W2 / 2 - self.problem.L1) * 10
+        x2_in = (x2 - self.problem.R2 / 2 + theta1 * self.problem.W1 / 2) * 10
+        x2_out = -(x2 - self.problem.R2 / 2 - self.problem.W1 / 2 - self.problem.L2) * 10
+
+        Collision_F_x = self.problem.beta * torch.sigmoid(x1_in) * torch.sigmoid(x1_out) * \
+                        torch.sigmoid(x2_in) * torch.sigmoid(x2_out)
+
+        L1 = U1 ** 2 + Collision_F_x.detach().numpy()
+        L2 = U2 ** 2 + Collision_F_x.detach().numpy()
+
+        Q1 = np.matmul(A11.T, dXdt1) + np.matmul(A12.T, dXdt2) - L1
+        Q2 = np.matmul(A21.T, dXdt1) + np.matmul(A22.T, dXdt2) - L2
+
+        return Q1, Q2
 
 class HJB_network_t0(HJB_network):
     def make_eval_graph(self, X):
@@ -641,7 +688,6 @@ class HJB_network_t0(HJB_network):
         self.V_scaled_train = torch.tensor(train_data['V_scaled'][:, idx], requires_grad=True, dtype=torch.float32)
 
         self.weight_A = torch.tensor(self.config.weight_A, requires_grad=True, dtype=torch.float32)
-        # self.weight_V = torch.tensor(self.config.weight_V, requires_grad=True, dtype=torch.float32)
 
         # ----------------------------------------------------------------------
         loss_his = []
@@ -664,6 +710,37 @@ class HJB_network_t0(HJB_network):
             print(iternum)
 
         _, MAE_train, grad_MRL2_train, loss_V_train, loss_A_train, V_train, dVdX_train = self.total_loss()
+
+        # interpolate = True
+        # max_ls = 1000
+        #
+        # optimizer = FullBatchLBFGS(self.FC_network.parameters(), lr=LR, history_size=10, line_search='Armijo',
+        #                            debug=True)
+        #
+        # def current_loss():
+        #     # optimizer.zero_grad()
+        #     total_loss, _, _, _, _, _, _ = self.total_loss()
+        #     optimizer.zero_grad()
+        #     total_loss.backward(retain_graph=True)
+        #     return total_loss
+        #
+        # obj = current_loss()
+        #
+        # for _ in range(EPISODE):
+        #     def closure():
+        #         total_loss, _, _, _, _, _, _ = self.total_loss()
+        #         optimizer.zero_grad()
+        #         total_loss.backward(retain_graph=True)
+        #         return total_loss
+        #
+        #     options = {'closure': closure, 'current_loss': obj, 'eta': 2, 'max_ls': max_ls, 'interpolate': interpolate,
+        #                'inplace': False}
+        #     optimizer.step(options)
+        #
+        #     iternum += 1
+        #     print(iternum)
+        #
+        # _, MAE_train, grad_MRL2_train, loss_V_train, loss_A_train, V_train, dVdX_train = self.total_loss()
 
         train_err.append(MAE_train)
         train_grad_err.append(grad_MRL2_train)

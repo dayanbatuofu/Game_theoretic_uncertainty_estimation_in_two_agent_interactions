@@ -3,8 +3,8 @@
 system = 'vehicle'
 # system = 'burgers'
 
-time_dependent = False  # True
-# time_dependent = True  # True
+# time_dependent = False  # True
+time_dependent = True  # True
 
 if system == 'vehicle':
     from examples.vehicle.problem_def import setup_problem, config_NN

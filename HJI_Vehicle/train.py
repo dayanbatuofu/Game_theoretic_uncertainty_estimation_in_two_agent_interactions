@@ -27,27 +27,6 @@ c = np.random.seed(config.random_seeds['train'])
 train_data = scipy.io.loadmat('examples/' + system + '/data_train.mat')
 val_data = scipy.io.loadmat('examples/' + system + '/data_val.mat')
 
-'''Value pre-process (use validation data to train the model, so just pre-process the validation train data)'''
-# train_V = train_data['V']
-# for i in range(train_V.shape[1]):
-#     train_V[0][i] = np.log(train_V[0][i] + 3000)
-#     train_V[1][i] = np.log(train_V[1][i] + 3000)  # 3000 when beta = 10000
-#
-# train_data['V_min_1'] = np.min(train_data['V'][-2:-1, :])
-# train_data['V_min_2'] = np.min(train_data['V'][-1, :])
-# train_data['V_max_1'] = np.max(train_data['V'][-2:-1, :])
-# train_data['V_max_2'] = np.max(train_data['V'][-1, :])
-
-# val_V = val_data['V']
-# for i in range(val_V.shape[1]):
-#     val_V[0][i] = np.log(val_V[0][i] + 3000)
-#     val_V[1][i] = np.log(val_V[1][i] + 3000)
-#
-# val_data['V_min_1'] = np.min(val_data['V'][-2:-1, :])
-# val_data['V_min_2'] = np.min(val_data['V'][-1, :])
-# val_data['V_max_1'] = np.max(val_data['V'][-2:-1, :])
-# val_data['V_max_2'] = np.max(val_data['V'][-1, :])
-
 if time_dependent:
     system += '/tspan'
 else:
@@ -137,10 +116,12 @@ save_me = int_input('Save model parameters? Enter 0 for no, 1 for yes:')
 save_data = int_input('Save data? Enter 0 for no, 1 for yes:')
 
 if save_me:
-    weights, biases = model.export_model()
+    weights1, biases1, weights2, biases2 = model.export_model()
     save_dict = scaling
-    save_dict.update({'weights1': weights,
-                      'biases1': biases,
+    save_dict.update({'weights1': weights1,
+                      'biases1': biases1,
+                      'weights2': weights2,
+                      'biases2': biases2,
                       'train_time': train_time})
     scipy.io.savemat(model_path, save_dict)
 

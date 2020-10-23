@@ -1,0 +1,3 @@
+[submodule "HJI_Vehicle"]
+	path = HJI_Vehicle
+	url = https://github.com/dayanbatuofu/HJI_Vehicle.git
