@@ -24,7 +24,13 @@ else:
 def get_Q_value(X, t, U, theta):
     theta1, theta2 = theta
     if theta1 == 5 and theta2 == 5:
-        model_path = 'HJI_Vehicle/examples/' + system + '/V_model.mat'
+        model_path = 'HJI_Vehicle/examples/' + system + '/V_model_na_na.mat'
+        parameters, scaling = load_NN(model_path)
+    if theta1 == 1 and theta2 == 1:
+        model_path = 'HJI_Vehicle/examples/' + system + '/V_model_a_a.mat'
+        parameters, scaling = load_NN(model_path)
+    if theta1 == 1 and theta2 == 5:
+        model_path = 'HJI_Vehicle/examples/' + system + '/V_model_a_na.mat'
         parameters, scaling = load_NN(model_path)
     model = HJB_network(problem, scaling, config, parameters)
     Q1, Q2 = model.Q_value(X, t, U, theta1, theta2)

@@ -8,6 +8,7 @@ Empathetic: with NFSP, perform inference on both agent (change environment = tra
 """
 import torch
 import numpy as np
+from scipy.special import logsumexp
 # from sklearn.preprocessing import normalize
 from models.rainbow.set_nfsp_models import get_models
 from HJI_Vehicle.utilities.neural_networks import HJB_network_t0 as HJB_network
@@ -2155,6 +2156,7 @@ class InferenceModel:
 
     def bvp_empathetic_inference(self, agent, sim):
         """
+        Using Q values from value network trained from BVP solver
         When QH also depends on xM,uM
         :return:P(beta_h, beta_m_hat | D(k))
         """
@@ -2185,31 +2187,12 @@ class InferenceModel:
         self.traj_h.append([last_state_h, last_action_h])
         self.traj_m.append([last_state_m, last_action_m])
 
-        def bvp_q_function(state_h, state_m, action_h, action_m, theta_h, theta_m):
-            """
-            extracts the Q function and obtain Q value given current state configuration
-            :param state_h:
-            :param state_m:
-            :param intent:
-            :return:
-            """
-            "Need state for agent H: xH, vH, xM, vM"  # TODO: check if this is right
-            p1_state_nn = [state_h[1], state_h[3], state_m[0], state_m[2]]
-            p2_state_nn = [state_m[0], state_m[2], state_h[1], state_h[3]]
-
-            # TODO: theta is not considered yet! all will get the same theta
-            Q1, Q2 = get_Q_value(p1_state_nn, [action_h, action_m])
-
-            return [Q1, Q2]
-
         def action_prob(state_h, state_m, beta_h, beta_m):
             """
             Equation 1
             calculate action prob for both agents
             :param state_h:
             :param state_m:
-            :param _lambda:
-            :param theta:
             :return: [p_action_H, p_action_M], where p_action = [p_a1, ..., p_a5]
             """
 
@@ -2220,25 +2203,47 @@ class InferenceModel:
             p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
             _lambda = [lambda_h, lambda_m]
 
-            # TODO: math needs to be checked
             _p_action_1 = np.zeros(((len(action_set)), len(action_set)))
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
+            time = np.array([[self.frame]])
+
             for i, p_a_h in enumerate(_p_action_1):
                 for j, p_a_m in enumerate(_p_action_1[i]):
-                    # TODO: need to input thetas when models are ready
-                    q1, q2 = get_Q_value(p1_state_nn, np.array([[action_set[i]], [action_set[j]]]), (1, 1))
+                    if (theta_h, theta_m) == (5, 1):  # Flip NA_A to A_NA
+                        q2, q1 = get_Q_value(p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                             (theta_m, theta_h))  # A_NA
+                    else:
+                        q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
+                                             (theta_h, theta_m))
                     lamb_Q1 = q1 * lambda_h
-                    _p_action_1[i][j] = np.exp(lamb_Q1)
+                    _p_action_1[i][j] = lamb_Q1
                     lamb_Q2 = q2 * lambda_m
-                    _p_action_2[i][j] = np.exp(lamb_Q2)
+                    _p_action_2[i][j] = lamb_Q2
 
-            "normalizing"
-            _p_action_1 /= np.sum(_p_action_1)
-            _p_action_2 /= np.sum(_p_action_2)
+            "using logsumexp to prevent nan"
+            Q1_logsumexp = logsumexp(_p_action_1)
+            Q2_logsumexp = logsumexp(_p_action_2)
+            "normalizing"  # TODO: check if this works
+            _p_action_1 -= Q1_logsumexp
+            _p_action_2 -= Q2_logsumexp
+            _p_action_1 = np.exp(_p_action_1)
+            _p_action_2 = np.exp(_p_action_2)
             assert round(np.sum(_p_action_1)) == 1
             assert round(np.sum(_p_action_2)) == 1
+            'p action based on observed action of other agent'
+            _last_action_h = self.traj_h[-1][1]
+            _last_action_m = self.traj_m[-1][1]
+            ah = action_set.index(_last_action_h)
+            am = action_set.index(_last_action_m)
+            _pa_1_t = np.transpose(_p_action_1)
+            _pa_1 = _pa_1_t[am]  # column of pa
+            _pa_2 = _p_action_2[ah]
+            _pa_1 /= np.sum(_pa_1)
+            _pa_2 /= np.sum(_pa_2)
+            assert round(np.sum(_pa_1)) == 1
+            assert round(np.sum(_pa_2)) == 1
 
-            return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
+            return [_pa_1, _pa_2]  # [exp_Q_h[past_am], exp_Q_m[past_ah]]
 
         def past_action_prob(state_h, state_m, beta_h, beta_m, action_h, action_m):
             """
@@ -2261,23 +2266,43 @@ class InferenceModel:
             am = action_set.index(action_m)
             _lambda = [lambda_h, lambda_m]
 
-            # TODO: math needs to be checked
             _p_action_1 = np.zeros(((len(action_set)), len(action_set)))
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
+            time = np.array([[self.frame]])
+
             for i, p_a_h in enumerate(_p_action_1):
                 for j, p_a_m in enumerate(_p_action_1[i]):
-                    q1, q2 = get_Q_value(p1_state_nn, np.array([[action_set[i]], [action_set[j]]]), (1, 1))  # TODO: give theta
+                    if (theta_h, theta_m) == (5, 1):  # Flip NA_A to A_NA
+                        q2, q1 = get_Q_value(p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                             (theta_m, theta_h))  # A_NA
+                    else:
+                        q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
+                                             (theta_h, theta_m))
                     lamb_Q1 = q1 * lambda_h
-                    _p_action_1[i][j] = np.exp(lamb_Q1)
+                    _p_action_1[i][j] = lamb_Q1
                     lamb_Q2 = q2 * lambda_m
-                    _p_action_2[i][j] = np.exp(lamb_Q2)
+                    _p_action_2[i][j] = lamb_Q2
 
-            "normalizing"  # TODO: check if this works
-            _p_action_1 /= np.sum(_p_action_1)
-            _p_action_2 /= np.sum(_p_action_2)
+            "using logsumexp to prevent nan"
+            Q1_logsumexp = logsumexp(_p_action_1)
+            Q2_logsumexp = logsumexp(_p_action_2)
+            "normalizing"
+            _p_action_1 -= Q1_logsumexp
+            _p_action_2 -= Q2_logsumexp
+            _p_action_1 = np.exp(_p_action_1)
+            _p_action_2 = np.exp(_p_action_2)
             assert round(np.sum(_p_action_1)) == 1
             assert round(np.sum(_p_action_2)) == 1
-            p_action_past = [_p_action_1[ah][am], _p_action_2[ah][am]]
+            'p action based on observed action of other agent'
+            _pa_1_t = np.transpose(_p_action_1)
+            _pa_1 = _pa_1_t[am]  # column of pa
+            _pa_2 = _p_action_2[ah]
+            _pa_1 /= np.sum(_pa_1)
+            _pa_2 /= np.sum(_pa_2)
+            assert round(np.sum(_pa_1)) == 1
+            assert round(np.sum(_pa_2)) == 1
+
+            p_action_past = [_pa_1[ah], _pa_2[am]]  # TODO: CHECK THIS!
 
             return p_action_past, [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 
@@ -2306,15 +2331,17 @@ class InferenceModel:
             past_state_m, last_action_m = traj_m[-1]
             ah = self.action_set.index(last_action_h)
             am = self.action_set.index(last_action_m)
+            # prior = resample(prior, epsilon=0.05)
             for i in range(len(p_betas_d)):
                 for j in range(len(p_betas_d[i])):
                     p_a_past, p_action = past_action_prob(past_state_h, past_state_m, beta_set[i], beta_set[j],
-                                           last_action_h, last_action_m)  # action prob for last time step!
+                                                          last_action_h, last_action_m)  # action prob for last time step!
                     # TODO: need to get q with mixed strategy!
                     p_a_pair = p_a_past[0] * p_a_past[1]
                     "P(Q2|D(k)) = P(uH, uM|x(k), QH, QM) * P(Q2|D(k-1)) / sum(~)"
                     p_betas_d[i][j] = p_a_pair * prior[i][j]
             p_betas_d /= np.sum(p_betas_d)
+            p_betas_d = resample(p_betas_d, epsilon=0.05)
             assert round(np.sum(p_betas_d)) == 1  # make sure this calculation is correct; no need to normalize
             return p_betas_d
 
@@ -2398,12 +2425,13 @@ class InferenceModel:
         p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
 
         "getting most likely action for analysis purpose"
-        # TODO: this is not correct: empathetic vs non-empathetic (not the right beta)
+        # TODO: this is not correct: empathetic vs 'non-empathetic' (not the right beta for NE)
         p_actions = action_prob(curr_state_h, curr_state_m, new_beta_h, new_beta_m)  # for testing with decision
         predicted_actions = []
         for i, p_a in enumerate(p_actions):  # TODO: this is probably not mathematically correct, but for now
-            p_a_id = np.unravel_index(p_a.argmax(), p_a.shape)  # choose action for self based on the NE
-            predicted_actions.append(self.action_set[p_a_id[i]])  # TODO: check this
+            # p_a_id = np.unravel_index(p_a.argmax(), p_a.shape)  # choose action for self based on the NE
+            p_a_id = np.argmax(p_a)
+            predicted_actions.append(self.action_set[p_a_id])  # TODO: check this
 
         # IMPORTANT: Best beta pair =/= Best beta !!!
         # p_theta_prime, suited_lambdas <- predicted_intent other

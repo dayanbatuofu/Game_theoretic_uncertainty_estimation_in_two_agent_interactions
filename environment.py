@@ -26,18 +26,22 @@ class Environment:
         self.agent_noise_belief = []
         # TODO: process the intent and noise from main for generalization
         for i in range(len(agent_intent)):
+            'check agent theta'
             if agent_intent[i] == 'NA':
                 self.agent_intent.append(sim_par['theta'][0])
             elif agent_intent[i] == 'A':
                 self.agent_intent.append(sim_par['theta'][1])
+            'check agent theta belief'
             if agent_intent_belief[i] == 'NA':
                 self.agent_intent_belief.append(sim_par['theta'][0])
             elif agent_intent_belief[i] == 'A':
                 self.agent_intent_belief.append(sim_par['theta'][1])
+            'check agent lambda'
             if agent_noise[i] == 'N':
                 self.agent_noise.append(sim_par['lambda'][0])
             elif agent_noise[i] == 'NN':
                 self.agent_noise.append(sim_par['lambda'][1])
+            'check agent lambda belief'
             if agent_noise_belief[i] == 'N':
                 self.agent_noise_belief.append(sim_par['lambda'][0])
             elif agent_noise_belief[i] == 'NN':
@@ -175,25 +179,25 @@ class Environment:
             # vy_H = np.random.uniform(18, 25)
             # sx_M = np.random.uniform(15, 20)
             # vx_M = np.random.uniform(18, 25)
-            sy_H = 15
+            sy_H = 20  # P1
             vy_H = 18
-            sx_M = 16
+            sx_M = 15  # P2
             vx_M = 18
 
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
                              "initial_action": [0.],  # accel TODO: this is using 0 as initial action for now
-                             "par": (self.agent_intent[0], self.agent_noise[0]),  # aggressiveness: check main
-                             "belief": (self.agent_intent_belief[0], self.agent_noise_belief[0]),
+                             "par": [self.agent_intent[0], self.agent_noise[0]],  # DON'T CHANGE; par is defined in main
+                             "belief": [self.agent_intent_belief[0], self.agent_noise_belief[0]],
                              # belief of other's params (beta: (theta, lambda))
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
                              "initial_state": [[sx_M, 0, vx_M, 0]],
                              "desired_state": [-0.4, 0],
                              "initial_action": [0.],
-                             "par": (self.agent_intent[1], self.agent_noise[1]),  # aggressiveness: check main
-                             "belief": (self.agent_intent_belief[1], self.agent_noise_belief[1]),
+                             "par": [self.agent_intent[1], self.agent_noise[1]],  # aggressiveness: check main
+                             "belief": [self.agent_intent_belief[1], self.agent_noise_belief[1]],
                              # belief of other's params (beta: (theta, lambda))
                              "orientation": -90.},
                             ]

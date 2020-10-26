@@ -7,6 +7,7 @@ import numpy as np
 import torch as t
 import sys
 import random
+from scipy.special import logsumexp
 # TODO: organize this
 sys.path.append('/models/rainbow/')
 from models.rainbow.arguments import get_args
@@ -181,30 +182,24 @@ class DecisionModel:
 
         actions = []
         for i, p_a in enumerate([p_action1, p_action2]):
+            ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
+            ui_i = action_set.index(ui)
+            if i == 0:
+                p_a_t = np.transpose(p_a)
+                p_a_self = p_a_t[ui_i]
+            elif i == 1:
+                p_a_self = p_a[ui_i]
+            else:
+                print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+            "noisy: randomly pick action, otherwise extract from highest mass"
             if self.noisy:
-                # TODO: flatten p_a -> draw action id -> get action from set
-                p_a = np.array(p_a).tolist()
+                p_a_self = np.array(p_a_self).tolist()
                 "drawing action from action set using the distribution"
-                # TODO: need to obtain the mixed strategy array
-                # ===================================
-                p_a_s = []
-                for pa in p_a:  # summing over rows
-                    p_a_s.append(sum(pa))
-                assert len(p_a_s) == len(action_set)
-                # ===================================
-                action = random.choices(action_set, weights=p_a_s, k=1)  # p_a needs 1D array
+                action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
                 actions.append(action[0])
             else:
                 # TODO: get u_k-1 for the other agent
-                ui = self.sim.agents[i-1].action[self.frame - 1]  # other agent's last action
-                ui_i = action_set.index(ui)
-                if i == 0:
-                    p_a_t = np.transpose(p_a)
-                    p_a_self = p_a_t[ui_i]
-                elif i == 1:
-                    p_a_self = p_a[ui_i]
-                else:
-                    print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+
                 action_id = np.argmax(p_a_self)
                 # action_id = np.unravel_index(p_a.argmax(), p_a.shape)
                 actions.append(action_set[action_id])
@@ -406,11 +401,12 @@ class DecisionModel:
         lambda_list = self.lambda_list
         theta_list = self.theta_list
         if self.sim.frame == 0:
+            # TODO: why not just get it from env???
             p_beta = self.sim.initial_belief
             beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
             beta_h = self.beta_set[beta_pair_id[0]]
             beta_m = self.beta_set[beta_pair_id[1]]
-            assert beta_h[0], beta_m[0] == self.true_params
+            assert beta_h[0], beta_m[0] == self.true_params  # TODO: check if this is ever ran
         else:
             p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
 
@@ -419,22 +415,36 @@ class DecisionModel:
         # TODO: this is placeholder; probably not right to do this
         "this is where non_empathetic is different: using true param of self"
         true_beta_h, true_beta_m = self.true_params
+        b_id_h = self.beta_set.index(true_beta_h)
+        b_id_m = self.beta_set.index(true_beta_m)
+        p_b_h = np.transpose(p_beta)[b_id_m]
+        p_b_m = p_beta[b_id_h]
+        beta_h = self.beta_set[np.argmax(p_b_h)]
+        beta_m = self.beta_set[np.argmax(p_b_m)]
+        # TODO: true_param_id -> get row/col of p_beta -> get predicted beta
         p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
         p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, true_beta_m)
 
         actions = []
-        for p_a in (p_action1, p_action2):
-            # TODO: flatten p_a -> draw action id -> get action from set
-            p_a = np.array(p_a).tolist()
-            "drawing action from action set using the distribution"
-            # TODO: need to obtain the mixed strategy array
-            # ===================================
-            p_a_s = []
-            for pa in p_a:
-                p_a_s.append(sum(pa))
-            assert len(p_a_s) == len(action_set)
-            # ===================================
-            action = random.choices(action_set, weights=p_a_s, k=1)  # p_a needs 1D array
+        for i, p_a in enumerate([p_action1, p_action2]):
+            ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
+            ui_i = action_set.index(ui)
+            if i == 0:
+                p_a_t = np.transpose(p_a)
+                p_a_self = p_a_t[ui_i]
+            elif i == 1:
+                p_a_self = p_a[ui_i]
+            else:
+                print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+            p_a_self = np.array(p_a_self).tolist()
+            # "drawing action from action set using the distribution"
+            # # ===================================
+            # p_a_s = []
+            # for pa in p_a:
+            #     p_a_s.append(sum(pa))
+            # assert len(p_a_s) == len(action_set)
+            # # ===================================
+            action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
             actions.append(action[0])  # TODO: check why it's list
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
@@ -473,21 +483,31 @@ class DecisionModel:
         # TODO: this is placeholder; probably not right to do this
         "this is where empathetic is different: using predicted param of self"
         true_beta_h, true_beta_m = self.true_params
-        p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, beta_m)
+        # p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, beta_m)
+        # TODO: check if this is right for empathetic
+        p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
+        p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, true_beta_m)
 
         actions = []
-        for p_a in (p_action1, p_action2):
-            # TODO: flatten p_a -> draw action id -> get action from set
-            p_a = np.array(p_a).tolist()
-            "drawing action from action set using the distribution"
-            # TODO: need to obtain the mixed strategy array
-            # ===================================
-            p_a_s = []
-            for pa in p_a:
-                p_a_s.append(sum(pa))
-            assert len(p_a_s) == len(action_set)
-            # ===================================
-            action = random.choices(action_set, weights=p_a_s, k=1)
+        for i, p_a in enumerate([p_action1, p_action2]):
+            ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
+            ui_i = action_set.index(ui)
+            if i == 0:
+                p_a_t = np.transpose(p_a)
+                p_a_self = p_a_t[ui_i]
+            elif i == 1:
+                p_a_self = p_a[ui_i]
+            else:
+                print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+            p_a_self = np.array(p_a_self).tolist()
+            # "drawing action from action set using the distribution"
+            # # ===================================
+            # p_a_s = []
+            # for pa in p_a:
+            #     p_a_s.append(sum(pa))
+            # assert len(p_a_s) == len(action_set)
+            # # ===================================
+            action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
             actions.append(action[0])  # TODO: check why it's list
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
@@ -572,17 +592,28 @@ class DecisionModel:
         _p_action_1 = np.zeros((len(action_set), len(action_set)))
         _p_action_2 = np.zeros((len(action_set), len(action_set)))
         time = np.array([[self.frame]])
+
         for i, p_a_h in enumerate(_p_action_1):
             for j, p_a_m in enumerate(_p_action_1[i]):
-                q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]), (5, 5))  # TODO: theta is not considered yet! all will get the same theta
+                if (theta_h, theta_m) == (5, 1):  # Flip NA_A to A_NA
+                    q2, q1 = get_Q_value(p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                         (theta_m, theta_h))  # A_NA
+                else:
+                    q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]), (theta_h, theta_m))
                 lamb_Q1 = q1 * lambda_h
-                _p_action_1[i][j] = np.exp(lamb_Q1)
+                _p_action_1[i][j] = lamb_Q1
                 lamb_Q2 = q2 * lambda_m
-                _p_action_2[i][j] = np.exp(lamb_Q2)
+                _p_action_2[i][j] = lamb_Q2
 
+        "using logsumexp to prevent nan"
+        Q1_logsumexp = logsumexp(_p_action_1)
+        Q2_logsumexp = logsumexp(_p_action_2)
         "normalizing"  # TODO: check if this works
-        _p_action_1 /= np.sum(_p_action_1)
-        _p_action_2 /= np.sum(_p_action_2)
+        _p_action_1 -= Q1_logsumexp
+        _p_action_2 -= Q2_logsumexp
+        _p_action_1 = np.exp(_p_action_1)
+        _p_action_2 = np.exp(_p_action_2)
+
         print('p1 state:', p1_state_nn)
         print("action prob 1 from bvp:", _p_action_1)
         print("action prob 2 from bvp:", _p_action_2)

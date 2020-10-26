@@ -5,6 +5,7 @@ import datetime
 import pickle
 import torch as t
 import numpy as np
+import csv
 from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
@@ -34,6 +35,10 @@ class Simulation:
         self.sharing_belief = True  # TODO: set condition for this
         self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
+        if self.inference_type[1] == 'none':
+            self.drawing_intent = False
+        else:
+            self.drawing_intent = True
         self.saving_png = False  # TODO: implement this in run
         if env.name == 'bvp_intersection':  # don't draw future states
             self.drawing_prob = False
@@ -52,14 +57,6 @@ class Simulation:
         if self.env.name == 'merger':
             self.action_set = self.action_set_combo
 
-        'getting ground truth betas'
-        self.true_params = []
-        for i, par_i in enumerate(self.env.car_par):
-            self.true_params.append(par_i["par"])
-        'getting initial beliefs of others'
-        self.belief_params = []
-        for i, par_i in enumerate(self.env.car_par):
-            self.belief_params.append(par_i["belief"])
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
@@ -70,13 +67,25 @@ class Simulation:
         for i, theta in enumerate(self.theta_list):
             for j, _lambda in enumerate(self.lambda_list):
                 self.beta_set.append([theta, _lambda])
+
+        'getting ground truth betas'
+        self.true_params = []
+        self.true_params_id = []
+        for i, par_i in enumerate(self.env.car_par):
+            self.true_params.append(par_i["par"])
+            self.true_params_id.append(self.beta_set.index(par_i["par"]))
+        'getting initial beliefs of others'
+        self.belief_params = []
+        for i, par_i in enumerate(self.env.car_par):
+            self.belief_params.append(par_i["belief"])
+
         self.action_distri_1 = []
         self.action_distri_2 = []
         self.belief_weight = belief_weight
-        self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0],
-                                                      self.env.car_par[0]['belief'][0],
-                                                      self.env.car_par[1]['belief'][1],
-                                                      self.env.car_par[0]['belief'][1],
+        self.initial_belief = self.get_initial_belief(self.env.car_par[1]['belief'][0],  # theta_h
+                                                      self.env.car_par[0]['belief'][0],  # theta_m
+                                                      self.env.car_par[1]['belief'][1],  # lambda_h
+                                                      self.env.car_par[0]['belief'][1],  # lambda_m
                                                       weight=self.belief_weight)  # note: use params from the other agent's belief
         self.past_loss1 = []  # for storing loss of simulation
         self.past_loss2 = []
@@ -134,7 +143,7 @@ class Simulation:
                     print("terminating on vehicle merger:")
                     break
             elif self.env.name == 'bvp_intersection':
-                if y_H >= 40 and x_M >= 40:
+                if y_H >= 38 and x_M >= 38:
                     print("terminating on vehicle passed intersection:", y_H, x_M)
                     break
             else:
@@ -170,11 +179,15 @@ class Simulation:
             if not self.paused:
                 self.frame += 1
         pg.quit()
+        if self.env.name == 'bvp_intersection':
+            self.write_loss()
+            print('writing to cvs file')
         "drawing results"
         self.vis.draw_dist()
-        if self.drawing_prob:
+        if self.drawing_intent:
             self.vis.draw_intent()
-        self.vis.plot_loss()
+        if self.env.name == 'bvp_intersection':
+            self.vis.plot_loss()
         print("-------Simulation results:-------")
         print("inference types:", self.inference_type)
         print("decision types:", self.decision_type)
@@ -242,6 +255,8 @@ class Simulation:
                     #     belief[i][j] = weight
                     # else:
                     #     belief[i][j] = 1
+        elif self.inference_type[1] == 'none':
+            belief = 1  # no inference
 
         # TODO: not in use! we only use the game theoretic inference
         else:  # get belief on H agent only
@@ -340,3 +355,29 @@ class Simulation:
         self.past_loss1.append(L1)
         self.past_loss2.append(L2)
         return
+
+    def write_loss(self):
+        states_1 = self.agents[0].state
+        states_2 = self.agents[1].state
+        x1 = []
+        x2 = []
+        for i in range(len(states_1) - 1):
+            x1.append(states_1[i][1])
+            x2.append(states_2[i][0])
+        assert len(x1) == len(self.past_loss1)
+
+        'writing to csv file'
+
+        filename = 'experiment/' + 'traj_loss' + str(x1[0]) + str(x2[0])+'_'\
+                   + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0])+'.csv'
+        with open(filename, 'w') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(self.past_loss1)
+            csv_writer.writerow(x1)
+            csv_writer.writerow(x2)
+        return
+
+    def calc_social_val(self):
+        # TODO: implement function for hypothesis tests
+        return
+

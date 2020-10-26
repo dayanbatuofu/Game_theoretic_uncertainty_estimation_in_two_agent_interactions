@@ -31,6 +31,24 @@ class VisUtils:
         self.sim = sim
         self.env = sim.env
         self.drawing_prob = sim.drawing_prob
+        self.drawing_intent = sim.drawing_intent
+        # TODO: organize this!
+        if self.drawing_intent:
+            self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
+            self.p_state_M = sim.agents[1].predicted_states_self
+            self.past_state_h = sim.agents[1].state[-1]
+            self.past_state_m = sim.agents[0].state[-1]
+            self.intent_h = []
+            self.intent_m = []
+            self.intent_distri_h = [[], []]  # theta1, theta2
+            self.intent_distri_m = [[], []]  # theta1, theta2
+            self.lambda_h = []
+            self.lambda_m = []
+            self.true_params = self.sim.true_params
+            self.true_intent_h = []
+            self.true_intent_m = []
+            self.true_noise_h = []
+            self.true_noise_m = []
         if self.drawing_prob:
             self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
             self.p_state_M = sim.agents[1].predicted_states_self
@@ -325,7 +343,7 @@ class VisUtils:
         #         pg.display.update()
 
         self.calc_dist()
-        if self.drawing_prob:
+        if self.drawing_intent:
             self.calc_intent()
 
     def draw_axes(self):
@@ -389,43 +407,53 @@ class VisUtils:
                               (bounds[1] + bounds[0]) / 2), bounds[0] - bounds[1])
 
     def draw_dist(self):
-        # TODO: implement plotting of distance between cars over time
-        # pyplot.plot(self.dist)
-        # pyplot.plot(self.sim.agents[0].action)
+        """
+        plotting distance between cars and action taken
+        :return:
+        """
         fig1, (ax1, ax2, ax3) = pyplot.subplots(3) #3 rows
         fig1.suptitle('Euclidean distance and Agent Actions')
         ax1.plot(self.dist, label='car dist')
         ax1.legend()
         ax1.set(xlabel='time', ylabel='distance')
 
-        #fig1, (ax2) = pyplot.subplots(1)
-        #fig1.suptitle('Actions of H at each time')
         ax2.plot(self.sim.agents[0].action, label='actual')
         ax2.plot(self.sim.agents[1].predicted_actions_other, label='predicted', linestyle='--')
         ax2.set_ylim([-10, 10])
         ax2.set_yticks([-8, -4, 0, 4, 8])
+        if self.env.name == 'bvp_intersection':
+            ax2.set_ylim([-7, 12])
+            ax2.set_yticks([-5, 0, 5, 10])
         ax2.legend()
         ax2.set(xlabel='time', ylabel='H actions')
 
-        #fig1, (ax3) = pyplot.subplots(1)
-        #fig1.suptitle('Actions of M at each time')
         ax3.plot(self.sim.agents[1].action, label='actual')
         ax3.plot(self.sim.agents[1].predicted_actions_self, label='predicted', linestyle='--')
         ax3.set_ylim([-10, 10])
         ax3.set_yticks([-8, -4, 0, 4, 8])
+        if self.env.name == 'bvp_intersection':
+            ax3.set_ylim([-7, 12])
+            ax3.set_yticks([-5, 0, 5, 10])
         ax3.legend()
         ax3.set(xlabel='time', ylabel='M actions')
-        # pyplot.ylabel("distance")
-        # pyplot.xlabel("time")
 
         pyplot.show()
 
     def calc_dist(self):
-        past_state_h = self.sim.agents[0].state[-1]
-        past_state_m = self.sim.agents[1].state[-1]
-        dist_h = past_state_h[1]
-        dist_m = past_state_m[0]
-        dist = np.sqrt(dist_h * dist_h + dist_m * dist_m)
+        """
+        recording distance between two cars
+        :return:
+        """
+        past_state_h = self.sim.agents[0].state[self.frame]
+        past_state_m = self.sim.agents[1].state[self.frame]
+        x_h = past_state_h[1]
+        x_m = past_state_m[0]
+        if self.env.name == 'bvp_intersection':
+            x_h = 35 - x_h
+            x_m = 35 - x_m
+            dist = np.sqrt(x_h * x_h + x_m * x_m)
+        else:
+            dist = np.sqrt(x_h * x_h + x_m * x_m)
         self.dist.append(dist)
 
     def calc_intent(self):
@@ -435,7 +463,7 @@ class VisUtils:
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
         if self.sim.sharing_belief:  # both agents uses same belief from empathetic inference
-            beta_h, beta_m = self.sim.agents[1].predicted_intent_all[-1][1]
+            p_beta_d, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
             self.intent_h.append(beta_h[0])
             self.intent_m.append(beta_m[0])
             self.lambda_h.append(beta_h[1])
@@ -578,8 +606,9 @@ class VisUtils:
             ax5.plot(self.lambda_m, label='M ration', linestyle='--')
             ax5.legend()
             ax5.set_yticks(lambda_list)
-            ax5.set(xlabel='time', ylabel='intent')
-
+            ax5.set(xlabel='time', ylabel='noise')
+            print('Predicted H intent distri', self.intent_distri_h)
+            print('Predicted M intent distri', self.intent_distri_m)
         else:
             print("predicted intent H", self.intent_h)
             print("predicted intent for H from AV:", self.sim.agents[1].predicted_intent_other)
@@ -685,8 +714,6 @@ class VisUtils:
         for i in range(len(states_1)-1):
             x1.append(states_1[i][1])
             x2.append(states_2[i][0])
-        print(x1)
-        print(loss)
         assert len(x1) == len(loss)
 
         fig = pyplot.figure()
@@ -696,6 +723,9 @@ class VisUtils:
         ax.set_xlabel('P1 location')
         ax.set_ylabel('P2 location')
         ax.set_zlabel('Loss')
+        # ax.xlim([15, 40])
+        # ax.ylim([15, 40])
+        # ax.axis('equal')
         pyplot.show()
 
     def c2p(self, coordinates):

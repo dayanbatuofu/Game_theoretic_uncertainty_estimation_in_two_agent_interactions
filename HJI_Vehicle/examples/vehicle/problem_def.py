@@ -58,7 +58,7 @@ class config_NN (config_prototype):
         self.min_rounds = 1
 
         # List or array of weights on gradient term, length = max_rounds
-        self.weight_A = [0.001]  # 1
+        self.weight_A = [1.]  # 1
         # List or array of weights on control learning term, not used in paper
         self.weight_U = [0.]  # 0.1
 
