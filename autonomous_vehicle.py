@@ -56,6 +56,7 @@ class AutonomousVehicle:
         snapshot = sim.snapshot()  # snapshot = agent.copy() => snapshot taken before updating
 
         # perform inference
+        # if not self.sim.frame == 0:
         inference = self.inference_model.infer(snapshot, sim)
         DataUtil.update(self, inference)
 

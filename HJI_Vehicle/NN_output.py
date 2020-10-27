@@ -21,7 +21,8 @@ else:
 # Loads neural network
 # start_time = time.time()
 
-def get_Q_value(X, t, U, theta):
+
+def get_Q_value(X, t, U, theta, deltaT=0.05):
     theta1, theta2 = theta
     if theta1 == 5 and theta2 == 5:
         model_path = 'HJI_Vehicle/examples/' + system + '/V_model_na_na.mat'
@@ -29,12 +30,12 @@ def get_Q_value(X, t, U, theta):
     if theta1 == 1 and theta2 == 1:
         model_path = 'HJI_Vehicle/examples/' + system + '/V_model_a_a.mat'
         parameters, scaling = load_NN(model_path)
-    if theta1 == 1 and theta2 == 5:
+    if theta1 == 5 and theta2 == 1:
         model_path = 'HJI_Vehicle/examples/' + system + '/V_model_a_na.mat'
         parameters, scaling = load_NN(model_path)
     model = HJB_network(problem, scaling, config, parameters)
-    Q1, Q2 = model.Q_value(X, t, U, theta1, theta2)
-    return Q1, Q2
+    V1, V2 = model.Q_value(X, t, U, theta1, theta2, deltaT)
+    return V1, V2
 
 # model_running = time.time() - start_time
 # print('Computation time: %.0f' % (model_running), 'sec')

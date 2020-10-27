@@ -2206,14 +2206,19 @@ class InferenceModel:
             _p_action_1 = np.zeros(((len(action_set)), len(action_set)))
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
             time = np.array([[self.frame]])
+            dt = self.sim.dt
 
             for i, p_a_h in enumerate(_p_action_1):
                 for j, p_a_m in enumerate(_p_action_1[i]):
-                    if (theta_h, theta_m) == (5, 1):  # Flip NA_A to A_NA
-                        q2, q1 = get_Q_value(p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
-                                             (theta_m, theta_h))  # A_NA
-                    else:
-                        q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
+                    new_p2_s = dynamics.bvp_dynamics_1d(state_m, action_set[j], dt)
+                    new_p1_s = dynamics.bvp_dynamics_1d(state_h, action_set[i], dt)
+                    if (theta_h, theta_m) == (1, 5):  # Flip A_AN to NA_A
+                        new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                        q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                             (theta_m, theta_h))  # NA_A
+                    else:  # for A_A, NA_NA, NA_A
+                        new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                        q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
                                              (theta_h, theta_m))
                     lamb_Q1 = q1 * lambda_h
                     _p_action_1[i][j] = lamb_Q1
@@ -2269,14 +2274,19 @@ class InferenceModel:
             _p_action_1 = np.zeros(((len(action_set)), len(action_set)))
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
             time = np.array([[self.frame]])
+            dt = self.sim.dt
 
             for i, p_a_h in enumerate(_p_action_1):
                 for j, p_a_m in enumerate(_p_action_1[i]):
-                    if (theta_h, theta_m) == (5, 1):  # Flip NA_A to A_NA
-                        q2, q1 = get_Q_value(p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
-                                             (theta_m, theta_h))  # A_NA
-                    else:
-                        q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
+                    new_p2_s = dynamics.bvp_dynamics_1d(state_m, action_set[j], dt)
+                    new_p1_s = dynamics.bvp_dynamics_1d(state_h, action_set[i], dt)
+                    if (theta_h, theta_m) == (1, 5):  # Flip A_AN to NA_A
+                        new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                        q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                             (theta_m, theta_h))  # NA_A
+                    else:  # for A_A, NA_NA, NA_A
+                        new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                        q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
                                              (theta_h, theta_m))
                     lamb_Q1 = q1 * lambda_h
                     _p_action_1[i][j] = lamb_Q1

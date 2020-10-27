@@ -493,39 +493,54 @@ class HJB_network:
 
         return self.loss, self.MAE, self.grad_MRL2, self.loss_V, self.loss_A, self.V_descaled, self.dVdX
 
-    def Q_value(self, X, t, U, theta1, theta2):
+    def Q_value(self, X, t, U, theta1, theta2, deltaT):
         X_NN = torch.tensor(X, dtype=torch.float32, requires_grad=True)
         t_NN = torch.tensor(t, dtype=torch.float32, requires_grad=True)
         _, V_descaled = self.make_eval_graph(t_NN, X_NN)
 
+        V_curr = V_descaled.detach().numpy()
+
         # V1 = V_descaled[-2:-1].detach().numpy()
         # V2 = V_descaled[-1:].detach().numpy()
-
-        V_sum1 = torch.sum(V_descaled[-2:-1])  # This is V1
-        V_sum1.requires_grad_()
-        V_sum2 = torch.sum(V_descaled[-1:])  # This is V2
-        V_sum2.requires_grad_()
-
-        dVdX1 = torch.autograd.grad(V_sum1, X_NN, create_graph=True)[0].detach().numpy()  # [lambda11;lambda12]
-        dVdX2 = torch.autograd.grad(V_sum2, X_NN, create_graph=True)[0].detach().numpy()  # [lambda21;lambda22]
-
-        A11 = dVdX1[:self.problem.N_states]
-        A12 = dVdX1[self.problem.N_states:2 * self.problem.N_states]
-        A21 = dVdX2[:self.problem.N_states]
-        A22 = dVdX2[self.problem.N_states:2 * self.problem.N_states]
-
-        # X_aug = np.vstack((X, dVdX1, dVdX2))
         #
-        # U1, U2 = self.problem.U_star(X_aug)
-
-        U1 = U[-2:-1, :]
-        U2 = U[-1:, :]
+        # delta = 0.01
+        #
+        # X_x1 = torch.tensor(X + np.array([[delta], [0.], [0.], [0.]]), dtype=torch.float32, requires_grad=True)
+        # _, V_descaled = self.make_eval_graph(t_NN, X_x1)
+        # V1_x1 = V_descaled[-2:-1].detach().numpy()
+        # V2_x1 = V_descaled[-1:].detach().numpy()
+        #
+        # X_v1 = torch.tensor(X + np.array([[0.], [delta], [0.], [0.]]), dtype=torch.float32, requires_grad=True)
+        # _, V_descaled = self.make_eval_graph(t_NN, X_v1)
+        # V1_v1 = V_descaled[-2:-1].detach().numpy()
+        # V2_v1 = V_descaled[-1:].detach().numpy()
+        #
+        # X_x2 = torch.tensor(X + np.array([[0.], [0.], [delta], [0.]]), dtype=torch.float32, requires_grad=True)
+        # _, V_descaled = self.make_eval_graph(t_NN, X_x2)
+        # V1_x2 = V_descaled[-2:-1].detach().numpy()
+        # V2_x2 = V_descaled[-1:].detach().numpy()
+        #
+        # X_v2 = torch.tensor(X + np.array([[0.], [0.], [0.], [delta]]), dtype=torch.float32, requires_grad=True)
+        # _, V_descaled = self.make_eval_graph(t_NN, X_v2)
+        # V1_v2 = V_descaled[-2:-1].detach().numpy()
+        # V2_v2 = V_descaled[-1:].detach().numpy()
+        #
+        # dVdX1 = np.vstack(((V1_x1 - V1) / delta, (V1_v1 - V1) / delta, (V1_x2 - V1) / delta, (V1_v2 - V1) / delta))
+        # dVdX2 = np.vstack(((V2_x1 - V2) / delta, (V2_v1 - V2) / delta, (V2_x2 - V2) / delta, (V2_v2 - V2) / delta))
+        #
+        # A11 = dVdX1[:self.problem.N_states]
+        # A12 = dVdX1[self.problem.N_states:2 * self.problem.N_states]
+        # A21 = dVdX2[:self.problem.N_states]
+        # A22 = dVdX2[self.problem.N_states:2 * self.problem.N_states]
+        #
+        # X1 = X[:self.problem.N_states]
+        # X2 = X[self.problem.N_states:2 * self.problem.N_states]
+        #
+        # dXdt1 = np.matmul(self.problem.A, X1) + np.matmul(self.problem.B, U1)
+        # dXdt2 = np.matmul(self.problem.A, X2) + np.matmul(self.problem.B, U2)
 
         X1 = X[:self.problem.N_states]
         X2 = X[self.problem.N_states:2 * self.problem.N_states]
-
-        dXdt1 = np.matmul(self.problem.A, X1) + np.matmul(self.problem.B, U1)
-        dXdt2 = np.matmul(self.problem.A, X2) + np.matmul(self.problem.B, U2)
 
         x1 = torch.tensor(X1[0], requires_grad=True, dtype=torch.float32)  # including x1,v1
         x2 = torch.tensor(X2[0], requires_grad=True, dtype=torch.float32)  # including x2,v2
@@ -538,13 +553,19 @@ class HJB_network:
         Collision_F_x = self.problem.beta * torch.sigmoid(x1_in) * torch.sigmoid(x1_out) * \
                         torch.sigmoid(x2_in) * torch.sigmoid(x2_out)
 
+        U1 = U[-2:-1, :]
+        U2 = U[-1:, :]
+
         L1 = U1 ** 2 + Collision_F_x.detach().numpy()
         L2 = U2 ** 2 + Collision_F_x.detach().numpy()
 
-        Q1 = np.matmul(A11.T, dXdt1) + np.matmul(A12.T, dXdt2) - L1
-        Q2 = np.matmul(A21.T, dXdt1) + np.matmul(A22.T, dXdt2) - L2
+        V1 = V_curr[-2:-1] - L1 * deltaT
+        V2 = V_curr[-1:] - L2 * deltaT
 
-        return Q1, Q2
+        # Q1 = np.matmul(A11.T, dXdt1) + np.matmul(A12.T, dXdt2) - L1
+        # Q2 = np.matmul(A21.T, dXdt1) + np.matmul(A22.T, dXdt2) - L2
+
+        return V1, V2
 
 class HJB_network_t0(HJB_network):
     def make_eval_graph(self, X):

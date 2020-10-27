@@ -14,6 +14,7 @@ from models.rainbow.arguments import get_args
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
 from HJI_Vehicle.NN_output import get_Q_value
+import dynamics
 #sys.path.append('/models/intersection_simple_nfsp/')
 #from arguments import get_args
 from models.rainbow.common.utils import epsilon_scheduler, beta_scheduler, update_target, print_log
@@ -444,8 +445,10 @@ class DecisionModel:
             #     p_a_s.append(sum(pa))
             # assert len(p_a_s) == len(action_set)
             # # ===================================
-            action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-            actions.append(action[0])  # TODO: check why it's list
+            # action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
+            # actions.append(action[0])  # TODO: check why it's list
+            ai = np.argmax(p_a_self)
+            actions.append(action_set[ai])
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
@@ -507,8 +510,10 @@ class DecisionModel:
             #     p_a_s.append(sum(pa))
             # assert len(p_a_s) == len(action_set)
             # # ===================================
-            action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-            actions.append(action[0])  # TODO: check why it's list
+            # action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
+            # actions.append(action[0])  # TODO: check why it's list
+            ai = np.argmax(p_a_self)
+            actions.append(action_set[ai])
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
@@ -584,7 +589,7 @@ class DecisionModel:
 
         _lambda = [lambda_h, lambda_m]
 
-        "Need state for agent H: xH, vH, xM, vM"  # TODO: check if this is right
+        "Need state for agent H: xH, vH, xM, vM"
         p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
         p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
 
@@ -592,14 +597,19 @@ class DecisionModel:
         _p_action_1 = np.zeros((len(action_set), len(action_set)))
         _p_action_2 = np.zeros((len(action_set), len(action_set)))
         time = np.array([[self.frame]])
-
+        dt = self.sim.dt
         for i, p_a_h in enumerate(_p_action_1):
             for j, p_a_m in enumerate(_p_action_1[i]):
-                if (theta_h, theta_m) == (5, 1):  # Flip NA_A to A_NA
-                    q2, q1 = get_Q_value(p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
-                                         (theta_m, theta_h))  # A_NA
-                else:
-                    q1, q2 = get_Q_value(p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]), (theta_h, theta_m))
+                new_p2_s = dynamics.bvp_dynamics_1d(state_m, action_set[j], dt)
+                new_p1_s = dynamics.bvp_dynamics_1d(state_h, action_set[i], dt)
+                if (theta_h, theta_m) == (1, 5):  # Flip A_AN to NA_A
+                    new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                    q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                         (theta_m, theta_h))  # NA_A
+                else:  # for A_A, NA_NA, NA_A
+                    new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                    q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
+                                         (theta_h, theta_m))
                 lamb_Q1 = q1 * lambda_h
                 _p_action_1[i][j] = lamb_Q1
                 lamb_Q2 = q2 * lambda_m

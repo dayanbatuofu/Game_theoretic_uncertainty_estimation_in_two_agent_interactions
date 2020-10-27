@@ -344,6 +344,7 @@ class VisUtils:
 
         self.calc_dist()
         if self.drawing_intent:
+            # if not self.frame == 0:
             self.calc_intent()
 
     def draw_axes(self):
@@ -565,19 +566,19 @@ class VisUtils:
             fig2, (ax1, ax2, ax3, ax4, ax5) = pyplot.subplots(5, figsize=(5, 8))
             fig2.suptitle('Predicted intent and rationality')
 
-            ax1.plot(self.intent_h, label='predicted H intent')
-            ax1.plot(self.true_intent_h, label='true H intent', linestyle='--')
+            ax1.plot(self.intent_h, label='predicted P1 intent')
+            ax1.plot(self.true_intent_h, label='true P1 intent', linestyle='--')
             ax1.legend()
             ax1.set_yticks(theta_list)
             ax1.set_yticklabels(['na', 'a'])
-            ax1.set(xlabel='time', ylabel='intent')
+            ax1.set(xlabel='time', ylabel='P1 intent')
 
-            ax2.plot(self.intent_m, label='predicted M intent')
-            ax2.plot(self.true_intent_m, label='true M intent', linestyle='--')
+            ax2.plot(self.intent_m, label='predicted P2 intent')
+            ax2.plot(self.true_intent_m, label='true P2 intent', linestyle='--')
             ax2.legend()
             ax2.set_yticks(theta_list)
             ax2.set_yticklabels(['na', 'a'])
-            ax2.set(xlabel='time', ylabel='intent')
+            ax2.set(xlabel='time', ylabel='P2 intent')
 
             w = 0.15
             # TODO: generalize for more than two thetas
@@ -588,7 +589,7 @@ class VisUtils:
             ax3.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
             ax3.legend(loc="lower right")
             ax3.set_yticks([0.25, 0.5, 0.75])
-            ax3.set(xlabel='time', ylabel='H distri')
+            ax3.set(xlabel='time', ylabel='P1 distri')
 
             w = 0.15
             x = list(range(0, len(self.intent_m)))
@@ -598,17 +599,17 @@ class VisUtils:
             ax4.bar(x2, self.intent_distri_m[1], width=0.15, label='theta 2')
             ax4.legend(loc='lower right')
             ax4.set_yticks([0.25, 0.5, 0.75])
-            ax4.set(xlabel='time', ylabel='M distri')
+            ax4.set(xlabel='time', ylabel='P2 distri')
 
             "plotting lambdas"
             print('lambdas', self.lambda_h, self.lambda_m)
-            ax5.plot(self.lambda_h, label='H ration')
-            ax5.plot(self.lambda_m, label='M ration', linestyle='--')
+            ax5.plot(self.lambda_h, label='P1 ration')
+            ax5.plot(self.lambda_m, label='P2 ration', linestyle='--')
             ax5.legend()
             ax5.set_yticks(lambda_list)
             ax5.set(xlabel='time', ylabel='noise')
-            print('Predicted H intent distri', self.intent_distri_h)
-            print('Predicted M intent distri', self.intent_distri_m)
+            print('Predicted P1 intent distri', self.intent_distri_h)
+            print('Predicted P2 intent distri', self.intent_distri_m)
         else:
             print("predicted intent H", self.intent_h)
             print("predicted intent for H from AV:", self.sim.agents[1].predicted_intent_other)
@@ -719,13 +720,13 @@ class VisUtils:
         fig = pyplot.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.scatter(x1, x2, loss)
+        ax.set_xticks([15, 20, 25, 30, 35, 40, 45])
+        ax.set_yticks([15, 20, 25, 30, 35, 40, 45])
         ax.invert_xaxis()
         ax.set_xlabel('P1 location')
         ax.set_ylabel('P2 location')
         ax.set_zlabel('Loss')
-        # ax.xlim([15, 40])
-        # ax.ylim([15, 40])
-        # ax.axis('equal')
+
         pyplot.show()
 
     def c2p(self, coordinates):

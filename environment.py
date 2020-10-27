@@ -179,11 +179,13 @@ class Environment:
             # vy_H = np.random.uniform(18, 25)
             # sx_M = np.random.uniform(15, 20)
             # vx_M = np.random.uniform(18, 25)
-            sy_H = 20  # P1
+            sy_H = 15  # P1
             vy_H = 18
-            sx_M = 15  # P2
+            sx_M = 20  # P2
             vx_M = 18
 
+            assert 20 >= sy_H >= 15
+            assert 20 >= sx_M >= 15
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y

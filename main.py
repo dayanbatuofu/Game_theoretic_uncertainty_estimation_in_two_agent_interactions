@@ -47,7 +47,7 @@ parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'nfsp_baseline', 'bvp_baseline', 'baseline2', 'complete_information',
                              'non-empathetic', 'empathetic',
                              'bvp_non-empathetic', 'bvp_empathetic'],
-                    default=['bvp_non-empathetic', 'bvp_non-empathetic'])
+                    default=['bvp_empathetic', 'bvp_empathetic'])
 
 """
 agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case
@@ -60,7 +60,7 @@ parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning 
 # parser.add_argument('--agent_noise_belief', type=float, choices=[0.001, 0.005], default=[0.001, 0.001])
 parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
-parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['A', 'A'])
+parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['NA', 'NA'])
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--belief_weight', type=float, default=0.8)
 
@@ -79,9 +79,9 @@ if __name__ == "__main__":
     close_action_set = close_action_set.tolist()
     if args.env_name == 'bvp_intersection':
         sim_par = {"theta": [5, 1],  # NA, A
-                   "lambda": [0.1, 1],  # N, NN
+                   "lambda": [0.1, 0.5],  # N, NN
                    # "action_set": [-5, -3, -1, 0, 2, 4, 6, 8, 10],
-                   "action_set": [-5, 0, 3, 7, 10],
+                   "action_set": [-5, 0, 1, 2, 3],
                    # "action_set": close_action_set,
                    }
     elif args.env_name == 'trained_intersection':

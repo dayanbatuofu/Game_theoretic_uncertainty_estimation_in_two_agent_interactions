@@ -11,9 +11,9 @@ from matplotlib.collections import LineCollection
 directory = '/experiment'
 path = "experiment/*.csv"
 na_na_path = "experiment/55/*.csv"
-a_a_path = "experiment/11/*.csv"
-a_na_path = "experiment/15/*.csv"
-
+a_a_path = "experiment/new_11_2/*.csv"
+a_na_path = "experiment/new_15/*.csv"
+na_a_path = "experiment/51/*.csv"
 
 def read_csv_loss():
     # for root,dirs,files in os.walk(directory):

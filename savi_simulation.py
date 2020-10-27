@@ -203,6 +203,8 @@ class Simulation:
         print("Action taken by M:", self.agents[1].action)
         print("Loss of H (p1):", self.past_loss1)
         print("Loss of M (p2):", self.past_loss1)
+        loss = np.sum(self.past_loss1) * self.dt
+        print("loss:", loss)
 
     # TODO: store this somewhere else
     def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
@@ -330,8 +332,8 @@ class Simulation:
         state_m = self.agents[1].state[self.frame]
         xh = t.tensor(state_h[1], requires_grad=True, dtype=t.float32)
         xm = t.tensor(state_m[0], requires_grad=True, dtype=t.float32)
-        theta1 = 1
-        theta2 = 1
+        theta1 = self.true_params[0][0]
+        theta2 = self.true_params[1][0]
         R1 = 70
         R2 = 70
         W1 = 1.5
@@ -339,19 +341,19 @@ class Simulation:
         L1 = 3
         L2 = 3
         beta = 10000.
-        x1_in = (xh - R1 / 2 + theta2 * W2 / 2) * 10
+        x1_in = (xh - R1 / 2 + theta1 * W2 / 2) * 10
         x1_out = -(xh - R1 / 2 - W2 / 2 - L1) * 10
-        x2_in = (xm - R2 / 2 + theta1 * W1 / 2) * 10
+        x2_in = (xm - R2 / 2 + theta2 * W1 / 2) * 10
         x2_out = -(xm - R2 / 2 - W1 / 2 - L2) * 10
 
         Collision_F_x = beta * t.sigmoid(x1_in) * t.sigmoid(x1_out) * \
                         t.sigmoid(x2_in) * t.sigmoid(x2_out)
-        # U1 = self.agents[0].action[self.frame]
-        # U2 = self.agents[1].action[self.frame]
-        # L1 = U1 ** 2 + Collision_F_x.detach().numpy()
-        # L2 = U2 ** 2 + Collision_F_x.detach().numpy()
-        L1 = 1*Collision_F_x.detach().numpy()
-        L2 = 1*Collision_F_x.detach().numpy()
+        U1 = self.agents[0].action[self.frame]
+        U2 = self.agents[1].action[self.frame]
+        L1 = U1 ** 2 + Collision_F_x.detach().numpy()
+        L2 = U2 ** 2 + Collision_F_x.detach().numpy()
+        # L1 = 1*Collision_F_x.detach().numpy()
+        # L2 = 1*Collision_F_x.detach().numpy()
         self.past_loss1.append(L1)
         self.past_loss2.append(L2)
         return
@@ -372,7 +374,7 @@ class Simulation:
                    + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0])+'.csv'
         with open(filename, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
-            csv_writer.writerow(self.past_loss1)
+            csv_writer.writerow(self.past_loss1)  # loss1 should be same as loss2
             csv_writer.writerow(x1)
             csv_writer.writerow(x2)
         return
