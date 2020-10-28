@@ -21,7 +21,9 @@ def read_csv_loss():
     #         if file.endswith('.csv'):
     #             f = open(file, 'r')
     #             f.close()
-    loss = []
+    time = []
+    loss_1 = []
+    loss_2 = []
     x1 = []
     x2 = []
     "choose path here"
@@ -35,11 +37,13 @@ def read_csv_loss():
             rows = []
             for row in csv_reader:
                 rows.append(row)
-            loss.append(rows[0])
-            x1.append(rows[2])
-            x2.append(rows[4])
+            time.append(rows[0])
+            loss_1.append(rows[2])
+            loss_2.append(rows[4])
+            x1.append(rows[6])
+            x2.append(rows[8])
 
-    return loss, x1, x2
+    return loss_1, x1, x2
 
 
 def plot_loss():

@@ -26,6 +26,8 @@ class Simulation:
         self.end = False
         self.clock = pg.time.Clock()
         self.frame = 0
+        self.time = 0
+        self.time_stamp = []
         self.decision_type = decision_type
         self.decision_type_h = decision_type[0]
         self.decision_type_m = decision_type[1]
@@ -35,6 +37,7 @@ class Simulation:
         self.sharing_belief = True  # TODO: set condition for this
         self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
+
         if self.inference_type[1] == 'none':
             self.drawing_intent = False
         else:
@@ -129,6 +132,7 @@ class Simulation:
                 for agent in self.agents:
                     agent.update(self)  # Run simulation
             self.calc_loss()
+            self.time_stamp.append(self.time)
             # termination criteria
             if self.frame >= 25:  # TODO: modify frame limit
                 print('Simulation ended with duration exceeded limit')
@@ -178,6 +182,8 @@ class Simulation:
 
             if not self.paused:
                 self.frame += 1
+                self.time += self.dt
+
         pg.quit()
         if self.env.name == 'bvp_intersection':
             self.write_loss()
@@ -198,13 +204,14 @@ class Simulation:
         print("Initial belief:", self.initial_belief)
         # print("states of H:", self.agents[0].state)
         # print("states of H predicted by M:", self.agents[1].predicted_states_other)
-        print("Action taken by H:", self.agents[0].action)
-        print("Action of H predicted by M:", self.agents[1].predicted_actions_other)
-        print("Action taken by M:", self.agents[1].action)
+        print("Action taken by P1:", self.agents[0].action)
+        print("Action of P1 predicted by P2:", self.agents[1].predicted_actions_other)
+        print("Action taken by P2:", self.agents[1].action)
         print("Loss of H (p1):", self.past_loss1)
-        print("Loss of M (p2):", self.past_loss1)
-        loss = np.sum(self.past_loss1) * self.dt
-        print("loss:", loss)
+        print("Loss of M (p2):", self.past_loss2)
+        loss_1 = np.sum(self.past_loss1) * self.dt
+        loss_2 = np.sum(self.past_loss2) * self.dt
+        print("loss:", loss_1 + loss_2)
 
     # TODO: store this somewhere else
     def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
@@ -363,10 +370,12 @@ class Simulation:
         states_2 = self.agents[1].state
         x1 = []
         x2 = []
+        time_stamp = self.time_stamp
         for i in range(len(states_1) - 1):
             x1.append(states_1[i][1])
             x2.append(states_2[i][0])
         assert len(x1) == len(self.past_loss1)
+        # assert len(time_stamp) == len(self.past_loss1)
 
         'writing to csv file'
 
@@ -374,9 +383,12 @@ class Simulation:
                    + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0])+'.csv'
         with open(filename, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(time_stamp)
             csv_writer.writerow(self.past_loss1)  # loss1 should be same as loss2
+            csv_writer.writerow(self.past_loss2)
             csv_writer.writerow(x1)
             csv_writer.writerow(x2)
+
         return
 
     def calc_social_val(self):

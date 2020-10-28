@@ -41,6 +41,7 @@ class InferenceModel:
         self.agents = sim.agents
         self.n_agents = sim.n_agents
         self.frame = sim.frame
+        self.time = sim.time
         self.T = 1  # one step look ahead/ Time Horizon
         self.dt = sim.dt  # default is 1s: assigned in main.py
         self.car_par = sim.env.car_par
@@ -2175,6 +2176,7 @@ class InferenceModel:
         # NOTE: action prob is considering only one Nash Equilibrium (Qh, Qm) instead of a set of them!!!
         "importing agents information from Autonomous Vehicle (sim.agents)"
         self.frame = self.sim.frame
+        self.time = self.sim.time
         assert len(sim.agents[0].state) == len(sim.agents[0].action)
         curr_state_h = sim.agents[0].state[self.frame]
         last_action_h = sim.agents[0].action[self.frame - 1]
@@ -2205,7 +2207,7 @@ class InferenceModel:
 
             _p_action_1 = np.zeros(((len(action_set)), len(action_set)))
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
-            time = np.array([[self.frame]])
+            time = np.array([[self.time]])
             dt = self.sim.dt
 
             for i, p_a_h in enumerate(_p_action_1):
@@ -2273,7 +2275,7 @@ class InferenceModel:
 
             _p_action_1 = np.zeros(((len(action_set)), len(action_set)))
             _p_action_2 = np.zeros(((len(action_set)), len(action_set)))
-            time = np.array([[self.frame]])
+            time = np.array([[self.time]])
             dt = self.sim.dt
 
             for i, p_a_h in enumerate(_p_action_1):
@@ -2421,7 +2423,7 @@ class InferenceModel:
         'recording prior'
         self.p_betas_prior = p_beta_d
 
-        'getting best predicted betas'
+        'getting best predicted betas'  # TODO: change this for sim_draw when drawing for NE or E (NOT TRUE FOR NE)
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
         # print("best betas ID at time {0}".format(self.frame), beta_pair_id)
 

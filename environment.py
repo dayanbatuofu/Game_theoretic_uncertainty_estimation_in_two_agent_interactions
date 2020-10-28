@@ -9,22 +9,26 @@ from HJI_Vehicle.utilities.neural_networks import HJB_network_t0 as HJB_network
 from HJI_Vehicle.NN_output import get_Q_value
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
+from HJI_Vehicle.NN_output import get_Q_value
+import dynamics
 import torch as t
 import random
+from scipy.special import logsumexp
 
 
 class Environment:
     # add: intent, noise, intent belief, noise belief
-    def __init__(self, env_name, sim_par, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief):
+    def __init__(self, env_name, sim_par, sim_dt, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief):
 
         self.name = env_name
         self.sim = sim
         self.sim_par = sim_par
+        self.dt = sim_dt
         self.agent_intent = []
         self.agent_noise = []
         self.agent_intent_belief = []
         self.agent_noise_belief = []
-        # TODO: process the intent and noise from main for generalization
+
         for i in range(len(agent_intent)):
             'check agent theta'
             if agent_intent[i] == 'NA':
@@ -63,7 +67,7 @@ class Environment:
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, -2.0, 0, 0.1]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
-                             "initial_action": [0.],  # accel  #TODO: add steering angle
+                             "initial_action": [0.],  # accel
                              "par": 1,  # aggressiveness: check sim.theta_list
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
@@ -74,9 +78,8 @@ class Environment:
                              "orientation": -90.},
                             ]
 
-        elif self.name == 'trained_intersection':
+        elif self.name == 'trained_intersection':  # NFSP Q function is used in this env
             self.n_agents = 2
-
             self.car_width = 2  # m
             self.car_length = 4  # m
             # VEHICLE_MAX_SPEED = 40.2  # m/s
@@ -124,7 +127,7 @@ class Environment:
                              "orientation": -90.},
                             ]
 
-            # choose action base on decision type and intent
+            "choose action base on decision type and intent"
             p1_state = self.car_par[0]["initial_state"][0]
             p2_state = self.car_par[1]["initial_state"][0]
             p1_state_nn = (-p1_state[1], abs(p1_state[3]), p2_state[0], abs(p2_state[2]))  # s_ego, v_ego, s_other, v_other
@@ -137,7 +140,7 @@ class Environment:
             lambda_list = self.sim_par["lambda"]
             action_set = self.sim_par["action_set"]
             theta_list = self.sim_par["theta"]
-            for i in range(len(self.car_par)):  # TODO: need to obtain theta set instead of hard coding
+            for i in range(len(self.car_par)):
                 if self.car_par[i]["par"][0] == theta_list[0]:  # NA_NA
                     if self.car_par[i]["belief"][0] == theta_list[0]:  # TODO: check if i-1 works
                         qi = q_sets[0]
@@ -173,15 +176,15 @@ class Environment:
             # first car (H) moves bottom up, second car (M) right to left
 
             "randomly pick initial states:"
-            # initial state: x: 15 to 20, v: 18 to 25
-            # u: [-5 10]
+            # initial state range: x: 15 to 20, v: 18 to 25
+            # u range: [-5 10]
             # sy_H = np.random.uniform(15, 20)
             # vy_H = np.random.uniform(18, 25)
             # sx_M = np.random.uniform(15, 20)
             # vx_M = np.random.uniform(18, 25)
             sy_H = 15  # P1
             vy_H = 18
-            sx_M = 20  # P2
+            sx_M = 16  # P2
             vx_M = 18
 
             assert 20 >= sy_H >= 15
@@ -189,7 +192,7 @@ class Environment:
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
-                             "initial_action": [0.],  # accel TODO: this is using 0 as initial action for now
+                             "initial_action": [0.],  # accel
                              "par": [self.agent_intent[0], self.agent_noise[0]],  # DON'T CHANGE; par is defined in main
                              "belief": [self.agent_intent_belief[0], self.agent_noise_belief[0]],
                              # belief of other's params (beta: (theta, lambda))
@@ -204,57 +207,22 @@ class Environment:
                              "orientation": -90.},
                             ]
 
-            "choose action base on decision type and intent"
-            # p1_state = self.car_par[0]["initial_state"][0]
-            # p2_state = self.car_par[1]["initial_state"][0]
-            # p1_state_nn = ([p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]])  # s_ego, v_ego, s_other, v_other
-            # p2_state_nn = ([p2_state[0]], [p2_state[2]], [p1_state[1]], [p1_state[3]])
-            # pi_state = [p1_state_nn, p2_state_nn]
-            #
-            # "using bvp model for Q values"  # TODO: BVP
-            # action_set = self.sim_par["action_set"]
-            # lambda_list = self.sim_par["lambda"]
-            # theta_list = self.sim_par["theta"]
-            # q_sets = []
-            #
-            # "method 1: get all Q for all intent sets 2x2"
-            # for theta_h in theta_list:
-            #     for theta_m in theta_list:
-            #         q_values = []
-            #         for u in action_set:
-            #             Q1, Q2 = get_Q_value(p1_state_nn, u)  # TODO: give x, u, theta_h, theta_m
-            #             q_values.append(Q1)
-            #         q_sets.append(q_values)
-            #
-            # "method 2: just get the q set for true intent"
-            # # TODO: modify the below to make it work with bvp
-            #
-            # # (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2)
-            # q_sets = get_models()[0]
-            # args = get_args()
-            #
-            # for i in range(len(self.car_par)):
-            #     if self.car_par[i]["par"][0] == theta_list[0]:  # NA_NA
-            #         if self.car_par[i]["belief"][0] == theta_list[0]:  # TODO: check if i-1 works
-            #             qi = q_sets[0]
-            #         elif self.car_par[i]["belief"][0] == theta_list[1]:  # NA_A
-            #             qi = q_sets[2]
-            #         else:
-            #             print("WARNING: NO CORRESPONDING THETA FOUND")
-            #     elif self.car_par[i]["par"][0] == theta_list[1]:
-            #         if self.car_par[i]["belief"][0] == theta_list[0]:  # A_NA
-            #             qi = q_sets[3]
-            #         elif self.car_par[i]["belief"][0] == theta_list[1]:  # A_A
-            #             qi = q_sets[4]  # use a_a
-            #         else:
-            #             print("WARNING: NO CORRESPONDING THETA FOUND")
-            #     else:
-            #         print("WARNING: NO CORRESPONDING THETA FOUND")
-            #     q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
-            #     p_a = self.action_prob(q_vals_i, self.car_par[i]["par"][1])
-            #     action_i = random.choices(action_set, weights=p_a, k=1)  # draw action using the distribution
-            #     self.car_par[i]["initial_action"] = [action_i[0]]
-            # print("initial params: ", self.car_par)
+            "choose action base on decision type and intent"  # TODO: check this
+            action_set = self.sim_par["action_set"]
+            "METHOD 1: Get the whole p_action table using true param of self and belief of other's param"
+            p1_state = self.car_par[0]["initial_state"][0]
+            p2_state = self.car_par[1]["initial_state"][0]
+            true_beta_h = self.car_par[0]["par"]
+            true_beta_m = self.car_par[1]["par"]
+            belief_beta_h = self.car_par[1]["belief"]
+            belief_beta_m = self.car_par[0]["belief"]
+            p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, belief_beta_m)
+            p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, belief_beta_h, true_beta_m)
+
+            actions = []
+            for i, p_a in enumerate([p_action1, p_action2]):
+                action_id = np.unravel_index(p_a.argmax(), p_a.shape)
+                self.car_par[i]["initial_action"] = [action_set[action_id[i]]]
 
         elif self.name == 'merger':
             # TODO: modify initial state to match with trained model
@@ -305,7 +273,6 @@ class Environment:
                             ]
 
         elif self.name == 'single_agent':
-            # TODO: implement Fridovich-Keil et al. "Confidence-aware motion prediction for real-time collision avoidance"
             self.n_agents = 2  # one agent is observer
             self.bounds = [[[-0.4, 0.4], None], [None, [-0.4, 0.4]]]
 
@@ -363,6 +330,65 @@ class Environment:
         # print("exp_Q normalized:", exp_Q)
         return exp_Q
 
+    def bvp_action_prob(self, state_h, state_m, beta_h, beta_m):
+        """
+        Equation 1
+        calculate action prob for both agents
+        :param state_h:
+        :param state_m:
+        :param _lambda:
+        :param theta:
+        :return: [p_action_H, p_action_M], where p_action = [p_a1, ..., p_a5]
+        """
+
+        theta_h, lambda_h = beta_h
+        theta_m, lambda_m = beta_m
+        action_set = self.sim_par["action_set"]
+
+        _lambda = [lambda_h, lambda_m]
+
+        "Need state for agent H: xH, vH, xM, vM"
+        p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
+        p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
+
+        # TODO: math needs to be checked
+        _p_action_1 = np.zeros((len(action_set), len(action_set)))
+        _p_action_2 = np.zeros((len(action_set), len(action_set)))
+        time = np.array([[0]])
+        dt = self.dt
+        for i, p_a_h in enumerate(_p_action_1):
+            for j, p_a_m in enumerate(_p_action_1[i]):
+                new_p2_s = dynamics.bvp_dynamics_1d(state_m, action_set[j], dt)
+                new_p1_s = dynamics.bvp_dynamics_1d(state_h, action_set[i], dt)
+                if (theta_h, theta_m) == (1, 5):  # Flip A_AN to NA_A
+                    new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                    q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[action_set[j]], [action_set[i]]]),
+                                         (theta_m, theta_h))  # NA_A
+                else:  # for A_A, NA_NA, NA_A
+                    new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                    q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [action_set[j]]]),
+                                         (theta_h, theta_m))
+                lamb_Q1 = q1 * lambda_h
+                _p_action_1[i][j] = lamb_Q1
+                lamb_Q2 = q2 * lambda_m
+                _p_action_2[i][j] = lamb_Q2
+
+        "using logsumexp to prevent nan"
+        Q1_logsumexp = logsumexp(_p_action_1)
+        Q2_logsumexp = logsumexp(_p_action_2)
+        "normalizing"  # TODO: check if this works
+        _p_action_1 -= Q1_logsumexp
+        _p_action_2 -= Q2_logsumexp
+        _p_action_1 = np.exp(_p_action_1)
+        _p_action_2 = np.exp(_p_action_2)
+
+        print('p1 state:', p1_state_nn)
+        print("action prob 1 from bvp:", _p_action_1)
+        print("action prob 2 from bvp:", _p_action_2)
+        assert round(np.sum(_p_action_1)) == 1
+        assert round(np.sum(_p_action_2)) == 1
+
+        return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 
 
 
