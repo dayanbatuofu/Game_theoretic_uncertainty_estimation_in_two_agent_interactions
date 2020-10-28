@@ -416,7 +416,7 @@ class VisUtils:
         fig1.suptitle('Euclidean distance and Agent Actions')
         ax1.plot(self.dist, label='car dist')
         ax1.legend()
-        ax1.set(xlabel='time', ylabel='distance')
+        ax1.set(xlabel='frame', ylabel='distance')
 
         ax2.plot(self.sim.agents[0].action, label='actual')
         ax2.plot(self.sim.agents[1].predicted_actions_other, label='predicted', linestyle='--')
@@ -426,7 +426,7 @@ class VisUtils:
             ax2.set_ylim([-7, 12])
             ax2.set_yticks([-5, 0, 5, 10])
         ax2.legend()
-        ax2.set(xlabel='time', ylabel='H actions')
+        ax2.set(xlabel='frame', ylabel='H actions')
 
         ax3.plot(self.sim.agents[1].action, label='actual')
         ax3.plot(self.sim.agents[1].predicted_actions_self, label='predicted', linestyle='--')
@@ -436,7 +436,7 @@ class VisUtils:
             ax3.set_ylim([-7, 12])
             ax3.set_yticks([-5, 0, 5, 10])
         ax3.legend()
-        ax3.set(xlabel='time', ylabel='M actions')
+        ax3.set(xlabel='frame', ylabel='M actions')
 
         pyplot.show()
 
@@ -571,14 +571,14 @@ class VisUtils:
             ax1.legend()
             ax1.set_yticks(theta_list)
             ax1.set_yticklabels(['na', 'a'])
-            ax1.set(xlabel='time', ylabel='P1 intent')
+            ax1.set(xlabel='frame', ylabel='P1 intent')
 
             ax2.plot(self.intent_m, label='predicted P2 intent')
             ax2.plot(self.true_intent_m, label='true P2 intent', linestyle='--')
             ax2.legend()
             ax2.set_yticks(theta_list)
             ax2.set_yticklabels(['na', 'a'])
-            ax2.set(xlabel='time', ylabel='P2 intent')
+            ax2.set(xlabel='frame', ylabel='P2 intent')
 
             w = 0.15
             # TODO: generalize for more than two thetas
@@ -589,7 +589,7 @@ class VisUtils:
             ax3.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
             ax3.legend(loc="lower right")
             ax3.set_yticks([0.25, 0.5, 0.75])
-            ax3.set(xlabel='time', ylabel='P1 distri')
+            ax3.set(xlabel='frame', ylabel='P1 distri')
 
             w = 0.15
             x = list(range(0, len(self.intent_m)))
@@ -599,7 +599,7 @@ class VisUtils:
             ax4.bar(x2, self.intent_distri_m[1], width=0.15, label='theta 2')
             ax4.legend(loc='lower right')
             ax4.set_yticks([0.25, 0.5, 0.75])
-            ax4.set(xlabel='time', ylabel='P2 distri')
+            ax4.set(xlabel='frame', ylabel='P2 distri')
 
             "plotting lambdas"
             print('lambdas', self.lambda_h, self.lambda_m)
@@ -607,7 +607,7 @@ class VisUtils:
             ax5.plot(self.lambda_m, label='P2 ration', linestyle='--')
             ax5.legend()
             ax5.set_yticks(lambda_list)
-            ax5.set(xlabel='time', ylabel='noise')
+            ax5.set(xlabel='frame', ylabel='noise')
             print('Predicted P1 intent distri', self.intent_distri_h)
             print('Predicted P2 intent distri', self.intent_distri_m)
         else:
@@ -621,7 +621,7 @@ class VisUtils:
             # TODO: get actual intent from decision model/ autonomous vehicle
             ax1.set_yticks([1, 1000])
             ax1.set_yticklabels(['na', 'a'])
-            ax1.set(xlabel='time', ylabel='intent')
+            ax1.set(xlabel='frame', ylabel='intent')
 
             w = 0.15
             x = list(range(0, len(self.intent_h)))
@@ -631,13 +631,13 @@ class VisUtils:
             ax2.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
             ax2.legend()
             ax2.set_yticks([0.15, 0.5, 0.85])
-            ax2.set(xlabel='time', ylabel='probability')
+            ax2.set(xlabel='frame', ylabel='probability')
 
             "plotting lambda h"
             ax3.plot(self.lambda_h, label='predtd H rationality')
             ax3.legend()
             ax3.set_yticks(self.sim.lambda_list)
-            ax3.set(xlabel='time', ylabel='intent')
+            ax3.set(xlabel='frame', ylabel='intent')
 
         # TODO: plot actual distributions
         #pyplot.tight_layout()
