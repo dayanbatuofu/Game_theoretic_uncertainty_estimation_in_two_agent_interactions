@@ -34,13 +34,11 @@ class DecisionModel:
             self.plan = self.nfsp_baseline
         elif model == 'bvp_baseline':
             self.plan = self.bvp_baseline
-        elif model == 'bvp_solver':
-            self.plan = self.bvp_solver
         elif model == 'non-empathetic':  # use estimated params of other and known param of self to choose action
             self.plan = self.non_empathetic
         elif model == 'empathetic':  # game, using NFSP, import inferred params for both agents
             self.plan = self.empathetic
-        elif model == 'bvp_non-empathetic':
+        elif model == 'bvp_non_empathetic':
             self.plan = self.bvp_non_empathetic
         elif model == 'bvp_empathetic':
             self.plan = self.bvp_empathetic
@@ -169,17 +167,14 @@ class DecisionModel:
         self.time = self.sim.time
         p1_state = self.sim.agents[0].state[self.sim.frame]
         p2_state = self.sim.agents[1].state[self.sim.frame]
-        p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
-        p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
 
         lambda_list = self.lambda_list
         theta_list = self.theta_list
-        # beta_h = self.true_params[0]  # includes theta and lambda
-        # beta_m = self.true_params[1]
-        # beta_h_b = self.belief_params[0]
-        # beta_m_b = self.belief_params[1]
-
         action_set = self.action_set
+
+        "Baseline: get self true betas from initial setting"
         true_beta_h, true_beta_m = self.true_params
 
         "METHOD 1: Get the whole p_action table using true param of self and other"
@@ -222,11 +217,6 @@ class DecisionModel:
 
         # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
         return {'action': actions_2}
-
-    def bvp_solver(self):
-        self.frame = self.sim.frame
-        self.time = self.sim.time
-        return
 
     def non_empathetic(self):
         """
@@ -416,20 +406,18 @@ class DecisionModel:
         # y direction only for M, x direction only for HV
         p1_state = self.sim.agents[0].state[self.sim.frame]
         p2_state = self.sim.agents[1].state[self.sim.frame]
-        p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
-        p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
 
         lambda_list = self.lambda_list
         theta_list = self.theta_list
+        action_set = self.action_set
+
+        "this is where non_empathetic is different: using true param of self to observe portion of belief table"
         if self.sim.frame == 0:
             p_beta = self.sim.initial_belief
         else:
             p_beta, ne_betas = self.sim.agents[1].predicted_intent_all[-1]
-
-        action_set = self.action_set
-
-        # TODO: this is placeholder; probably not right to do this
-        "this is where non_empathetic is different: using true param of self"
         # true_param_id -> get row/col of p_beta -> get predicted beta
         true_beta_h, true_beta_m = self.true_params
         b_id_h = self.beta_set.index(true_beta_h)
@@ -466,7 +454,7 @@ class DecisionModel:
         #     # assert len(p_a_s) == len(action_set)
         #     # # ===================================
         #     # action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-        #     # actions.append(action[0])  # TODO: check why it's list
+        #     # actions.append(action[0])
         #     ai = np.argmax(p_a_self)
         #     actions.append(action_set[ai])
         # self.sim.action_distri_1.append(p_action1)
@@ -506,6 +494,9 @@ class DecisionModel:
 
         lambda_list = self.lambda_list
         theta_list = self.theta_list
+        action_set = self.action_set
+
+        "this is where empathetic is different: using predicted param of self with entire belief table"
         if self.sim.frame == 0:
             p_beta = self.sim.initial_belief
             beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
@@ -513,18 +504,11 @@ class DecisionModel:
             beta_m = self.beta_set[beta_pair_id[1]]
         else:
             p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
-
-        action_set = self.action_set
-
-        # TODO: this is placeholder; probably not right to do this
-        "this is where empathetic is different: using predicted param of self"
         true_beta_h, true_beta_m = self.true_params
 
         "METHOD 1: Get the whole p_action table using true param of self and other"
-
         # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
         # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, true_beta_m)
-
         # actions = []
         # p_a_1 = []
         # for i, p_a in enumerate([p_action1, p_action2]):

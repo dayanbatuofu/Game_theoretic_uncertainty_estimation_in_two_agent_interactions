@@ -211,7 +211,9 @@ class Simulation:
         print("Loss of M (p2):", self.past_loss2)
         loss_1 = np.sum(self.past_loss1) * self.dt
         loss_2 = np.sum(self.past_loss2) * self.dt
-        print("loss:", loss_1 + loss_2)
+        print("agent 1's loss:", loss_1)
+        print("sum of 2 agent's loss:", loss_1 + loss_2)
+        print(loss_1 + loss_2)
 
     # TODO: store this somewhere else
     def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):

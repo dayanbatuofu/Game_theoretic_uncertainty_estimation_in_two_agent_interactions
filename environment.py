@@ -354,7 +354,7 @@ class Environment:
         # TODO: math needs to be checked
         _p_action_1 = np.zeros((len(action_set), len(action_set)))
         _p_action_2 = np.zeros((len(action_set), len(action_set)))
-        time = np.array([[0]])
+        time = np.array([[0]])  # since it's only t=0 when running environment
         dt = self.dt
         for i, p_a_h in enumerate(_p_action_1):
             for j, p_a_m in enumerate(_p_action_1[i]):

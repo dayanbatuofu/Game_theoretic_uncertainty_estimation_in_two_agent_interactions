@@ -2318,6 +2318,66 @@ class InferenceModel:
 
             return p_action_past, [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 
+        def bvp_action_prob_2(id, p1_state, p2_state, beta_1, beta_2, last_action):
+            """
+            calculate action prob for one agent: simplifies the calculation
+            :param p1_state:
+            :param p2_state:
+            :param _lambda:
+            :param theta:
+            :return: p_action of p_i, where p_action = [p_a1, ..., p_a5]
+            """
+
+            theta_1, lambda_1 = beta_1
+            theta_2, lambda_2 = beta_2
+            action_set = self.action_set
+            _p_action = np.zeros((len(action_set)))  # 1D
+
+            time = np.array([[self.time]])
+            dt = self.sim.dt
+            "Need state for agent H: xH, vH, xM, vM"
+            if id == 0:
+                # p1_state_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
+                new_p2_s = dynamics.bvp_dynamics_1d(p2_state, last_action, dt)  # only one new state for p2
+                for i, p_a_h in enumerate(_p_action):
+                    new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action_set[i], dt)
+                    if (theta_1, theta_2) == (1, 5):  # Flip A_AN to NA_A
+                        new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                        q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[last_action], [action_set[i]]]),
+                                             (theta_2, theta_1))  # NA_A
+                    else:  # for A_A, NA_NA, NA_A
+                        new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                        q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [last_action]]),
+                                             (theta_1, theta_2))
+                    _p_action[i] = q1 * lambda_1
+            elif id == 1:  # p2
+                # p2_state_nn = np.array([[p2_state[0]], [p2_state[2]], [p1_state[1]], [p1_state[3]]])
+                new_p1_s = dynamics.bvp_dynamics_1d(p1_state, last_action, dt)  # only one new state for p2
+                for i, p_a_h in enumerate(_p_action):
+                    new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action_set[i], dt)
+                    if (theta_1, theta_2) == (1, 5):  # Flip A_AN to NA_A
+                        new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                        q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[action_set[i]], [last_action]]),
+                                             (theta_2, theta_1))  # NA_A
+                    else:  # for A_A, NA_NA, NA_A
+                        new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                        q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[last_action], [action_set[i]]]),
+                                             (theta_1, theta_2))
+                    _p_action[i] = q2 * lambda_2
+            else:
+                print("WARNING! AGENT COUNT EXCEEDED 2")
+
+            "using logsumexp to prevent nan"
+            Q_logsumexp = logsumexp(_p_action)
+            "normalizing"  # TODO: check if this works
+            _p_action -= Q_logsumexp
+            _p_action = np.exp(_p_action)
+
+            print("action prob 1 from bvp:", _p_action)
+            assert round(np.sum(_p_action)) == 1
+
+            return _p_action  # exp_Q
+
         def resample(priors, epsilon):
             """
             Equation 3
@@ -2341,15 +2401,27 @@ class InferenceModel:
             "Calculate prob of beta pair given D(k)"
             past_state_h, last_action_h = traj_h[-1]
             past_state_m, last_action_m = traj_m[-1]
+            last_actions = [last_action_h, last_action_m]
             ah = self.action_set.index(last_action_h)
             am = self.action_set.index(last_action_m)
+            ai = [ah, am]
             # prior = resample(prior, epsilon=0.05)
             for i in range(len(p_betas_d)):
                 for j in range(len(p_betas_d[i])):
-                    p_a_past, p_action = past_action_prob(past_state_h, past_state_m, beta_set[i], beta_set[j],
-                                                          last_action_h, last_action_m)  # action prob for last time step!
-                    # TODO: need to get q with mixed strategy!
-                    p_a_pair = p_a_past[0] * p_a_past[1]
+
+                    "method 1: get whole action prob table"
+                    # p_a_past, p_action = past_action_prob(past_state_h, past_state_m, beta_set[i], beta_set[j],
+                    #                                       last_action_h, last_action_m)  # action prob for last step!
+
+                    "method 2: only get 1 row of p_action for faster speed"
+                    p_a_past2 = []
+                    for id in range(self.sim.n_agents):
+                        p_a_i = bvp_action_prob_2(id, past_state_h, past_state_m, beta_set[i], beta_set[j], last_actions[id-1])
+                        p_a_past2.append(p_a_i[ai[id]])
+                    "for confirming the two algorithm converges to same value"
+                    # assert np.round(p_a_past[0], 4) == np.round(p_a_past2[0], 4)
+                    # assert np.round(p_a_past[1], 4) == np.round(p_a_past2[1], 4)
+                    p_a_pair = p_a_past2[0] * p_a_past2[1]
                     "P(Q2|D(k)) = P(uH, uM|x(k), QH, QM) * P(Q2|D(k-1)) / sum(~)"
                     p_betas_d[i][j] = p_a_pair * prior[i][j]
             p_betas_d /= np.sum(p_betas_d)
