@@ -27,11 +27,13 @@ RED = (230, 0, 0)
 class VisUtils:
 
     def __init__(self, sim):
-
         self.sim = sim
         self.env = sim.env
         self.drawing_prob = sim.drawing_prob
         self.drawing_intent = sim.drawing_intent
+        self.beta_set = self.sim.beta_set
+        self.theta_list = self.sim.theta_list
+        self.lambda_list = self.sim.lambda_list
         # TODO: organize this!
         if self.drawing_intent:
             self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
@@ -42,29 +44,31 @@ class VisUtils:
             self.intent_m = []
             self.intent_distri_h = [[], []]  # theta1, theta2
             self.intent_distri_m = [[], []]  # theta1, theta2
+            self.lambda_distri_h = [[], []]  # lambda1, lambda2
+            self.lambda_distri_m = [[], []]  # lambda1, lambda2
             self.lambda_h = []
             self.lambda_m = []
+            "conditional prob of p(theta, lambda)/p(lambda)"
+            self.true_intent_prob_h = []  # theta1, theta2
+            self.true_intent_prob_m = []  # theta1, theta2
+            "getting ground truth parameters and record for each step"
             self.true_params = self.sim.true_params
             self.true_intent_h = []
             self.true_intent_m = []
             self.true_noise_h = []
             self.true_noise_m = []
+            "get id for true (theta, lambda)"
+            self.true_id = []
+            for i, par in enumerate(self.true_params):
+                theta_id = self.theta_list.index(par[0])
+                lambda_id = self.lambda_list.index(par[1])
+                self.true_id.append([theta_id, lambda_id])
         if self.drawing_prob:
             self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
             self.p_state_M = sim.agents[1].predicted_states_self
             self.past_state_h = sim.agents[1].state[-1]
             self.past_state_m = sim.agents[0].state[-1]
-            self.intent_h = []
-            self.intent_m = []
-            self.intent_distri_h = [[], []]  # theta1, theta2
-            self.intent_distri_m = [[], []]  # theta1, theta2
-            self.lambda_h = []
-            self.lambda_m = []
-            self.true_params = self.sim.true_params
-            self.true_intent_h = []
-            self.true_intent_m = []
-            self.true_noise_h = []
-            self.true_noise_m = []
+
         self.frame = sim.frame
         self.dist = []
         self.sleep_between_step = False
@@ -175,7 +179,7 @@ class VisUtils:
         frame = self.sim.frame
 
         # render 10 times for each step
-        steps = 20
+        steps = 5
 
         for k in range(1, steps + 1):
             self.screen.fill((255, 255, 255))
@@ -186,16 +190,8 @@ class VisUtils:
             # Draw Images
             for i in range(self.sim.n_agents):
                 "getting pos of agent"
-                # TODO: check car image alignment (pos is the front of the vehicle)
                 pos_old = np.array(self.sim.agents[i].state[frame][:2])
                 pos_new = np.array(self.sim.agents[i].state[frame+1][:2])  # get 0th and 1st element (not include 2)
-                # if self.sim.env.name == 'bvp_intersection':
-                #     if i == 0:  # y direction
-                #         pos_old[1] -= self.car_length / 2
-                #         pos_new[1] -= self.car_length / 2
-                #     else:  # x direction
-                #         pos_old[0] -= self.car_length / 2
-                #         pos_new[0] -= self.car_length / 2
 
                 "smooth out the movement between each step"
                 pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
@@ -222,15 +218,16 @@ class VisUtils:
             label_x = screen_w - 800
             label_y = 260
             label_y_offset = 30
-            pos_h, speed_h = self.sim.agents[0].state[frame][1], self.sim.agents[0].state[frame][3]
+            "Labeling new states and actions"
+            pos_h, speed_h = self.sim.agents[0].state[frame+1][1], self.sim.agents[0].state[frame+1][3]
             label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y))
-            pos_m, speed_m = self.sim.agents[1].state[frame][0], self.sim.agents[1].state[frame][2]
+            pos_m, speed_m = self.sim.agents[1].state[frame+1][0], self.sim.agents[1].state[frame+1][2]
             label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y + label_y_offset))
-            action1, action2 = self.sim.agents[0].action[frame], self.sim.agents[1].action[frame]
+            action1, action2 = self.sim.agents[0].action[frame+1], self.sim.agents[1].action[frame+1]
             if self.env.name == 'merger':
                 label = font.render("Car 1 action: " % action1, 1, (0, 0, 0))
             else:
@@ -253,94 +250,6 @@ class VisUtils:
 
             pg.display.flip()
             pg.display.update()
-        # if frame == 0:
-        #     for i in range(self.sim.n_agents):
-        #         pos = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
-        #         "smooth out the movement between each step"
-        #         #pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
-        #         "transform pos"
-        #         pixel_pos_car = self.c2p(pos)
-        #         size_car = self.car_image[i].get_size()
-        #         self.screen.blit(self.car_image[i],
-        #                         (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
-        #     "drawing the map of state distribution"
-        #     pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1
-        #     if self.drawing_prob:
-        #         self.draw_prob()  # calling function to draw with data from inference
-        #
-        #     # Annotations
-        #     # font = pg.font.SysFont("Arial", 30)
-        #     font = pg.font.SysFont("Arial", 15)
-        #     screen_w, screen_h = self.screen.get_size()
-        #     label_x = screen_w - 800
-        #     label_y = 260
-        #     label_y_offset = 30
-        #     #TODO: length of state/action is mismatched from frame: frame behind by 1
-        #     pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
-        #     label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
-        #                         (0, 0, 0))
-        #     self.screen.blit(label, (label_x, label_y))
-        #     pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
-        #     label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
-        #                         (0, 0, 0))
-        #     self.screen.blit(label, (label_x, label_y+label_y_offset))
-        #     action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
-        #     label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
-        #     self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
-        #     label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
-        #     self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
-        #     label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
-        #     self.screen.blit(label, (10, 10))
-        #     pg.display.flip()
-        #     pg.display.update()
-        # else:
-        #     for k in range(1, steps + 1):
-        #         self.screen.fill((255, 255, 255))
-        #         self.draw_axes()
-        #         # Draw Images
-        #         for i in range(self.sim.n_agents):
-        #             "getting pos of agent"
-        #             pos_old = np.array(self.sim.agents[i].state[frame - 1][:2])
-        #             pos_new = np.array(self.sim.agents[i].state[frame][:2])  # get 0 and 1 element (not include 2)
-        #             "smooth out the movement between each step"
-        #             pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
-        #             "transform pos"
-        #             pixel_pos_car = self.c2p(pos)
-        #             size_car = self.car_image[i].get_size()
-        #             self.screen.blit(self.car_image[i],
-        #                              (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
-        #             if self.sleep_between_step:
-        #                 time.sleep(0.03)
-        #         # Annotations
-        #         # font = pg.font.SysFont("Arial", 30)
-        #         font = pg.font.SysFont("Arial", 15)
-        #         screen_w, screen_h = self.screen.get_size()
-        #         label_x = screen_w - 800
-        #         label_y = 260
-        #         label_y_offset = 30
-        #         pos_h, speed_h = self.sim.agents[0].state[-1][1], self.sim.agents[0].state[-1][3]
-        #         label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
-        #                             (0, 0, 0))
-        #         self.screen.blit(label, (label_x, label_y))
-        #         pos_m, speed_m = self.sim.agents[1].state[-1][0], self.sim.agents[1].state[-1][2]
-        #         label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
-        #                             (0, 0, 0))
-        #         self.screen.blit(label, (label_x, label_y+ label_y_offset))
-        #         action1, action2 = self.sim.agents[0].action[-1], self.sim.agents[1].action[-1]
-        #         label = font.render("Car 1 action: (%5.4f)" % action1, 1, (0, 0, 0))
-        #         self.screen.blit(label, (label_x, label_y + 2*label_y_offset))
-        #         label = font.render("Car 2 action: (%5.4f)" % action2, 1, (0, 0, 0))
-        #         self.screen.blit(label, (label_x, label_y + 3*label_y_offset))
-        #         label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
-        #         self.screen.blit(label, (10, 10))
-        #
-        #         "drawing the map of state distribution"
-        #         #pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1  # test
-        #         if self.drawing_prob:
-        #             self.draw_prob() #calling function to draw with data from inference
-        #
-        #         pg.display.flip()
-        #         pg.display.update()
 
         self.calc_dist()
         if self.drawing_intent:
@@ -458,7 +367,6 @@ class VisUtils:
         self.dist.append(dist)
 
     def calc_intent(self):
-        # TODO: use single cell probability instead of marginal!!!!!
         # TODO: store distribution of lambda (NN, N)
         # p_beta_d, beta_pair = self.sim.agents[1].predicted_intent_all[self.frame]
         theta_list = self.sim.theta_list
@@ -471,31 +379,51 @@ class VisUtils:
             self.lambda_m.append(beta_m[1])
 
             "get highest row/col -> compare distribution of that col/row!!"
-            # TODO: use the common knowledge
-            # TODO: under construction:
             # =========================
             # beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
             # p_beta_dt = p_beta_d.transpose()
             # p_b_m = p_beta_d[beta_pair_id[1]]  # []
             # p_b_h = p_beta_dt[beta_pair_id[1]]
             # =========================
-
+            "getting marginal beta belief table"
             joint_infer_m = self.sim.agents[1].predicted_intent_self
             p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
             p_joint_m, lambda_m = joint_infer_m[-1]
 
+            "NOTE THAT P_JOINT IS LAMBDA X THETA"
+            "calculating the marginal for theta"
             sum_h = p_joint_h.sum(axis=0)
             sum_h = np.ndarray.tolist(sum_h)
             sum_m = p_joint_m.sum(axis=0)
             sum_m = np.ndarray.tolist(sum_m)  # [theta1, theta2]
             for i in range(len(sum_h)):
-                if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
-                    j = 0
-                    while j in range(len(sum_h)):
+                if not len(self.intent_distri_h) == len(sum_h):  # create 2D array if not already
+                    for j in range(len(sum_h)):
                         self.intent_distri_h.append([])
                         self.intent_distri_m.append([])
                 self.intent_distri_h[i].append(sum_h[i])
                 self.intent_distri_m[i].append(sum_m[i])
+
+            "calculating the marginal for lambda"
+            sum_lamb_h = p_joint_h.sum(axis=1)
+            sum_lamb_h = np.ndarray.tolist(sum_lamb_h)
+            sum_lamb_m = p_joint_m.sum(axis=1)
+            sum_lamb_m = np.ndarray.tolist(sum_lamb_m)  # [theta1, theta2]
+            for i in range(len(sum_lamb_h)):
+                if not len(self.intent_distri_h) == len(sum_lamb_h):  # create 2D array if not already
+                    for j in range(len(sum_lamb_h)):
+                        self.lambda_distri_h.append([])
+                        self.lambda_distri_m.append([])
+                self.lambda_distri_h[i].append(sum_lamb_h[i])
+                self.lambda_distri_m[i].append(sum_lamb_m[i])
+            "getting the point estimated p(theta, lambda)"  # NOT IN USE
+            # # for i in range(len(sum_lamb_h)):
+            # p_beta_true_par_h = p_joint_h[self.true_id[0][1]][self.true_id[0][0]]  # for p_joint lambdas are the rows
+            # p_beta_true_par_m = p_joint_m[self.true_id[1][1]][self.true_id[1][0]]
+            # p_beta_true_par_h /= sum_lamb_h[self.true_id[0][1]]
+            # p_beta_true_par_m /= sum_lamb_m[self.true_id[1][1]]
+            # self.true_intent_prob_h.append(p_beta_true_par_h)
+            # self.true_intent_prob_m.append(p_beta_true_par_m)
 
             self.true_intent_h.append(self.true_params[0][0])
             self.true_noise_h.append(self.true_params[0][1])

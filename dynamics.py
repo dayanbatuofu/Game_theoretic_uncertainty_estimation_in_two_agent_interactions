@@ -56,8 +56,8 @@ def bvp_dynamics_1d(x, u, dt):
     :param dt:
     :return: resulting state from given current state and action
     """
-    min_speed = 18
-    max_speed = 25
+    min_speed = 0
+    max_speed = 40
     sx, sy, vx, vy = x[0], x[1], x[2], x[3]
     "Deceleration only leads to small/min velocity!"
     if sx == 0 and vx == 0:  # y axis movement

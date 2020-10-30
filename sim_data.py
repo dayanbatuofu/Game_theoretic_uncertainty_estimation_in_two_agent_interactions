@@ -30,7 +30,8 @@ class DataUtil:
                'wanted_action_self',  # most favorable other's future state traj by self
                'inference_probability',  # inference probabilities
                'gracefulness',  # TODO: check definition
-               'predicted_policy_other'
+               'predicted_policy_other',
+               'belief_count'  # count number of times param is chosen
                ]
 
         if data:

@@ -134,7 +134,28 @@ class Simulation:
             self.calc_loss()
             self.time_stamp.append(self.time)
             # termination criteria
-            if self.frame >= 25:  # TODO: modify frame limit
+
+            if self.draw:
+                self.vis.draw_frame()  # Draw frame
+                # if self.capture:
+                #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+
+                for event in pg.event.get():
+                    if event.type == pg.QUIT:
+                        pg.quit()
+                        self.running = False
+                    elif event.type == pg.KEYDOWN:
+                        if event.key == pg.K_p:
+                            self.paused = not self.paused
+                        if event.key == pg.K_q:
+                            pg.quit()
+                            self.running = False
+                        # if event.key == pg.K_d:
+                        #     self.car_num_display = ~self.car_num_display
+
+                # Keep fps
+
+            if self.frame >= 35:  # TODO: modify frame limit
                 print('Simulation ended with duration exceeded limit')
                 break
             # pdb.set_trace()
@@ -160,25 +181,25 @@ class Simulation:
 
             # TODO: update visualization
             # draw stuff after each iteration
-            if self.draw:
-                self.vis.draw_frame()  # Draw frame
-                # if self.capture:
-                #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
-
-                for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        pg.quit()
-                        self.running = False
-                    elif event.type == pg.KEYDOWN:
-                        if event.key == pg.K_p:
-                            self.paused = not self.paused
-                        if event.key == pg.K_q:
-                            pg.quit()
-                            self.running = False
-                        # if event.key == pg.K_d:
-                        #     self.car_num_display = ~self.car_num_display
-
-                # Keep fps
+            # if self.draw:
+            #     self.vis.draw_frame()  # Draw frame
+            #     # if self.capture:
+            #     #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+            #
+            #     for event in pg.event.get():
+            #         if event.type == pg.QUIT:
+            #             pg.quit()
+            #             self.running = False
+            #         elif event.type == pg.KEYDOWN:
+            #             if event.key == pg.K_p:
+            #                 self.paused = not self.paused
+            #             if event.key == pg.K_q:
+            #                 pg.quit()
+            #                 self.running = False
+            #             # if event.key == pg.K_d:
+            #             #     self.car_num_display = ~self.car_num_display
+            #
+            #     # Keep fps
 
             if not self.paused:
                 self.frame += 1
@@ -188,6 +209,8 @@ class Simulation:
         if self.env.name == 'bvp_intersection':
             self.write_loss()
             print('writing to cvs file')
+            # if self.inference_type[1] == 'bvp_empathetic':
+            #     self.write_intent_predict()
         "drawing results"
         self.vis.draw_dist()
         if self.drawing_intent:
@@ -207,8 +230,12 @@ class Simulation:
         print("Action taken by P1:", self.agents[0].action)
         print("Action of P1 predicted by P2:", self.agents[1].predicted_actions_other)
         print("Action taken by P2:", self.agents[1].action)
+        # print("lambda prob of P1:", self.vis.lambda_distri_h)
+        # print("lambda prob of P2:", self.vis.lambda_distri_m)
         print("Loss of H (p1):", self.past_loss1)
         print("Loss of M (p2):", self.past_loss2)
+        if self.inference_type[1] == 'bvp_empathetic':
+            print("Count of each belief:", self.agents[1].belief_count[-1])
         loss_1 = np.sum(self.past_loss1) * self.dt
         loss_2 = np.sum(self.past_loss2) * self.dt
         print("agent 1's loss:", loss_1)
@@ -393,7 +420,36 @@ class Simulation:
 
         return
 
-    def calc_social_val(self):
-        # TODO: implement function for hypothesis tests
-        return
+    def write_intent_predict(self):  # TODO: not in use
+        states_1 = self.agents[0].state
+        states_2 = self.agents[1].state
+        x1 = []
+        x2 = []
+        time_stamp = self.time_stamp
+        "getting probability of ground true intent"
+        true_theta_1 = self.true_params[0][0]
+        true_theta_2 = self.true_params[1][0]
+        true_id_1 = self.theta_list.index(true_theta_1)
+        true_id_2 = self.theta_list.index(true_theta_2)
+        # intent_prob_1 = self.vis.intent_distri_h[true_id_1]
+        # intent_prob_2 = self.vis.intent_distri_m[true_id_2]
+        intent_prob_1 = self.vis.true_intent_prob_h
+        intent_prob_2 = self.vis.true_intent_prob_m
+        for i in range(len(states_1) - 1):  # inference will be behind
+            x1.append(states_1[i][1])
+            x2.append(states_2[i][0])
+        # assert len(x1) == len(intent_prob_1)
+        # assert len(time_stamp) == len(self.past_loss1)
+
+        'writing to csv file'
+        filename = 'experiment/' + 'traj_intent_prob' + str(x1[0]) + str(x2[0]) + '_' \
+                   + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0]) + '.csv'
+        with open(filename, 'w') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(time_stamp)
+            csv_writer.writerow(intent_prob_1)  # loss1 should be same as loss2
+            csv_writer.writerow(intent_prob_2)
+            csv_writer.writerow(x1)
+            csv_writer.writerow(x2)
+
 

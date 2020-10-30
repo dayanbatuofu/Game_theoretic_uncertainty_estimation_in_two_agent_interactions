@@ -45,7 +45,8 @@ class AutonomousVehicle:
         self.predicted_actions_self = [0]
         self.predicted_states_self = []
         self.predicted_states_other = []
-        self.min_speed = 0.1
+        self.belief_count = []
+        self.min_speed = 0.1  # only for nfsp
         self.max_speed = 30
 
     def update(self, sim):

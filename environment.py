@@ -164,7 +164,6 @@ class Environment:
             print("initial params: ", self.car_par)
 
         elif self.name == 'bvp_intersection':
-            # TODO: the below is not done yet, need to change the variables
             self.n_agents = 2
             self.car_width = 1.5  # m
             self.car_length = 3  # m

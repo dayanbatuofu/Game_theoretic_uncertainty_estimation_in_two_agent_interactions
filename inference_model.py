@@ -64,6 +64,7 @@ class InferenceModel:
         # self.past_scores1 = {}  # for theta1
         # self.past_scores2 = {}  # for theta2
         # self.theta_priors = None #for calculating theta lambda joint probability
+
         self.theta_priors = self.sim.theta_priors
         "this is for baseline:"
         self.initial_joint_prob = np.ones((len(self.lambda_list), len(self.theta_list))) / (len(self.lambda_list) * len(self.theta_list)) #do this here to increase speed
@@ -74,7 +75,8 @@ class InferenceModel:
         self.true_intents = []
         for i, par_i in enumerate(self.sim.env.car_par):
             self.true_intents.append(par_i["par"])
-
+        self.true_params = self.sim.true_params
+        self.belief_params = self.sim.belief_params
         # self.action_set = [-8, -4, 0.0, 4, 8]  # from realistic trained model
         self.action_set = self.sim.action_set
         # self.action_set_combo = [[-8, -1], [-8, 0], [-8, 1], [-4, -1], [-4, 0],
@@ -88,6 +90,8 @@ class InferenceModel:
         self.past_beta = []
         self.beta_set = self.sim.beta_set
         self.action_pair_score = []
+        self.belief_count = np.zeros((len(self.beta_set), len(self.beta_set)))
+
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
         # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
@@ -2442,7 +2446,6 @@ class InferenceModel:
                 marginal.append([])
             "create a 2D array of (lambda, theta) pairs distribution like single agent case"
             half = round(len(self.beta_set) / 2)
-            # TODO: think if this axis is correct
             if id == 0:  # H agent
                 for i, row in enumerate(_p_beta_d):  # get sum of row
                     if i < half:  # in 1D self.beta, first half are NA, or theta1
@@ -2465,37 +2468,30 @@ class InferenceModel:
         "---------------------------------------------------"
         "calling functions: P(Q2|D), P(beta2|D), P(x(k+1)|D)"
         "---------------------------------------------------"
-
-        if self.frame == 0:  # initially guess the beta
-            # TODO: use the initial env car_par to get this!
-            # last_theta_h = self.thetas[0]
-            # last_lambda_h = self.lambdas[-1]  # start large
-            # last_theta_m = self.thetas[0]
-            # last_lambda_m = self.lambdas[-1]
-            p_beta = self.sim.initial_belief
-            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
-            last_beta_h = self.beta_set[beta_pair_id[0]]
-            last_beta_m = self.beta_set[beta_pair_id[1]]
-            last_theta_h, last_lambda_h = last_beta_h
-            last_theta_m, last_lambda_m = last_beta_m
-
-        else:  # get previously predicted beta
-            last_beta_h, last_beta_m = self.past_beta[-1]
-            last_theta_h, last_lambda_h = last_beta_h
-            last_theta_m, last_lambda_m = last_beta_m
-            "TEST: fixing the lambda to check"
-            # lambda_h, lambda_m = self.lambdas[-1], self.lambdas[-1]
-            # beta_h, beta_m = self.betas[-1], self.betas[3]  #H:A, M: NA
-
+        "get last predicted beta pair"
+        # if self.frame == 0:  # initially guess the beta
+        #     belief_beta_h, belief_beta_m = self.belief_params
+        #     last_beta_h = belief_beta_h
+        #     last_beta_m = belief_beta_m
+        #     last_theta_h, last_lambda_h = last_beta_h
+        #     last_theta_m, last_lambda_m = last_beta_m
+        #
+        # else:  # get previously predicted beta
+        #     last_beta_h, last_beta_m = self.past_beta[-1]
+        #     last_theta_h, last_lambda_h = last_beta_h
+        #     last_theta_m, last_lambda_m = last_beta_m
+        #     "TEST: fixing the lambda to check"
+        #     # lambda_h, lambda_m = self.lambdas[-1], self.lambdas[-1]
+        #     # beta_h, beta_m = self.betas[-1], self.betas[3]  #H:A, M: NA
+        # p_betas_prior = self.sim.initial_belief
         'intent and rationality inference'
-        # TODO: check if this is right: using traj[-1] to calculate p_action
-
+        # using traj[-1] to calculate p_action
         p_beta_d = prob_beta_pair(prior=self.p_betas_prior, traj_h=self.traj_h, traj_m=self.traj_m)
 
-        'recording prior'
+        'recording prior for the next step'
         self.p_betas_prior = p_beta_d
 
-        'getting best predicted betas'  # TODO: change this for sim_draw when drawing for NE or E (NOT TRUE FOR NE)
+        'getting best predicted betas, only for empathetic decision'
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
         # print("best betas ID at time {0}".format(self.frame), beta_pair_id)
 
@@ -2504,18 +2500,41 @@ class InferenceModel:
         self.past_beta.append([new_beta_h, new_beta_m])
 
         "getting marginal prob for beta_h or beta_m: THIS IS ONLY FOR PLOTTING, NOT DECISION"
-        # TODO: we probably shouldn't use these
+        # for estimating distribution
         p_beta_d_h, best_lambda_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
         p_beta_d_m, best_lambda_m = marginal_joint_intent(id=1, _p_beta_d=p_beta_d)
 
         "getting most likely action for analysis purpose"
         # TODO: this is not correct: empathetic vs 'non-empathetic' (not the right beta for NE)
-        p_actions = action_prob(curr_state_h, curr_state_m, new_beta_h, new_beta_m)  # for testing with decision
+        # if self.sim.decision_type_m == 'bvp_empathetic':
+        #     p_actions = action_prob(curr_state_h, curr_state_m, new_beta_h, new_beta_m)  # for testing with decision
+        # elif self.sim.decision_type_m == 'bvp_non_empathetic':
+        #     p_action_1, p_action_2_n = bvp_action_prob_2(curr_state_h, curr_state_m, self.true_params[0], new_beta_m)
+        #     p_action_1_n, p_action_2 = action_prob(curr_state_h, curr_state_m, new_beta_h,
+        #                                            self.true_params[1])  # for testing with decision
+        # for i, p_a in enumerate(p_actions):  # TODO: this is probably not mathematically correct, but for now
+        #     # p_a_id = np.unravel_index(p_a.argmax(), p_a.shape)  # choose action for self based on the NE
+        #     p_a_id = np.argmax(p_a)
+        #     predicted_actions.append(self.action_set[p_a_id])  # TODO: check this
+        last_action_set = [last_action_h, last_action_m]
+        a_id = [self.action_set.index(last_action_h), self.action_set.index(last_action_m)]  # index of actions_t-1
         predicted_actions = []
-        for i, p_a in enumerate(p_actions):  # TODO: this is probably not mathematically correct, but for now
-            # p_a_id = np.unravel_index(p_a.argmax(), p_a.shape)  # choose action for self based on the NE
-            p_a_id = np.argmax(p_a)
-            predicted_actions.append(self.action_set[p_a_id])  # TODO: check this
+        for id in range(self.sim.n_agents):
+            if self.sim.decision_type_m == 'bvp_empathetic':
+                p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                          new_beta_h, new_beta_m, last_action_set[id - 1])
+            elif self.sim.decision_type_m == 'bvp_non_empathetic':
+                if id == 0:
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              self.true_params[0], new_beta_m, last_action_set[id - 1])
+                elif id == 1:
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              new_beta_h, self.true_params[1], last_action_set[id - 1])
+            best_action_i = self.action_set[np.argmax(p_a_i)]
+            predicted_actions.append(best_action_i)
+
+        "Counting chosen parameter in the belief table"
+        self.belief_count[beta_pair_id[0]][beta_pair_id[1]] += 1
 
         # IMPORTANT: Best beta pair =/= Best beta !!!
         # p_theta_prime, suited_lambdas <- predicted_intent other
@@ -2534,7 +2553,8 @@ class InferenceModel:
                 # 'predicted_states_self': (marginal_state_m, get_state_list(curr_state_m, self.T, self.dt)),
                 'predicted_actions_self': predicted_actions[1],
                 'predicted_intent_self': [p_beta_d_m, new_beta_m],
-                'predicted_intent_all': [p_beta_d, [new_beta_h, new_beta_m]]}
+                'predicted_intent_all': [p_beta_d, [new_beta_h, new_beta_m]],
+                'belief_count': self.belief_count}
 
     @staticmethod
     def less_inference():
