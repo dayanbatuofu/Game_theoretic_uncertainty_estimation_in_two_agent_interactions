@@ -92,6 +92,8 @@ class Simulation:
                                                       weight=self.belief_weight)  # note: use params from the other agent's belief
         self.past_loss1 = []  # for storing loss of simulation
         self.past_loss2 = []
+        self.policy_correctness = [[], []]  # for the two agents
+
         if self.n_agents == 2:
             # simulations with 2 cars
             # Note that variable annotation is not supported in python 3.5
@@ -236,6 +238,11 @@ class Simulation:
         print("Loss of M (p2):", self.past_loss2)
         if self.inference_type[1] == 'bvp_empathetic':
             print("Count of each belief:", self.agents[1].belief_count[-1])
+            policy_count_1, policy_count_2 = self.calc_policy_choice()
+            self.write_policy_predict()
+            print("Policy correctness:", self.policy_correctness)
+            print("Policy correctness for P1:", policy_count_1)
+            print("Policy correctness for P2:", policy_count_2)
         loss_1 = np.sum(self.past_loss1) * self.dt
         loss_2 = np.sum(self.past_loss2) * self.dt
         print("agent 1's loss:", loss_1)
@@ -419,6 +426,57 @@ class Simulation:
             csv_writer.writerow(x2)
 
         return
+
+    def calc_policy_choice(self):  # calculate if the correct param is predicted for each agent
+        half = round(len(self.beta_set) / 2)
+        policy_choice = self.agents[1].policy_choice[-1]
+        for i in range(self.n_agents):
+            if self.true_params_id[i-1] < half:  # meaning true param of the other is NA
+                for choice in policy_choice[i]:
+                    if choice < half:  # same as true param
+                        self.policy_correctness[i].append(1)  # 1 for true
+                    else:
+                        self.policy_correctness[i].append(0)  # 0 for false
+            else:  # true param of the other is A
+                for choice in policy_choice[i]:
+                    if choice > half:  # same as true param
+                        self.policy_correctness[i].append(1)  # 1 for true
+                    else:
+                        self.policy_correctness[i].append(0)  # 0 for false
+        assert len(self.policy_correctness[0]) == len(policy_choice[0])
+        count_1 = {0: self.policy_correctness[0].count(0), 1: self.policy_correctness[0].count(1)}
+        count_2 = {0: self.policy_correctness[1].count(0), 1: self.policy_correctness[1].count(1)}
+        return count_1, count_2
+
+    def write_policy_predict(self):  # TODO: not in use
+        states_1 = self.agents[0].state
+        states_2 = self.agents[1].state
+        x1 = []
+        x2 = []
+        time_stamp = self.time_stamp
+        "getting probability of ground true intent"
+        # true_theta_1 = self.true_params[0][0]
+        # true_theta_2 = self.true_params[1][0]
+        # true_id_1 = self.theta_list.index(true_theta_1)
+        # true_id_2 = self.theta_list.index(true_theta_2)
+        policy_choice_1 = self.policy_correctness[0]
+        policy_choice_2 = self.policy_correctness[1]
+        for i in range(len(states_1) - 1):  # inference will be behind
+            x1.append(states_1[i][1])
+            x2.append(states_2[i][0])
+        # assert len(x1) == len(intent_prob_1)
+        # assert len(time_stamp) == len(self.past_loss1)
+
+        'writing to csv file'
+        filename = 'experiment/' + 'traj_policy_choice' + str(x1[0]) + str(x2[0]) + '_' \
+                   + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0]) + '.csv'
+        with open(filename, 'w') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(time_stamp)
+            csv_writer.writerow(policy_choice_1)  # loss1 should be same as loss2
+            csv_writer.writerow(policy_choice_2)
+            csv_writer.writerow(x1)
+            csv_writer.writerow(x2)
 
     def write_intent_predict(self):  # TODO: not in use
         states_1 = self.agents[0].state

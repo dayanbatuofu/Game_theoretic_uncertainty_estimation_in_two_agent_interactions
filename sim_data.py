@@ -31,7 +31,8 @@ class DataUtil:
                'inference_probability',  # inference probabilities
                'gracefulness',  # TODO: check definition
                'predicted_policy_other',
-               'belief_count'  # count number of times param is chosen
+               'belief_count',  # count number of times param has the highest probability mass
+               'policy_choice',  # records the choice of policy made at each time step
                ]
 
         if data:

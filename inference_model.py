@@ -91,6 +91,7 @@ class InferenceModel:
         self.beta_set = self.sim.beta_set
         self.action_pair_score = []
         self.belief_count = np.zeros((len(self.beta_set), len(self.beta_set)))
+        self.policy_choice = [[], []]  # 0 or not correct, 1 for correct guesses (for 2 agents)
 
         # ----------------------------------------------------------------------------------------
         # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
@@ -2515,21 +2516,36 @@ class InferenceModel:
         # for i, p_a in enumerate(p_actions):  # TODO: this is probably not mathematically correct, but for now
         #     # p_a_id = np.unravel_index(p_a.argmax(), p_a.shape)  # choose action for self based on the NE
         #     p_a_id = np.argmax(p_a)
-        #     predicted_actions.append(self.action_set[p_a_id])  # TODO: check this
+        #     predicted_actions.append(self.action_set[p_a_id])
         last_action_set = [last_action_h, last_action_m]
         a_id = [self.action_set.index(last_action_h), self.action_set.index(last_action_m)]  # index of actions_t-1
         predicted_actions = []
         for id in range(self.sim.n_agents):
-            if self.sim.decision_type_m == 'bvp_empathetic':
-                p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
-                                          new_beta_h, new_beta_m, last_action_set[id - 1])
-            elif self.sim.decision_type_m == 'bvp_non_empathetic':
+            if self.sim.decision_type_m == 'bvp_empathetic':  # TODO: this is not the same as decision!!! fix this
                 if id == 0:
+                    self.policy_choice[0].append(beta_pair_id[1])
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
                                               self.true_params[0], new_beta_m, last_action_set[id - 1])
                 elif id == 1:
+                    self.policy_choice[1].append(beta_pair_id[0])
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
                                               new_beta_h, self.true_params[1], last_action_set[id - 1])
+            elif self.sim.decision_type_m == 'bvp_non_empathetic':
+                true_id = self.sim.true_params_id[id]  # true self beta id (ie. NA, NN --> 1)
+                if id == 0:
+                    p_beta_d_i = p_beta_d[true_id]  # get row based on P1's true beta
+                    pred_beta_m_id = np.argmax(p_beta_d_i)
+                    pred_beta_m = self.beta_set[pred_beta_m_id]
+                    self.policy_choice[0].append(pred_beta_m_id)
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              self.true_params[0], pred_beta_m, last_action_set[id - 1])
+                elif id == 1:
+                    p_beta_d_i = np.transpose(p_beta_d)[true_id]  # get row based on P1's true beta
+                    pred_beta_h_id = np.argmax(p_beta_d_i)
+                    pred_beta_h = self.beta_set[pred_beta_h_id]
+                    self.policy_choice[1].append(pred_beta_h_id)
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              pred_beta_h, self.true_params[1], last_action_set[id - 1])
             best_action_i = self.action_set[np.argmax(p_a_i)]
             predicted_actions.append(best_action_i)
 
@@ -2554,7 +2570,8 @@ class InferenceModel:
                 'predicted_actions_self': predicted_actions[1],
                 'predicted_intent_self': [p_beta_d_m, new_beta_m],
                 'predicted_intent_all': [p_beta_d, [new_beta_h, new_beta_m]],
-                'belief_count': self.belief_count}
+                'belief_count': self.belief_count,
+                'policy_choice': self.policy_choice}
 
     @staticmethod
     def less_inference():

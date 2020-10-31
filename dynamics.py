@@ -35,7 +35,7 @@ def dynamics_1d(x, u, dt, min_speed, max_speed):
         vx_new = -vx_new
         sx_new = sx + (vx + vx_new) * dt * 0.5
         sy_new = sy  # + (vy + vy_new) * dt * 0.5
-    else:  # TODO: in the case of more than 1D movement??
+    else:  # in the case of more than 1D movement??
         print("Y axis movement detected (else)")
         vx_new = vx  # + u * dt #* vx / (np.linalg.norm([vx, vy]) + 1e-12)
         vy_new = vy + u * dt  # * vy / (np.linalg.norm([vx, vy]) + 1e-12)
@@ -44,7 +44,6 @@ def dynamics_1d(x, u, dt, min_speed, max_speed):
         sx_new = sx  # + (vx + vx_new) * dt * 0.5
         sy_new = sy + (vy + vy_new) * dt * 0.5
 
-    # TODO: add a cieling for how fast they can go
     return sx_new, sy_new, vx_new, vy_new
 
 

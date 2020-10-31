@@ -1,12 +1,10 @@
 """
-Environment class
+Environment class: create agent information/parameters and initial states
 """
 import numpy as np
 from models import constants as C
 import savi_simulation as sim
 from models.rainbow.arguments import get_args
-from HJI_Vehicle.utilities.neural_networks import HJB_network_t0 as HJB_network
-from HJI_Vehicle.NN_output import get_Q_value
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
 from HJI_Vehicle.NN_output import get_Q_value
@@ -51,7 +49,6 @@ class Environment:
             elif agent_noise_belief[i] == 'NN':
                 self.agent_noise_belief.append(sim_par['lambda'][1])
 
-        # TODO: unify units for all parameters
         if self.name == 'intersection':
             self.car_width = 0.66
             self.car_length = 1.33
@@ -142,7 +139,7 @@ class Environment:
             theta_list = self.sim_par["theta"]
             for i in range(len(self.car_par)):
                 if self.car_par[i]["par"][0] == theta_list[0]:  # NA_NA
-                    if self.car_par[i]["belief"][0] == theta_list[0]:  # TODO: check if i-1 works
+                    if self.car_par[i]["belief"][0] == theta_list[0]:
                         qi = q_sets[0]
                     elif self.car_par[i]["belief"][0] == theta_list[1]:  # NA_A
                         qi = q_sets[2]
@@ -294,14 +291,10 @@ class Environment:
 
         elif self.name == 'lane_change':
             pass
-        elif self.name == 'random':
-            # TODO: add randomized initial conditions
-            pass
+
         else:
-
             pass
 
-    # TODO: implement this in another file for general usage
     def action_prob(self, q_vals, _lambda):
         """
         Equation 1
@@ -350,7 +343,6 @@ class Environment:
         p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
         p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
 
-        # TODO: math needs to be checked
         _p_action_1 = np.zeros((len(action_set), len(action_set)))
         _p_action_2 = np.zeros((len(action_set), len(action_set)))
         time = np.array([[0]])  # since it's only t=0 when running environment
@@ -375,7 +367,7 @@ class Environment:
         "using logsumexp to prevent nan"
         Q1_logsumexp = logsumexp(_p_action_1)
         Q2_logsumexp = logsumexp(_p_action_2)
-        "normalizing"  # TODO: check if this works
+        "normalizing"
         _p_action_1 -= Q1_logsumexp
         _p_action_2 -= Q2_logsumexp
         _p_action_1 = np.exp(_p_action_1)

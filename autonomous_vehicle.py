@@ -46,6 +46,7 @@ class AutonomousVehicle:
         self.predicted_states_self = []
         self.predicted_states_other = []
         self.belief_count = []
+        self.policy_choice = []
         self.min_speed = 0.1  # only for nfsp
         self.max_speed = 30
 
