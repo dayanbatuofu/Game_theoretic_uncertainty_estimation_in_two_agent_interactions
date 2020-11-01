@@ -55,13 +55,12 @@ agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent ca
 """
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning (NOT IN USE)
-parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT TRUE PARAM
+parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT TRUE PARAM
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT BELIEF
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--belief_weight', type=float, default=0.8)
 
-# TODO: add agent decision args
 # parser.add_argument('', type=str, choices=[], default=[])
 args = parser.parse_args()
 

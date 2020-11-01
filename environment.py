@@ -178,9 +178,9 @@ class Environment:
             # vy_H = np.random.uniform(18, 25)
             # sx_M = np.random.uniform(15, 20)
             # vx_M = np.random.uniform(18, 25)
-            sy_H = 15  # P1
+            sy_H = 18  # P1
             vy_H = 18
-            sx_M = 16  # P2
+            sx_M = 18  # P2
             vx_M = 18
 
             assert 20 >= sy_H >= 15
@@ -203,7 +203,7 @@ class Environment:
                              "orientation": -90.},
                             ]
 
-            "choose action base on decision type and intent"  # TODO: check this
+            "choose action base on decision type and intent"
             action_set = self.sim_par["action_set"]
             "METHOD 1: Get the whole p_action table using true param of self and belief of other's param"
             p1_state = self.car_par[0]["initial_state"][0]

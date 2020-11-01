@@ -34,7 +34,7 @@ class Simulation:
         self.inference_type = inference_type
         self.env = env
         self.agents = []
-        self.sharing_belief = True  # TODO: set condition for this
+        self.sharing_belief = True  # True for empathetic inferences
         self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
 
@@ -42,7 +42,7 @@ class Simulation:
             self.drawing_intent = False
         else:
             self.drawing_intent = True
-        self.saving_png = False  # TODO: implement this in run
+
         if env.name == 'bvp_intersection':  # don't draw future states
             self.drawing_prob = False
 
@@ -98,8 +98,6 @@ class Simulation:
             # simulations with 2 cars
             # Note that variable annotation is not supported in python 3.5
 
-            self.current_q_values = {0: None, 1: None}  # TODO: get q values for current frame
-
             inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self) for i in range(n_agents)]
             decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self) for i in range(n_agents)]
 
@@ -113,7 +111,7 @@ class Simulation:
         self.capture = False  # save images during visualization
         # DISPLAY
         if self.draw:
-            # TODO: update visualization
+
             self.vis = VisUtils(self)  # initialize visualization
             # self.vis.draw_frame()
             # if self.capture:
@@ -157,7 +155,7 @@ class Simulation:
 
                 # Keep fps
 
-            if self.frame >= 35:  # TODO: modify frame limit
+            if self.frame >= 35:  # for dt=0.05
                 print('Simulation ended with duration exceeded limit')
                 break
             # pdb.set_trace()
@@ -181,7 +179,6 @@ class Simulation:
                     print("terminating on vehicle passed intersection:", x_H, x_M)
                     break
 
-            # TODO: update visualization
             # draw stuff after each iteration
             # if self.draw:
             #     self.vis.draw_frame()  # Draw frame
@@ -247,9 +244,8 @@ class Simulation:
         loss_2 = np.sum(self.past_loss2) * self.dt
         print("agent 1's loss:", loss_1)
         print("sum of 2 agent's loss:", loss_1 + loss_2)
-        print(loss_1 + loss_2)
+        # print(loss_1 + loss_2)
 
-    # TODO: store this somewhere else
     def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
         """
         Obtain initial belief of the params
@@ -260,7 +256,7 @@ class Simulation:
         :param weight:
         :return:
         """
-        # TODO: given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
+        # given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
         theta_list = self.theta_list
         lambda_list = self.lambda_list
         beta_list = self.beta_set
@@ -303,7 +299,7 @@ class Simulation:
         elif self.inference_type[1] == 'none':
             belief = 1  # no inference
 
-        # TODO: not in use! we only use the game theoretic inference
+        # not in use! we only use the game theoretic inference
         else:  # get belief on H agent only
             belief = np.ones((len(lambda_list), len(theta_list)))
             for i, lamb in enumerate(lambda_list):
@@ -361,9 +357,6 @@ class Simulation:
         #     # [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
         #     # print("Simulation video output saved to %s." % self.output_dir)
         # print("Simulation ended.")
-        pass
-
-    def get_current_q(self):  # TODO: get current q for both agents, for faster calculation
         pass
 
     def calc_loss(self):
@@ -448,7 +441,7 @@ class Simulation:
         count_2 = {0: self.policy_correctness[1].count(0), 1: self.policy_correctness[1].count(1)}
         return count_1, count_2
 
-    def write_policy_predict(self):  # TODO: not in use
+    def write_policy_predict(self):
         states_1 = self.agents[0].state
         states_2 = self.agents[1].state
         x1 = []
@@ -478,7 +471,7 @@ class Simulation:
             csv_writer.writerow(x1)
             csv_writer.writerow(x2)
 
-    def write_intent_predict(self):  # TODO: not in use
+    def write_intent_predict(self):  # not in use
         states_1 = self.agents[0].state
         states_2 = self.agents[1].state
         x1 = []

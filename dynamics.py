@@ -78,14 +78,13 @@ def bvp_dynamics_1d(x, u, dt):
             vx_new = max(min(vx_new, max_speed), min_speed)
         sx_new = sx + (vx + vx_new) * dt * 0.5
         sy_new = sy  # + (vy + vy_new) * dt * 0.5
-    else:  # TODO: in the case of more than 1D movement??
+    else:  # in the case of more than 1D movement
         print("WARNING: DYNAMICS NOT SUPPORTED")
         sx_new = sx
         sy_new = sy
         vx_new = vx
         vy_new = vy
 
-    # TODO: add a cieling for how fast they can go
     return sx_new, sy_new, vx_new, vy_new
 
 

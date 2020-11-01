@@ -1,6 +1,5 @@
 """
 for obtaining action for each agent
-
 """
 import numpy as np
 # TODO pytorch version
@@ -28,24 +27,24 @@ class DecisionModel:
         self.time = self.sim.time
         if model == 'constant_speed':
             self.plan = self.constant_speed
-        elif model == 'complete_information':
+        elif model == 'complete_information':  # not in use
             self.plan = self.complete_information
-        elif model == 'nfsp_baseline':  # use with trained models
+        elif model == 'nfsp_baseline':  # use with nfsp trained models
             self.plan = self.nfsp_baseline
-        elif model == 'bvp_baseline':
+        elif model == 'bvp_baseline':  # for testing the value network
             self.plan = self.bvp_baseline
         elif model == 'non-empathetic':  # use estimated params of other and known param of self to choose action
             self.plan = self.non_empathetic
         elif model == 'empathetic':  # game, using NFSP, import inferred params for both agents
             self.plan = self.empathetic
-        elif model == 'bvp_non_empathetic':
+        elif model == 'bvp_non_empathetic':  # using BVP value network
             self.plan = self.bvp_non_empathetic
-        elif model == 'bvp_empathetic':
+        elif model == 'bvp_empathetic':  # using BVP value network
             self.plan = self.bvp_empathetic
-            # import estimated values; use estimation of other and other's of self to get an action for both
+
         else:
             # placeholder for future development
-            print("WARNING!!! NO DECISION MODEL DETECTED")
+            print("WARNING!!! NO DECISION MODEL FOUND")
             pass
 
         self.policy_or_Q = 'Q'
@@ -64,14 +63,14 @@ class DecisionModel:
         return {'action': 0}  # just keep the speed
 
     def complete_information(self, *args):
-        # TODO: generalize for n agents
+        # generalize for n agents
 
         # find nash equilibrial policies when intents (t1, t2) are known
         states, actions, intents = args  # state of agent 1, 2; latest actions 1, 2; intent of agent 1, 2
 
         loss = [self.create_long_term_loss(states, actions, intents[i]) for i in range(len(intents))]
         # iterate to find nash equilibrium
-        # TODO: check convergence
+
         learning_rate = self.sim.par.learning_rate_planning
         optimizers = [t.optim.Adam(actions[i], lr=learning_rate) for i in range(len(intents))]
         for j in range(self.sim.par.max_iter_planning):
@@ -117,7 +116,6 @@ class DecisionModel:
                 lamb_id.append(lambda_list.index(b[1]))
                 theta_id.append(theta_list.index(b[0]))
             " the following assumes 2 thetas"
-            # TODO: create a function for this
             if theta_id[0] == 0:
                 if theta_id[1] == 0:
                     q_1 = Q_na_na_2
@@ -151,7 +149,7 @@ class DecisionModel:
                     action = random.choices(action_set, weights=p_a, k=1)
                 else: # choose highest prob
                     action = action_set[a_i]
-                actions.append(action[0])  # TODO: check why it's list
+                actions.append(action[0])
 
         # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
         return {'action': actions}
@@ -263,7 +261,6 @@ class DecisionModel:
         assert theta_list[true_intent_id[1]] == self.true_params[1][0]
 
         "the following assumes 2 thetas"
-        # TODO: create a function for this
         "for agent 1 (H): using true self intent and guess of other's intent"
         if true_intent_id[0] == 0:
             if theta_id[1] == 0:
@@ -300,7 +297,6 @@ class DecisionModel:
             print("ERROR: THETA DOES NOT EXIST")
         q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
-        # TODO: what to use for lambda?? (use true beta for self
         p_action1 = self.nfsp_action_prob(q1_vals, _lambda=beta_h[1])
         p_action2 = self.nfsp_action_prob(q2_vals, _lambda=beta_m[1])
         actions = []
@@ -308,7 +304,7 @@ class DecisionModel:
             p_a = np.array(p_a).tolist()
             "drawing action from action set using the distribution"
             action = random.choices(action_set, weights=p_a, k=1)
-            actions.append(action[0])  # TODO: check why it's list
+            actions.append(action[0])
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
@@ -321,8 +317,6 @@ class DecisionModel:
         :return: actions for both agents
         """
         # implement reactive planning based on inference of future trajectories
-        # TODO: import HJI BVP model
-        "----------This is placeholder until we have BVP result-------------"
         (Q_na_na, Q_na_na_2, Q_na_a, Q_a_na, Q_a_a, Q_a_a_2), \
         (policy_na_na, policy_na_na_2, policy_na_a, policy_a_na, policy_a_a, policy_a_a_2) = get_models()
 
@@ -355,7 +349,6 @@ class DecisionModel:
             lamb_id.append(lambda_list.index(b[1]))
             theta_id.append(theta_list.index(b[0]))
         " the following assumes 2 thetas"
-        # TODO: create a function for this
         if theta_id[0] == 0:
             if theta_id[1] == 0:
                 q_1 = Q_na_na_2
@@ -386,7 +379,7 @@ class DecisionModel:
             p_a = np.array(p_a).tolist()
             "drawing action from action set using the distribution"
             action = random.choices(action_set, weights=p_a, k=1)
-            actions.append(action[0])  # TODO: check why it's list
+            actions.append(action[0])
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
@@ -395,6 +388,7 @@ class DecisionModel:
 
     def bvp_non_empathetic(self):
         """
+        Uses BVP value network
         Get appropriate action based on predicted intent of the other agent and self intent
         :return: appropriate action for both agents
         """
@@ -555,7 +549,7 @@ class DecisionModel:
         return {'action': actions}
 
     # create long term loss as a pytorch object
-    def create_long_term_loss(self, states, action1, action2, intent):
+    def create_long_term_loss(self, states, action1, action2, intent):  # not in use
         # define instantaneous loss
         def loss(x, u1, u2, i):
 
@@ -627,7 +621,6 @@ class DecisionModel:
         p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
         p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
 
-        # TODO: math needs to be checked
         _p_action_1 = np.zeros((len(action_set), len(action_set)))
         _p_action_2 = np.zeros((len(action_set), len(action_set)))
         time = np.array([[self.time]])
@@ -652,7 +645,7 @@ class DecisionModel:
         "using logsumexp to prevent nan"
         Q1_logsumexp = logsumexp(_p_action_1)
         Q2_logsumexp = logsumexp(_p_action_2)
-        "normalizing"  # TODO: check if this works
+        "normalizing"
         _p_action_1 -= Q1_logsumexp
         _p_action_2 -= Q2_logsumexp
         _p_action_1 = np.exp(_p_action_1)
@@ -668,6 +661,7 @@ class DecisionModel:
 
     def bvp_action_prob_2(self, id, p1_state, p2_state, beta_1, beta_2, last_action):
         """
+        faster version than bvp_p_action
         calculate action prob for one agent: simplifies the calculation
         :param p1_state:
         :param p2_state:
@@ -717,7 +711,7 @@ class DecisionModel:
 
         "using logsumexp to prevent nan"
         Q_logsumexp = logsumexp(_p_action)
-        "normalizing"  # TODO: check if this works
+        "normalizing"
         _p_action -= Q_logsumexp
         _p_action = np.exp(_p_action)
 
@@ -726,9 +720,7 @@ class DecisionModel:
 
         return _p_action  # exp_Q
 
-    # TODO: get q vals given beta set
-    def get_q_vals(self):
-        return
+
 
 
 
