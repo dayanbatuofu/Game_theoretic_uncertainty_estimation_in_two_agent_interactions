@@ -27,12 +27,14 @@ def get_Q_value(X, t, U, theta, deltaT=0.05):
     if theta1 == 5 and theta2 == 5:
         model_path = 'HJI_Vehicle/examples/' + system + '/V_model_na_na.mat'
         parameters, scaling = load_NN(model_path)
-    if theta1 == 1 and theta2 == 1:
+    elif theta1 == 1 and theta2 == 1:
         model_path = 'HJI_Vehicle/examples/' + system + '/V_model_a_a.mat'
         parameters, scaling = load_NN(model_path)
-    if theta1 == 5 and theta2 == 1:
+    elif theta1 == 5 and theta2 == 1:
         model_path = 'HJI_Vehicle/examples/' + system + '/V_model_a_na.mat'
         parameters, scaling = load_NN(model_path)
+    else:
+        print("WARNING!!! INCORRECT THETA INPUT")
     model = HJB_network(problem, scaling, config, parameters)
     V1, V2 = model.Q_value(X, t, U, theta1, theta2, deltaT)
     return V1, V2
