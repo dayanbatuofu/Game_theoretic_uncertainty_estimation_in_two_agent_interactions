@@ -82,8 +82,8 @@ class VisUtils:
             self.asset_location = "assets/"
             self.fps = 24  # max framework
 
-            img_width = int(self.env.car_width * self.coordinate_scale * self.zoom)
-            img_height = int(self.env.car_length * self.coordinate_scale * self.zoom)
+            img_width = int(self.env.CAR_WIDTH * self.coordinate_scale * self.zoom)
+            img_height = int(self.env.CAR_LENGTH * self.coordinate_scale * self.zoom)
 
             "initialize pygame"
             pg.init()
@@ -98,7 +98,7 @@ class VisUtils:
                                                                                    + self.sim.agents[i].car_par["sprite"]),
                                                                      (img_width, img_height)),
                                                   -self.sim.agents[i].car_par["orientation"])
-                              for i in range(self.sim.n_agents)]
+                              for i in range(self.sim.N_AGENTS)]
 
             #self.origin = np.array([-15.0, 15.0])
             self.origin = np.array([0, 0])
@@ -148,8 +148,8 @@ class VisUtils:
             self.screen = pg.display.set_mode((self.screen_width * self.coordinate_scale,
                                                self.screen_height * self.coordinate_scale))
 
-            img_width = int(self.env.car_width * self.coordinate_scale * self.zoom)
-            img_height = int(self.env.car_length * self.coordinate_scale * self.zoom)
+            img_width = int(self.env.CAR_WIDTH * self.coordinate_scale * self.zoom)
+            img_height = int(self.env.CAR_LENGTH * self.coordinate_scale * self.zoom)
 
             "loading car image into pygame"
             self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
@@ -157,7 +157,7 @@ class VisUtils:
                                                                                        "sprite"]),
                                                                      (img_width, img_height)),
                                                   -self.sim.agents[i].car_par["orientation"])
-                              for i in range(self.sim.n_agents)]
+                              for i in range(self.sim.N_AGENTS)]
 
             self.origin = np.array([1.0, -1.0])
 

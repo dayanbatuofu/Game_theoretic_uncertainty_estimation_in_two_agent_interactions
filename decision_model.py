@@ -207,7 +207,7 @@ class DecisionModel:
         "METHOD 2: Get p_action based on only the last action observed"
         actions_2 = []
         p_a_2 = []
-        for i in range(self.sim.n_agents):
+        for i in range(self.sim.N_AGENTS):
             last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
             p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, true_beta_m, last_a_other)
             p_a_2.append(p_action_i)
@@ -457,7 +457,7 @@ class DecisionModel:
         "METHOD 2: Get p_action based on only the last action observed"
         actions = []
         p_a_2 = []
-        for i in range(self.sim.n_agents):
+        for i in range(self.sim.N_AGENTS):
             last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
             if i == 0:
                 p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, beta_m, last_a_other)

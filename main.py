@@ -92,11 +92,11 @@ if __name__ == "__main__":
 
     e = Environment(args.env_name, sim_par, args.sim_dt, args.agent_intent, args.agent_noise, args.agent_intent_belief,
                     args.agent_noise_belief)
-    assert len(args.agent_inference) == e.n_agents and len(args.agent_decision) == e.n_agents
+    assert len(args.agent_inference) == e.N_AGENTS and len(args.agent_decision) == e.N_AGENTS
 
     kwargs = {"env": e,
               "duration": args.sim_duration,
-              "n_agents": e.n_agents,
+              "n_agents": e.N_AGENTS,
               "inference_type": args.agent_inference,
               "decision_type": args.agent_decision,
               "sim_dt": args.sim_dt,

@@ -50,12 +50,12 @@ class Environment:
                 self.agent_noise_belief.append(sim_par['lambda'][1])
 
         if self.name == 'intersection':
-            self.car_width = 0.66
-            self.car_length = 1.33
+            self.CAR_WIDTH = 0.66
+            self.CAR_LENGTH = 1.33
             self.vehicle_max_speed = 0.05
             self.initial_speed = 0.025
 
-            self.n_agents = 2
+            self.N_AGENTS = 2
 
             # BOUNDS: [agent1, agent2, ...], agent: [bounds along x, bounds along y], bounds: [min, max]
             self.bounds = [[[-0.4, 0.4], None], [None, [-0.4, 0.4]]]
@@ -76,9 +76,9 @@ class Environment:
                             ]
 
         elif self.name == 'trained_intersection':  # NFSP Q function is used in this env
-            self.n_agents = 2
-            self.car_width = 2  # m
-            self.car_length = 4  # m
+            self.N_AGENTS = 2
+            self.CAR_WIDTH = 2  # m
+            self.CAR_LENGTH = 4  # m
             # VEHICLE_MAX_SPEED = 40.2  # m/s
             # INITIAL_SPEED = 13.4  # m/s
             # VEHICLE_MIN_SPEED = 0.0  # m/s
@@ -92,7 +92,7 @@ class Environment:
             # boundx = intersection.SCREEN_WIDTH
             # boundy = intersection.SCREEN_HEIGHT
             # self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
-            self.bounds = [[[-self.car_width/2, self.car_width/2], None], [None, [-self.car_width/2, self.car_width/2]]]
+            self.bounds = [[[-self.CAR_WIDTH / 2, self.CAR_WIDTH / 2], None], [None, [-self.CAR_WIDTH / 2, self.CAR_WIDTH / 2]]]
             # first car moves bottom up, second car right to left
             "randomly pick initial states:"
             sy_H = np.random.uniform(intersection.CAR_1.INITIAL_STATE[0] * 0.5,
@@ -161,14 +161,14 @@ class Environment:
             print("initial params: ", self.car_par)
 
         elif self.name == 'bvp_intersection':
-            self.n_agents = 2
-            self.car_width = 1.5  # m
-            self.car_length = 3  # m
+            self.N_AGENTS = 2
+            self.CAR_WIDTH = 1.5  # m
+            self.CAR_LENGTH = 3  # m
 
             # # BOUNDS: [agent1, agent2, ...], agent: [bounds along x, bounds along y], bounds: [min, max]
             # self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
-            self.bounds = [[[-self.car_width / 2, self.car_width / 2], None],
-                           [None, [-self.car_width / 2, self.car_width / 2]]]
+            self.bounds = [[[-self.CAR_WIDTH / 2, self.CAR_WIDTH / 2], None],
+                           [None, [-self.CAR_WIDTH / 2, self.CAR_WIDTH / 2]]]
             # first car (H) moves bottom up, second car (M) right to left
 
             "randomly pick initial states:"
@@ -222,10 +222,10 @@ class Environment:
 
         elif self.name == 'merger':
             # TODO: modify initial state to match with trained model
-            self.n_agents = 2
+            self.N_AGENTS = 2
 
-            self.car_width = 2  # m
-            self.car_length = 4  # m
+            self.CAR_WIDTH = 2  # m
+            self.CAR_LENGTH = 4  # m
             # VEHICLE_MAX_SPEED = 40.2  # m/s
             # INITIAL_SPEED = 13.4  # m/s
             # VEHICLE_MIN_SPEED = 0.0  # m/s
@@ -239,7 +239,7 @@ class Environment:
             # boundx = intersection.SCREEN_WIDTH
             # boundy = intersection.SCREEN_HEIGHT
             #self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
-            self.bounds = [[[-self.car_width/2, self.car_width/2], None], [None, [-self.car_width/2, self.car_width/2]]]
+            self.bounds = [[[-self.CAR_WIDTH / 2, self.CAR_WIDTH / 2], None], [None, [-self.CAR_WIDTH / 2, self.CAR_WIDTH / 2]]]
             # first car moves bottom up, second car right to left
             "randomly pick initial states:"
             sy_M = np.random.uniform(merger.CAR_1.INITIAL_STATE[0] * 0.5,
@@ -261,7 +261,7 @@ class Environment:
                              "par": 1,  # aggressiveness
                              "orientation": 0.},
                             {"sprite": "white_car_sized.png",
-                             "initial_state": [[self.car_width+0.2, -sy_H, 0,0, vy_H]], #should be having negative velocity
+                             "initial_state": [[self.CAR_WIDTH + 0.2, -sy_H, 0, 0, vy_H]],  #should be having negative velocity
                              "desired_state": [0, 0.4],
                              "initial_action": [[0., 0.]],
                              "par": 1,
@@ -269,7 +269,7 @@ class Environment:
                             ]
 
         elif self.name == 'single_agent':
-            self.n_agents = 2  # one agent is observer
+            self.N_AGENTS = 2  # one agent is observer
             self.bounds = [[[-0.4, 0.4], None], [None, [-0.4, 0.4]]]
 
             # first car moves bottom up, second car right to left

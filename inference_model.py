@@ -41,12 +41,13 @@ class InferenceModel:
         "---simulation info:---"
         self.sim = sim
         self.agents = sim.agents
-        self.n_agents = sim.n_agents
+        self.n_agents = sim.env.N_AGENTS
         self.frame = sim.frame
         self.time = sim.time
         self.T = 1  # one step look ahead/ Time Horizon
         self.dt = sim.dt  # default is 1s: assigned in main.py
         self.car_par = sim.env.car_par
+        # TODO: unify speed limits
         self.min_speed = 0.1
         self.max_speed = 30
         "---goal states (for baseline)---"
@@ -59,6 +60,7 @@ class InferenceModel:
         self.lambda_list = self.sim.lambda_list
         self.theta_list = self.sim.theta_list
 
+        # TODO: organize the belief tables for different models
         "---Params for belief calculation (test baseline, single agent)---"
         self.initial_belief = None  # p0: initial belief of the param distribution
         # self.past_scores = {}  # score for each lambda
