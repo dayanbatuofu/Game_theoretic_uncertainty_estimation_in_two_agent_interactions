@@ -38,7 +38,7 @@ class Simulation:
         self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
 
-        if self.inference_type[1] == 'none':
+        if self.inference_type[1] == 'none' and self.inference_type[0] == 'none':
             self.drawing_intent = False
         else:
             self.drawing_intent = True
@@ -233,8 +233,8 @@ class Simulation:
         # print("lambda prob of P2:", self.vis.lambda_distri_m)
         print("Loss of H (p1):", self.past_loss1)
         print("Loss of M (p2):", self.past_loss2)
-        if self.inference_type[1] == 'bvp_empathetic':
-            print("Count of each belief:", self.agents[1].belief_count[-1])
+        if self.inference_type[1] == 'bvp_empathetic' or self.inference_type[0] == 'bvp_empathetic_2':
+            print("Count of each belief:", self.agents[0].belief_count[-1])
             policy_count_1, policy_count_2 = self.calc_policy_choice()
             self.write_policy_predict()
             print("Policy correctness:", self.policy_correctness)
@@ -458,7 +458,7 @@ class Simulation:
 
     def calc_policy_choice(self):  # calculate if the correct param is predicted for each agent
         half = round(len(self.beta_set) / 2)
-        policy_choice = self.agents[1].policy_choice[-1]
+        policy_choice = self.agents[0].policy_choice[-1]
         for i in range(self.n_agents):
             if self.true_params_id[i-1] < half:  # meaning true param of the other is NA
                 for choice in policy_choice[i]:

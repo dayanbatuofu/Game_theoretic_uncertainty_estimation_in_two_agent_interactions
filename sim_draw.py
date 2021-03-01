@@ -36,8 +36,8 @@ class VisUtils:
         self.lambda_list = self.sim.lambda_list
         # TODO: organize this!
         if self.drawing_intent:
-            self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
-            self.p_state_M = sim.agents[1].predicted_states_self
+            self.p_state_H = sim.agents[0].predicted_states_self  # get the last prediction
+            self.p_state_M = sim.agents[0].predicted_states_other
             self.past_state_h = sim.agents[1].state[-1]
             self.past_state_m = sim.agents[0].state[-1]
             self.intent_h = []
@@ -64,6 +64,7 @@ class VisUtils:
                 lambda_id = self.lambda_list.index(par[1])
                 self.true_id.append([theta_id, lambda_id])
         if self.drawing_prob:
+            # TODO: fix this for non-BVP inference
             self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
             self.p_state_M = sim.agents[1].predicted_states_self
             self.past_state_h = sim.agents[1].state[-1]
@@ -372,7 +373,7 @@ class VisUtils:
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
         if self.sim.sharing_belief:  # both agents uses same belief from empathetic inference
-            p_beta_d, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
+            p_beta_d, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
             self.intent_h.append(beta_h[0])
             self.intent_m.append(beta_m[0])
             self.lambda_h.append(beta_h[1])
@@ -386,8 +387,8 @@ class VisUtils:
             # p_b_h = p_beta_dt[beta_pair_id[1]]
             # =========================
             "getting marginal beta belief table"
-            joint_infer_m = self.sim.agents[1].predicted_intent_self
-            p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
+            joint_infer_m = self.sim.agents[0].predicted_intent_other
+            p_joint_h, lambda_h = self.sim.agents[0].predicted_intent_self[-1]
             p_joint_m, lambda_m = joint_infer_m[-1]
 
             "NOTE THAT P_JOINT IS LAMBDA X THETA"
@@ -482,7 +483,8 @@ class VisUtils:
                 self.true_noise_h.append(self.true_params[0][1])
 
     def draw_intent(self):
-        joint_infer_m = self.sim.agents[1].predicted_intent_self
+        # TODO: need to revise the if condition
+        joint_infer_m = self.sim.agents[0].predicted_intent_other
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
         if not len(joint_infer_m) == 0:
@@ -540,7 +542,7 @@ class VisUtils:
             print('Predicted P2 intent distri', self.intent_distri_m)
         else:
             print("predicted intent H", self.intent_h)
-            print("predicted intent for H from AV:", self.sim.agents[1].predicted_intent_other)
+            print("predicted intent for H from AV:", self.sim.agents[0].predicted_intent_self)
             fig2, (ax1, ax2, ax3) = pyplot.subplots(3)
             fig2.suptitle('Predicted intent of H agent')
             ax1.plot(self.intent_h, label='predicted H intent')

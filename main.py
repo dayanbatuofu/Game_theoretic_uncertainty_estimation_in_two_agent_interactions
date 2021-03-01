@@ -6,7 +6,7 @@ Important files:
 3. decision_model: returns appropriate action for each agent
 4. sim_draw: plots the simulation and results
 5. >>> savi_simulation: executes the simulation <<<
-Change the default values below to change actual model used!
+Change the DEFAULT values below to change actual model used!
 """
 import os
 import argparse
@@ -58,7 +58,7 @@ agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent ca
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning (NOT IN USE)
 parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT TRUE PARAM
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
-parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT BELIEF
+parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT BELIEF
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--belief_weight', type=float, default=0.8)
 
