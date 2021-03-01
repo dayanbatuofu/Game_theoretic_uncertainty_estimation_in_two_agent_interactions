@@ -497,7 +497,7 @@ class DecisionModel:
             beta_h = self.beta_set[beta_pair_id[0]]
             beta_m = self.beta_set[beta_pair_id[1]]
         else:
-            p_beta, [beta_h, beta_m] = self.sim.agents[1].predicted_intent_all[-1]
+            p_beta, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
         true_beta_h, true_beta_m = self.true_params
 
         "METHOD 1: Get the whole p_action table using true param of self and other"

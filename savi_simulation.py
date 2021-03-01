@@ -296,8 +296,44 @@ class Simulation:
                     #     belief[i][j] = weight
                     # else:
                     #     belief[i][j] = 1
-        elif self.inference_type[1] == 'none':
-            belief = 1  # no inference
+        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_empathetic_2' or self.inference_type[0] == 'bvp_empathetic':
+            # beta_list = beta_list.flatten()
+            belief = np.ones((len(beta_list), len(beta_list)))
+            for i, beta_h in enumerate(beta_list):  # H: the rows
+                for j, beta_m in enumerate(beta_list):  # M: the columns
+                    if beta_h[0] == theta_h:  # check lambda
+                        belief[i][j] *= weight
+                        if beta_h[1] == lambda_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                        if beta_h[1] == lambda_h:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+
+                    if beta_m[0] == theta_m:  # check lambda
+                        belief[i][j] *= weight
+                        if beta_m[1] == lambda_m:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+                    else:
+                        belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
+                        if beta_m[1] == lambda_m:  # check theta
+                            belief[i][j] *= weight
+                        else:
+                            belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
+
+                    # if beta_h == [lambda_h, theta_h] and beta_m == [lambda_m, theta_m]:
+                    #     belief[i][j] = weight
+                    # else:
+                    #     belief[i][j] = 1
+
+        elif self.inference_type[0] == 'none' and self.inference_type[1] == 'none':
+            belief = None  # no inference
 
         # not in use! we only use the game theoretic inference
         else:  # get belief on H agent only

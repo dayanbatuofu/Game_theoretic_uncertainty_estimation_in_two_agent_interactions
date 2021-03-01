@@ -40,8 +40,9 @@ agent model parameters
 """
 # choose inference model: none: complete information
 parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic',
-                                                            'bvp_empathetic', 'trained_baseline_2U'],
-                    default=['none', 'bvp_empathetic'])  # use empathetic (bvp) for our sim, and only for 2nd player
+                                                            'bvp_empathetic', 'bvp_empathetic_2',
+                                                            'trained_baseline_2U'],
+                    default=['bvp_empathetic_2', 'none'])  # use empathetic (bvp) for our sim, and only for 2nd player
 
 # choose decision model: complete_information: nash equilibrium with complete information
 parser.add_argument('--agent_decision', type=str,

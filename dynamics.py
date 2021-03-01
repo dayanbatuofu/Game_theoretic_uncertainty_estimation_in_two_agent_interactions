@@ -1,5 +1,6 @@
 """
 Defines dynamics for universal usage
+Used in inference model and autonomous_vehicle
 """
 import numpy as np
 
