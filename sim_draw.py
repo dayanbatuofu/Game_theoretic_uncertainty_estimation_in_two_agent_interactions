@@ -317,7 +317,7 @@ class VisUtils:
                              (self.screen_width * self.coordinate_scale,
                               (bounds[1] + bounds[0]) / 2), bounds[0] - bounds[1])
 
-    def draw_dist(self):
+    def draw_dist_n_action(self):
         """
         plotting distance between cars and action taken
         :return:
@@ -329,7 +329,7 @@ class VisUtils:
         ax1.set(xlabel='frame', ylabel='distance')
 
         ax2.plot(self.sim.agents[0].action, label='actual')
-        ax2.plot(self.sim.agents[1].predicted_actions_other, label='predicted', linestyle='--')
+        ax2.plot(self.sim.agents[0].predicted_actions_self, label='predicted', linestyle='--')
         ax2.set_ylim([-10, 10])
         ax2.set_yticks([-8, -4, 0, 4, 8])
         if self.env.name == 'bvp_intersection':
@@ -339,7 +339,7 @@ class VisUtils:
         ax2.set(xlabel='frame', ylabel='H actions')
 
         ax3.plot(self.sim.agents[1].action, label='actual')
-        ax3.plot(self.sim.agents[1].predicted_actions_self, label='predicted', linestyle='--')
+        ax3.plot(self.sim.agents[0].predicted_actions_other, label='predicted', linestyle='--')
         ax3.set_ylim([-10, 10])
         ax3.set_yticks([-8, -4, 0, 4, 8])
         if self.env.name == 'bvp_intersection':

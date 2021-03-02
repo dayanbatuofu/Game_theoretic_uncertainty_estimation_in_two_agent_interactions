@@ -54,6 +54,8 @@ class Environment:
             self.CAR_LENGTH = 1.33
             self.vehicle_max_speed = 0.05
             self.initial_speed = 0.025
+            self.MIN_SPEED = 0.1
+            self.MAX_SPEED = 30
 
             self.N_AGENTS = 2
 
@@ -85,6 +87,8 @@ class Environment:
             # MAX_ACCELERATION = 8  # m/s^2
             # MAX_DECELERATION = -8  # m/s^2
             self.vehicle_max_speed = 40.2
+            self.MIN_SPEED = 0.1
+            self.MAX_SPEED = 30
             self.initial_speed = 13.4
 
             intersection = C.CONSTANTS.Intersection
@@ -164,6 +168,8 @@ class Environment:
             self.N_AGENTS = 2
             self.CAR_WIDTH = 1.5  # m
             self.CAR_LENGTH = 3  # m
+            self.MIN_SPEED = 0.1
+            self.MAX_SPEED = 30
 
             # # BOUNDS: [agent1, agent2, ...], agent: [bounds along x, bounds along y], bounds: [min, max]
             # self.bounds = [[[-boundx, boundx], None], [None, [-boundy, boundy]]]
@@ -203,22 +209,22 @@ class Environment:
                              "orientation": -90.},
                             ]
 
-            "choose action base on decision type and intent"
-            action_set = self.sim_par["action_set"]
-            "METHOD 1: Get the whole p_action table using true param of self and belief of other's param"
-            p1_state = self.car_par[0]["initial_state"][0]
-            p2_state = self.car_par[1]["initial_state"][0]
-            true_beta_h = self.car_par[0]["par"]
-            true_beta_m = self.car_par[1]["par"]
-            belief_beta_h = self.car_par[1]["belief"]
-            belief_beta_m = self.car_par[0]["belief"]
-            p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, belief_beta_m)
-            p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, belief_beta_h, true_beta_m)
-
-            actions = []
-            for i, p_a in enumerate([p_action1, p_action2]):
-                action_id = np.unravel_index(p_a.argmax(), p_a.shape)
-                self.car_par[i]["initial_action"] = [action_set[action_id[i]]]
+            # "choose action base on decision type and intent"
+            # action_set = self.sim_par["action_set"]
+            # "METHOD 1: Get the whole p_action table using true param of self and belief of other's param"
+            # p1_state = self.car_par[0]["initial_state"][0]
+            # p2_state = self.car_par[1]["initial_state"][0]
+            # true_beta_h = self.car_par[0]["par"]
+            # true_beta_m = self.car_par[1]["par"]
+            # belief_beta_h = self.car_par[1]["belief"]
+            # belief_beta_m = self.car_par[0]["belief"]
+            # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, belief_beta_m)
+            # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, belief_beta_h, true_beta_m)
+            #
+            # actions = []
+            # for i, p_a in enumerate([p_action1, p_action2]):
+            #     action_id = np.unravel_index(p_a.argmax(), p_a.shape)
+            #     self.car_par[i]["initial_action"] = [action_set[action_id[i]]]
 
         elif self.name == 'merger':
             # TODO: modify initial state to match with trained model
@@ -232,6 +238,8 @@ class Environment:
             # MAX_ACCELERATION = 8  # m/s^2
             # MAX_DECELERATION = -8  # m/s^2
             self.vehicle_max_speed = 40.2
+            self.MIN_SPEED = 0.1
+            self.MAX_SPEED = 30
             self.initial_speed = 13.4
 
             merger = C.CONSTANTS.Merger

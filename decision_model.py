@@ -403,20 +403,19 @@ class DecisionModel:
         # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
         # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
 
-        lambda_list = self.lambda_list
-        theta_list = self.theta_list
         action_set = self.action_set
 
         "this is where non_empathetic is different: using true param of self to observe portion of belief table"
         if self.sim.frame == 0:
             p_beta = self.sim.initial_belief
         else:
-            p_beta, ne_betas = self.sim.agents[1].predicted_intent_all[-1]
-        # true_param_id -> get row/col of p_beta -> get predicted beta
+            p_beta, ne_betas = self.sim.agents[0].predicted_intent_all[-1]
+
+        "true_param_id -> get row/col of p_beta -> get predicted beta"
         true_beta_h, true_beta_m = self.true_params
         b_id_h = self.beta_set.index(true_beta_h)
         b_id_m = self.beta_set.index(true_beta_m)
-        p_b_h = np.transpose(p_beta)[b_id_m]
+        p_b_h = np.transpose(p_beta)[b_id_m]  # get col p_beta
         p_b_m = p_beta[b_id_h]
         beta_h = self.beta_set[np.argmax(p_b_h)]
         beta_m = self.beta_set[np.argmax(p_b_m)]
@@ -457,7 +456,7 @@ class DecisionModel:
         "METHOD 2: Get p_action based on only the last action observed"
         actions = []
         p_a_2 = []
-        for i in range(self.sim.N_AGENTS):
+        for i in range(self.sim.n_agents):
             last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
             if i == 0:
                 p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, beta_m, last_a_other)
@@ -467,7 +466,7 @@ class DecisionModel:
             actions.append(action_set[np.argmax(p_action_i)])
 
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
-        # actions = [action1, action2]
+
         return {'action': actions}
 
     def bvp_empathetic(self):

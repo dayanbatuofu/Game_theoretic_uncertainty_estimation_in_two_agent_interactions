@@ -34,17 +34,18 @@ environment parameters
 parser.add_argument('--env_name', type=str, choices=['test_intersection', 'trained_intersection', 'bvp_intersection',
                                                      'lane_change', 'merger'],
                     default='bvp_intersection')
+# Starting position and velocity is set within the environment
 
 """
 agent model parameters
 """
-# choose inference model: none: complete information
+# choose inference model: use bvp_empathetic_2 for our sim, and only for 2nd player
 parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic',
-                                                            'bvp_empathetic', 'bvp_empathetic_2',
+                                                            'bvp', 'bvp_2',
                                                             'trained_baseline_2U'],
-                    default=['bvp_empathetic_2', 'none'])  # use empathetic (bvp) for our sim, and only for 2nd player
+                    default=['bvp_2', 'none'])
 
-# choose decision model: complete_information: nash equilibrium with complete information
+# choose decision model: use the same model for the two agent, bvp_non_empathetic or bvp_empathetic
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'nfsp_baseline', 'bvp_baseline', 'baseline2', 'complete_information',
                              'non-empathetic', 'empathetic',

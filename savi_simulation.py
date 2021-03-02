@@ -34,10 +34,11 @@ class Simulation:
         self.inference_type = inference_type
         self.env = env
         self.agents = []
+
+        "Some switches for visuals"
         self.sharing_belief = True  # True for empathetic inferences
         self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
-
         if self.inference_type[1] == 'none' and self.inference_type[0] == 'none':
             self.drawing_intent = False
         else:
@@ -55,18 +56,18 @@ class Simulation:
         # self.action_set_combo = [[-0.05,8], [0,-8], [0.05,-8], [-0.05,-4], [0,-4],
         #                          [0.05,-4], [-0.05,0], [0, 0], [0.05,0], [-0.05,4],
         #                          [0,4], [0.05,4], [-0.05, 8], [0,8], [0.05,8]]  # merging case actions
-        self.action_set_combo = [[-0.05, -4], [0.05, -4], [0, 0], [0.05, 4], [-0.05, 0.4]]# CHANGE THIS LATER SUNNY
+        self.action_set_combo = [[-0.05, -4], [0.05, -4], [0, 0], [0.05, 4], [-0.05, 0.4]]  # Merging case
 
         if self.env.name == 'merger':
             self.action_set = self.action_set_combo
 
         # ----------------------------------------------------------------------------------------
-        # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda4] (2x4 = 8 set of betas)
-        # betas: [ [theta1, lambda1], [theta1, lambda2], [theta1, lambda3], [theta1, lambda4],
-        #          [theta2, lambda1], [theta2, lambda2], [theta2, lambda3], [theta2, lambda4] ]
+        # For each agent:
+        # beta: [theta1, lambda1], [theta1, lambda2], ... [theta2, lambda2] (2x2 = 4 set of betas)
+        # beta_set: [ [theta1, lambda1], [theta1, lambda2], [theta2, lambda1], [theta2, lambda2] ]
         # ----------------------------------------------------------------------------------------
         self.beta_set = []
-        '1D version of beta'
+        'Creating 1D version of beta'
         for i, theta in enumerate(self.theta_list):
             for j, _lambda in enumerate(self.lambda_list):
                 self.beta_set.append([theta, _lambda])
@@ -77,6 +78,7 @@ class Simulation:
         for i, par_i in enumerate(self.env.car_par):
             self.true_params.append(par_i["par"])
             self.true_params_id.append(self.beta_set.index(par_i["par"]))
+
         'getting initial beliefs of others'
         self.belief_params = []
         for i, par_i in enumerate(self.env.car_par):
@@ -96,7 +98,7 @@ class Simulation:
 
         if self.n_agents == 2:
             # simulations with 2 cars
-            # Note that variable annotation is not supported in python 3.5
+            # Note that variable annotation is not supported in python 3.5!!!
 
             inference_model: List[InferenceModel] = [InferenceModel(inference_type[i], self) for i in range(n_agents)]
             decision_model: List[DecisionModel] = [DecisionModel(decision_type[i], self) for i in range(n_agents)]
@@ -155,6 +157,7 @@ class Simulation:
 
                 # Keep fps
 
+            "Termination conditions"
             if self.frame >= 35:  # for dt=0.05
                 print('Simulation ended with duration exceeded limit')
                 break
@@ -211,7 +214,7 @@ class Simulation:
             # if self.inference_type[1] == 'bvp_empathetic':
             #     self.write_intent_predict()
         "drawing results"
-        self.vis.draw_dist()
+        self.vis.draw_dist_n_action()
         if self.drawing_intent:
             self.vis.draw_intent()
         if self.env.name == 'bvp_intersection':
@@ -233,7 +236,7 @@ class Simulation:
         # print("lambda prob of P2:", self.vis.lambda_distri_m)
         print("Loss of H (p1):", self.past_loss1)
         print("Loss of M (p2):", self.past_loss2)
-        if self.inference_type[1] == 'bvp_empathetic' or self.inference_type[0] == 'bvp_empathetic_2':
+        if self.inference_type[1] == 'bvp' or self.inference_type[0] == 'bvp_2':
             print("Count of each belief:", self.agents[0].belief_count[-1])
             policy_count_1, policy_count_2 = self.calc_policy_choice()
             self.write_policy_predict()
@@ -244,16 +247,15 @@ class Simulation:
         loss_2 = np.sum(self.past_loss2) * self.dt
         print("agent 1's loss:", loss_1)
         print("sum of 2 agent's loss:", loss_1 + loss_2)
-        # print(loss_1 + loss_2)
 
-    def get_initial_belief(self, theta_h, theta_m, lambda_h, lambda_m, weight):
+    def get_initial_belief(self, theta_1, theta_2, lambda_1, lambda_2, weight):
         """
-        Obtain initial belief of the params
-        :param theta_h:
-        :param theta_m:
-        :param lambda_h:
-        :param lambda_m:
-        :param weight:
+        Obtain initial common belief from the belief params
+        :param theta_1: agent 2's belief on agent 1's intent
+        :param theta_2: agent 1's belief on agent 2's intent
+        :param lambda_1: agent 2's belief on agent 1's noise
+        :param lambda_2: agent 1's belief on agent 2's intent
+        :param weight: determines the distribution of the common belief: concentrated or spread
         :return:
         """
         # given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
@@ -261,33 +263,33 @@ class Simulation:
         lambda_list = self.lambda_list
         beta_list = self.beta_set
 
-        if self.inference_type[1] == 'empathetic' or self.inference_type[1] == 'bvp_empathetic':
+        if self.inference_type[1] == 'empathetic' or self.inference_type[1] == 'bvp':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
                 for j, beta_m in enumerate(beta_list):  # M: the columns
-                    if beta_h[0] == theta_h:  # check lambda
+                    if beta_h[0] == theta_1:  # check lambda
                         belief[i][j] *= weight
-                        if beta_h[1] == lambda_h:  # check theta
+                        if beta_h[1] == lambda_1:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
                     else:
                         belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                        if beta_h[1] == lambda_h:  # check theta
+                        if beta_h[1] == lambda_1:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
 
-                    if beta_m[0] == theta_m:  # check lambda
+                    if beta_m[0] == theta_2:  # check lambda
                         belief[i][j] *= weight
-                        if beta_m[1] == lambda_m:  # check theta
+                        if beta_m[1] == lambda_2:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
                     else:
                         belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                        if beta_m[1] == lambda_m:  # check theta
+                        if beta_m[1] == lambda_2:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
@@ -296,33 +298,33 @@ class Simulation:
                     #     belief[i][j] = weight
                     # else:
                     #     belief[i][j] = 1
-        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_empathetic_2' or self.inference_type[0] == 'bvp_empathetic':
+        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_2' or self.inference_type[0] == 'bvp':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
                 for j, beta_m in enumerate(beta_list):  # M: the columns
-                    if beta_h[0] == theta_h:  # check lambda
+                    if beta_h[0] == theta_1:  # check lambda
                         belief[i][j] *= weight
-                        if beta_h[1] == lambda_h:  # check theta
+                        if beta_h[1] == lambda_1:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
                     else:
                         belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                        if beta_h[1] == lambda_h:  # check theta
+                        if beta_h[1] == lambda_1:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
 
-                    if beta_m[0] == theta_m:  # check lambda
+                    if beta_m[0] == theta_2:  # check lambda
                         belief[i][j] *= weight
-                        if beta_m[1] == lambda_m:  # check theta
+                        if beta_m[1] == lambda_2:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
                     else:
                         belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
-                        if beta_m[1] == lambda_m:  # check theta
+                        if beta_m[1] == lambda_2:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
@@ -340,15 +342,15 @@ class Simulation:
             belief = np.ones((len(lambda_list), len(theta_list)))
             for i, lamb in enumerate(lambda_list):
                 for j, theta in enumerate(theta_list):
-                    if lamb == lambda_h:  # check lambda
+                    if lamb == lambda_1:  # check lambda
                         belief[i][j] *= weight
-                        if theta == theta_h:  # check theta
+                        if theta == theta_1:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
                     else:
                         belief[i][j] *= (1 - weight) / (len(lambda_list) - 1)
-                        if theta == theta_h:  # check theta
+                        if theta == theta_1:  # check theta
                             belief[i][j] *= weight
                         else:
                             belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
@@ -397,8 +399,7 @@ class Simulation:
 
     def calc_loss(self):
         """
-        Calculate loss function after each step
-        :return:
+        Calculate loss function after each step and record it
         """
         state_h = self.agents[0].state[self.frame]
         state_m = self.agents[1].state[self.frame]
@@ -431,6 +432,9 @@ class Simulation:
         return
 
     def write_loss(self):
+        """
+        Writing loss to csv file
+        """
         states_1 = self.agents[0].state
         states_2 = self.agents[1].state
         x1 = []
@@ -456,7 +460,10 @@ class Simulation:
 
         return
 
-    def calc_policy_choice(self):  # calculate if the correct param is predicted for each agent
+    def calc_policy_choice(self):
+        """
+        calculate if the correct param is predicted for each agent
+        """
         half = round(len(self.beta_set) / 2)
         policy_choice = self.agents[0].policy_choice[-1]
         for i in range(self.n_agents):
@@ -478,6 +485,9 @@ class Simulation:
         return count_1, count_2
 
     def write_policy_predict(self):
+        """
+        Write policy choices to csv file
+        """
         states_1 = self.agents[0].state
         states_2 = self.agents[1].state
         x1 = []
@@ -507,7 +517,7 @@ class Simulation:
             csv_writer.writerow(x1)
             csv_writer.writerow(x2)
 
-    def write_intent_predict(self):  # not in use
+    def write_intent_predict(self):  # NOT IN USE!
         states_1 = self.agents[0].state
         states_2 = self.agents[1].state
         x1 = []

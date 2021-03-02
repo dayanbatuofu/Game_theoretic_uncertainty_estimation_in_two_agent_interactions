@@ -44,8 +44,8 @@ class AutonomousVehicle:
         self.predicted_states_other = []
         self.belief_count = []
         self.policy_choice = []
-        self.min_speed = 0.1  # only for nfsp
-        self.max_speed = 30
+        self.min_speed = self.env.MIN_SPEED
+        self.max_speed = self.env.MAX_SPEED
 
     def update(self, sim):
         other = sim.agents[:self.id]+sim.agents[self.id+1:]  # get all other agents
