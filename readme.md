@@ -6,7 +6,7 @@ Contributors: Yi Chen, Merry Tanner, Lei Zhang, Sunny Amatya, Yi Ren, Wenlong Zh
 
 This repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047
 
-![alt text](https://github.com/ychen837/Game_theoretic_uncertainty_estimation_in_two_agent_interactions/plot/movie_E_theta1=a_theta2=a_time horizon=3.0.gif)
+![alt text](https://github.com/ychen837/Game_theoretic_uncertainty_estimation_in_two_agent_interactions/plot/movie_E_theta1=a_theta2=a_time_horizon=3.0.gif)
 
 ## Instruction of reproducing the results <a name="instruction"></a>
 In general, the simulation can be conducted by 
