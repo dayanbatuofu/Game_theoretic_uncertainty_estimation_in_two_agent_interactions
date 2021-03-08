@@ -8,11 +8,11 @@ This repo is implemented with the empathetic and non-empathetic agents studied i
 
 ## Simulation
 ### Aggressive Empathetic agents with Non-aggressive beliefs
-% ![alt text](./plot/movie_E_theta1=a_theta2=a_time_horizon=3.0.gif)
-<a href="url"><img src="./plot/movie_E_theta1=a_theta2=a_time_horizon=3.0.gif" align="left" height="48" width="48" ></a>
+<a href="url"><img src="./plot/movie_E_theta1=na_theta2=na_time_horizon=3.0.gif" height="400" width="400" ></a>
+
 
 ### Aggressive Non-empathetic agents with Non-aggressive beliefs (closer encounters)
-![alt text](./plot/movie_NE_theta1=a_theta2=a_time_horizon=3.0.gif)
+<a href="url"><img src="./plot/movie_NE_theta1=na_theta2=na_time_horizon=3.0.gif" height="400" width="400" ></a>
 
 ## Instruction of reproducing the results <a name="instruction"></a>
 In general, the simulation can be conducted by 
