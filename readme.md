@@ -4,8 +4,23 @@ Contributors: Yi Chen, Merry Tanner, Lei Zhang, Sunny Amatya, Yi Ren, Wenlong Zh
 
 ## Overview of the repo
 
-This repo is implemented with the empathetic and non-empathetic agents studied in the ICRA paper
+This repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047
 
+![alt text](https://github.com/ychen837/Game_theoretic_uncertainty_estimation_in_two_agent_interactions/plot/movie_E_theta1=a_theta2=a_time horizon=3.0.gif)
+
+## Instruction of reproducing the results <a name="instruction"></a>
+In general, the simulation can be conducted by 
+running main.py. 
+- The agent's parameters can be changed in main.py on line 60, 61.
+- The initial belief can be changed in main.py on line 62, 63.
+- The initial position of agents can be changed in environment.py, on line 187~190.
+- The type of agent can be changed in main.py on line 53.
+
+## Models
+Different agent decision models (agent type):
+- BVP_empathetic: allows other agent to have misunderstanding of self
+- BVP_non_empathetic: assumes other agent knows ego's parameter
+- Baseline: no inference/interaction, only plays according to own parameter and what it assumes other agent to be 
 
 ### Main.py
 
@@ -40,25 +55,7 @@ baseline, etc.
 The simulation data are collected and shown using the algorithm here
 after the simulation has ended.
 
-## Models
 
-### BVP_empathetic
 
-### BVP_non_empathetic
 
-### Baseline
 
-## Instruction of reproducing the results <a name="instruction"></a>
-In general, the simulation can be conducted by 
-running main.py. The motion planning methods can be 
-edited by changing $loss\_style$ on line 34 and 38 
-in main.py. Aggressiveness ($\theta$) of agents are 
-determined on line 129 and 141 of constants.py; 
-acceleration ability ($\alpha$) of agents on line 132 
-and 144, while $\hat{\alpha}$ on line 133 and 145 of 
-the same file. Courtesy weight ($\beta$) is on line 
-60 in constants.py. All tables and figures 1-9 of 
-the paper can be reproduced by changing these 
-parameters and run main.py in the root folder. 
-Figure 10 can be reproduced by main.py in 
-/turning\_scene.
