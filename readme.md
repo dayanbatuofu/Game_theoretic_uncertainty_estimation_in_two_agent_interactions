@@ -7,10 +7,10 @@ Contributors: Yi Chen, Merry Tanner, Lei Zhang, Sunny Amatya, Yi Ren, Wenlong Zh
 This repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047
 
 ## Simulation
-# Aggressive Empathetic agents with Non-aggressive beliefs
+### Aggressive Empathetic agents with Non-aggressive beliefs
 ![alt text](./plot/movie_E_theta1=a_theta2=a_time_horizon=3.0.gif)
 
-# Aggressive Non-empathetic agents with Non-aggressive beliefs (closer encounters)
+### Aggressive Non-empathetic agents with Non-aggressive beliefs (closer encounters)
 ![alt text](./plot/movie_NE_theta1=a_theta2=a_time_horizon=3.0.gif)
 
 ## Instruction of reproducing the results <a name="instruction"></a>
