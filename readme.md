@@ -6,15 +6,24 @@ Contributors: Yi Chen, Merry Tanner, Lei Zhang, Sunny Amatya, Yi Ren, Wenlong Zh
 
 This repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047
 
-![alt text](https://github.com/ychen837/Game_theoretic_uncertainty_estimation_in_two_agent_interactions/plot/movie_E_theta1=a_theta2=a_time horizon=3.0.gif)
+## Simulation
+### Aggressive Empathetic agents with Non-aggressive beliefs
+<a href="url"><img src="./plot/movie_E_theta1=na_theta2=na_time_horizon=3.0.gif" height="400" width="400" ></a>
+
+
+### Aggressive Non-empathetic agents with Non-aggressive beliefs (closer encounters)
+<a href="url"><img src="./plot/movie_NE_theta1=na_theta2=na_time_horizon=3.0.gif" height="400" width="400" ></a>
 
 ## Instruction of reproducing the results <a name="instruction"></a>
 In general, the simulation can be conducted by 
 running main.py. 
+### To generate the baseline simulation, use [none, none] for inference model, [bvp_baseline, bvp_baseline] for decision.
+### To generate the empathetic simulation, use [bvp_2, none] for inference model, [bvp_empathetic, bvp_empathetic] for decision.
+### To generate the empathetic simulation, use [bvp_2, none] for inference model, [bvp_non_empathetic, bvp_non_empathetic] for decision.
 - The agent's parameters can be changed in main.py on line 60, 61.
 - The initial belief can be changed in main.py on line 62, 63.
 - The initial position of agents can be changed in environment.py, on line 187~190.
-- The type of agent can be changed in main.py on line 53.
+- The type of agent (decision) can be changed in main.py on line 53.
 
 ## Models
 Different agent decision models (agent type):
