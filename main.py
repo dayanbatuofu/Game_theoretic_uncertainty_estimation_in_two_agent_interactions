@@ -50,7 +50,7 @@ parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'nfsp_baseline', 'bvp_baseline', 'baseline2', 'complete_information',
                              'non-empathetic', 'empathetic',
                              'bvp_non_empathetic', 'bvp_empathetic'],
-                    default=['bvp_empathetic', 'bvp_empathetic'])
+                    default=['bvp_non_empathetic', 'bvp_non_empathetic'])
 
 """
 agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case
@@ -74,6 +74,7 @@ if __name__ == "__main__":
     device = t.device('cuda:' + str(args.gpu) if t.cuda.is_available() else 'cpu')
     close_action_set = np.linspace(-5, 10, 31)
     close_action_set = close_action_set.tolist()
+    # agent choices
     if args.env_name == 'bvp_intersection':
         sim_par = {"theta": [5, 1],  # NA, A
                    "lambda": [0.1, 0.5],  # N, NN

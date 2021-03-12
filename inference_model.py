@@ -2559,7 +2559,7 @@ class InferenceModel:
 
             return p_action_past, [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 
-        def bvp_action_prob_2(id, p1_state, p2_state, beta_1, beta_2, last_action):
+        def bvp_action_prob_2(id, p1_state, p2_state, beta_1, beta_2, last_action, time):
             """
             calculate action prob for one agent: simplifies the calculation
             :param p1_state:
@@ -2574,8 +2574,8 @@ class InferenceModel:
             action_set = self.action_set
             _p_action = np.zeros((len(action_set)))  # 1D
 
-            time = np.array([[self.time]])
             dt = self.sim.dt
+            time = np.array([[time]])
             "Need state for agent H: xH, vH, xM, vM"
             if id == 0:
                 # p1_state_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
@@ -2656,7 +2656,9 @@ class InferenceModel:
                     "method 2: only get 1 row of p_action for faster speed"
                     p_a_past2 = []
                     for id in range(self.sim.n_agents):
-                        p_a_i = bvp_action_prob_2(id, past_state_h, past_state_m, beta_set[i], beta_set[j], last_actions[id-1])
+                        p_a_i = bvp_action_prob_2(id, past_state_h, past_state_m,
+                                                  beta_set[i], beta_set[j],
+                                                  last_actions[id-1], self.time-1)  # last time step
                         p_a_past2.append(p_a_i[ai[id]])
                     "for confirming the two algorithm converges to same value"
                     # assert np.round(p_a_past[0], 4) == np.round(p_a_past2[0], 4)
@@ -2675,7 +2677,7 @@ class InferenceModel:
             Get the marginal P(Beta_i|D(k)) from P(beta_H, beta_M|D(k))
             :param id:
             :param _p_beta_d:
-            :return: 4x2 matrix, where row is the lambda and col is the theta, for visualization purposes
+            :return: len(lambda_list) x len(theta_list) matrix, where row is the lambda and col is the theta, for visualization purposes
             """
             marginal = []
             for t in self.theta_list:
@@ -2729,14 +2731,6 @@ class InferenceModel:
         else:
             p_beta_d = self.beta_initial_belief
 
-        'getting best predicted betas, only for empathetic decision'
-        beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
-        # print("best betas ID at time {0}".format(self.frame), beta_pair_id)
-
-        new_beta_h = self.beta_set[beta_pair_id[0]]
-        new_beta_m = self.beta_set[beta_pair_id[1]]
-        self.past_beta.append([new_beta_h, new_beta_m])
-
         "getting marginal prob for beta_h or beta_m: THIS IS ONLY FOR PLOTTING, NOT DECISION"
         # for estimating distribution
         p_beta_d_h, best_lambda_h = marginal_joint_intent(id=0, _p_beta_d=p_beta_d)
@@ -2758,31 +2752,47 @@ class InferenceModel:
         a_id = [self.action_set.index(last_action_h), self.action_set.index(last_action_m)]  # index of actions_t-1
         predicted_actions = []
         for id in range(self.sim.n_agents):
-            if self.sim.decision_type_m == 'bvp_empathetic':
+            if self.sim.decision_type_m == 'bvp_empathetic' and self.sim.decision_type_h == 'bvp_empathetic':
+                'getting best predicted betas for empathetic decision'
+                beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
+                new_beta_1 = self.beta_set[beta_pair_id[0]]
+                new_beta_2 = self.beta_set[beta_pair_id[1]]
+                self.past_beta.append([new_beta_1, new_beta_2])
+
+                "getting action probability"
                 if id == 0:
                     self.policy_choice[0].append(beta_pair_id[1])
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
-                                              self.true_params[0], new_beta_m, last_action_set[id - 1])
+                                              self.true_params[0], new_beta_2, last_action_set[id - 1], self.time)
                 elif id == 1:
                     self.policy_choice[1].append(beta_pair_id[0])
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
-                                              new_beta_h, self.true_params[1], last_action_set[id - 1])
-            elif self.sim.decision_type_m == 'bvp_non_empathetic':
-                true_id = self.sim.true_params_id[id]  # true self beta id (ie. NA, NN --> 1)
-                if id == 0:
+                                              new_beta_1, self.true_params[1], last_action_set[id - 1], self.time)
+
+            elif self.sim.decision_type_m == 'bvp_non_empathetic' \
+                    and self.sim.decision_type_h == 'bvp_non_empathetic':  # action and beta prediction for NE case
+                true_id = self.sim.true_params_id[id]  # true beta of other agent
+                if id == 0:  # agent 1's guess of agent 2's beta
                     p_beta_d_i = p_beta_d[true_id]  # get row based on P1's true beta
-                    pred_beta_m_id = np.argmax(p_beta_d_i)
-                    pred_beta_m = self.beta_set[pred_beta_m_id]
-                    self.policy_choice[0].append(pred_beta_m_id)
+                    pred_beta_2_id = np.argmax(p_beta_d_i)
+
+                    new_beta_2 = self.beta_set[pred_beta_2_id]
+
+                    self.past_beta.append([new_beta_2])
+                    self.policy_choice[0].append(pred_beta_2_id)
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
-                                              self.true_params[0], pred_beta_m, last_action_set[id - 1])
-                elif id == 1:
+                                              self.true_params[0], new_beta_2, last_action_set[id - 1], self.time)
+                elif id == 1:  # agent 2's guess at agent 1's beta
                     p_beta_d_i = np.transpose(p_beta_d)[true_id]  # get row based on P1's true beta
-                    pred_beta_h_id = np.argmax(p_beta_d_i)
-                    pred_beta_h = self.beta_set[pred_beta_h_id]
-                    self.policy_choice[1].append(pred_beta_h_id)
+                    pred_beta_1_id = np.argmax(p_beta_d_i)
+                    new_beta_1 = self.beta_set[pred_beta_1_id]  # new predicted beta for agent 2
+                    beta_pair_id = [pred_beta_1_id, pred_beta_2_id]
+                    self.past_beta[-1].append(new_beta_1)
+                    self.policy_choice[1].append(pred_beta_1_id)
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
-                                              pred_beta_h, self.true_params[1], last_action_set[id - 1])
+                                              new_beta_1, self.true_params[1], last_action_set[id - 1], self.time)
+            else:
+                print("WARNING! INCORRECT AGENT TYPE FOR BVP INFERENCE")
             best_action_i = self.action_set[np.argmax(p_a_i)]
             predicted_actions.append(best_action_i)
 
@@ -2802,10 +2812,10 @@ class InferenceModel:
         # print("-Intent_inf- marginal state H: ", marginal_state_h)
         return {# 'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[1],
-                'predicted_intent_other': [p_beta_d_h, new_beta_h],
+                'predicted_intent_other': [p_beta_d_h, new_beta_1],
                 # 'predicted_states_self': (marginal_state_m, get_state_list(curr_state_m, self.T, self.dt)),
                 'predicted_actions_self': predicted_actions[0],
-                'predicted_intent_self': [p_beta_d_m, new_beta_m],
-                'predicted_intent_all': [p_beta_d, [new_beta_h, new_beta_m]],
+                'predicted_intent_self': [p_beta_d_m, new_beta_2],
+                'predicted_intent_all': [p_beta_d, [new_beta_1, new_beta_2]],
                 'belief_count': self.belief_count,
                 'policy_choice': self.policy_choice}

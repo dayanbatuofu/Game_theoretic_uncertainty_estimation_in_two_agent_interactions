@@ -205,16 +205,15 @@ class DecisionModel:
         #         actions.append(action_set[action_id])
 
         "METHOD 2: Get p_action based on only the last action observed"
-        actions_2 = []
-        p_a_2 = []
+        actions = []
+
         for i in range(self.sim.N_AGENTS):
             last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
             p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, true_beta_m, last_a_other)
-            p_a_2.append(p_action_i)
-            actions_2.append(action_set[np.argmax(p_action_i)])
+            actions.append(action_set[np.argmax(p_action_i)])
 
         # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
-        return {'action': actions_2}
+        return {'action': actions}
 
     def non_empathetic(self):
         """
@@ -412,13 +411,13 @@ class DecisionModel:
             p_beta, ne_betas = self.sim.agents[0].predicted_intent_all[-1]
 
         "true_param_id -> get row/col of p_beta -> get predicted beta"
-        true_beta_h, true_beta_m = self.true_params
-        b_id_h = self.beta_set.index(true_beta_h)
-        b_id_m = self.beta_set.index(true_beta_m)
-        p_b_h = np.transpose(p_beta)[b_id_m]  # get col p_beta
-        p_b_m = p_beta[b_id_h]
-        beta_h = self.beta_set[np.argmax(p_b_h)]
-        beta_m = self.beta_set[np.argmax(p_b_m)]
+        true_beta_1, true_beta_2 = self.true_params
+        b_id_1 = self.beta_set.index(true_beta_1)
+        b_id_2 = self.beta_set.index(true_beta_2)
+        p_b_1 = np.transpose(p_beta)[b_id_2]  # get col p_beta
+        p_b_2 = p_beta[b_id_1]
+        beta_1 = self.beta_set[np.argmax(p_b_1)]
+        beta_2 = self.beta_set[np.argmax(p_b_2)]
 
         "METHOD 1: Get the whole p_action table using true param of self and other"
         # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
@@ -459,9 +458,9 @@ class DecisionModel:
         for i in range(self.sim.n_agents):
             last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
             if i == 0:
-                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, beta_m, last_a_other)
+                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_1, beta_2, last_a_other)
             elif i == 1:
-                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, beta_h, true_beta_m, last_a_other)
+                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, beta_1, true_beta_2, last_a_other)
             p_a_2.append(p_action_i)
             actions.append(action_set[np.argmax(p_action_i)])
 

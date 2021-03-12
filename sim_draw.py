@@ -36,27 +36,27 @@ class VisUtils:
         self.lambda_list = self.sim.lambda_list
         # TODO: organize this!
         if self.drawing_intent:
-            self.p_state_H = sim.agents[0].predicted_states_self  # get the last prediction
-            self.p_state_M = sim.agents[0].predicted_states_other
-            self.past_state_h = sim.agents[1].state[-1]
-            self.past_state_m = sim.agents[0].state[-1]
-            self.intent_h = []
-            self.intent_m = []
-            self.intent_distri_h = [[], []]  # theta1, theta2
-            self.intent_distri_m = [[], []]  # theta1, theta2
-            self.lambda_distri_h = [[], []]  # lambda1, lambda2
-            self.lambda_distri_m = [[], []]  # lambda1, lambda2
-            self.lambda_h = []
-            self.lambda_m = []
+            self.p_state_1 = sim.agents[0].predicted_states_self  # get the last prediction
+            self.p_state_2 = sim.agents[0].predicted_states_other
+            self.past_state_1 = sim.agents[1].state[-1]
+            self.past_state_2 = sim.agents[0].state[-1]
+            self.intent_1 = []
+            self.intent_2 = []
+            self.theta_distri_1 = [[], []]  # theta1, theta2
+            self.theta_distri_2 = [[], []]  # theta1, theta2
+            self.lambda_distri_1 = [[], []]  # lambda1, lambda2
+            self.lambda_distri_2 = [[], []]  # lambda1, lambda2
+            self.lambda_1 = []
+            self.lambda_2 = []
             "conditional prob of p(theta, lambda)/p(lambda)"
-            self.true_intent_prob_h = []  # theta1, theta2
-            self.true_intent_prob_m = []  # theta1, theta2
+            self.true_intent_prob_1 = []  # theta1, theta2
+            self.true_intent_prob_2 = []  # theta1, theta2
             "getting ground truth parameters and record for each step"
             self.true_params = self.sim.true_params
-            self.true_intent_h = []
-            self.true_intent_m = []
-            self.true_noise_h = []
-            self.true_noise_m = []
+            self.true_intent_1 = []
+            self.true_intent_2 = []
+            self.true_noise_1 = []
+            self.true_noise_2 = []
             "get id for true (theta, lambda)"
             self.true_id = []
             for i, par in enumerate(self.true_params):
@@ -65,10 +65,10 @@ class VisUtils:
                 self.true_id.append([theta_id, lambda_id])
         if self.drawing_prob:
             # TODO: fix this for non-BVP inference
-            self.p_state_H = sim.agents[1].predicted_states_other  # get the last prediction
-            self.p_state_M = sim.agents[1].predicted_states_self
-            self.past_state_h = sim.agents[1].state[-1]
-            self.past_state_m = sim.agents[0].state[-1]
+            self.p_state_1 = sim.agents[1].predicted_states_other  # get the last prediction
+            self.p_state_2 = sim.agents[1].predicted_states_self
+            self.past_state_1 = sim.agents[1].state[-1]
+            self.past_state_2 = sim.agents[0].state[-1]
 
         self.frame = sim.frame
         self.dist = []
@@ -369,69 +369,111 @@ class VisUtils:
 
     def calc_intent(self):
         # TODO: store distribution of lambda (NN, N)
+        # TODO: differentiate empathetic and non-empathetic cases
         # p_beta_d, beta_pair = self.sim.agents[1].predicted_intent_all[self.frame]
         theta_list = self.sim.theta_list
         lambda_list = self.sim.lambda_list
-        if self.sim.sharing_belief:  # both agents uses same belief from empathetic inference
+        if self.sim.sharing_belief:  # both agents uses same belief (common belief)
+            self.true_intent_1.append(self.true_params[0][0])
+            self.true_noise_1.append(self.true_params[0][1])
+            self.true_intent_2.append(self.true_params[1][0])
+            self.true_noise_2.append(self.true_params[1][1])
             p_beta_d, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
-            self.intent_h.append(beta_h[0])
-            self.intent_m.append(beta_m[0])
-            self.lambda_h.append(beta_h[1])
-            self.lambda_m.append(beta_m[1])
+            if self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_empathetic':
+                self.intent_1.append(beta_h[0])
+                self.intent_2.append(beta_m[0])
+                self.lambda_1.append(beta_h[1])
+                self.lambda_2.append(beta_m[1])
 
-            "get highest row/col -> compare distribution of that col/row!!"
-            # =========================
-            # beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
-            # p_beta_dt = p_beta_d.transpose()
-            # p_b_m = p_beta_d[beta_pair_id[1]]  # []
-            # p_b_h = p_beta_dt[beta_pair_id[1]]
-            # =========================
-            "getting marginal beta belief table"
-            joint_infer_m = self.sim.agents[0].predicted_intent_other
-            p_joint_h, lambda_h = self.sim.agents[0].predicted_intent_self[-1]
-            p_joint_m, lambda_m = joint_infer_m[-1]
+                "get highest row/col -> compare distribution of that col/row!!"
+                # =========================
+                # beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
+                # p_beta_dt = p_beta_d.transpose()
+                # p_b_m = p_beta_d[beta_pair_id[1]]  # []
+                # p_b_h = p_beta_dt[beta_pair_id[1]]
+                # =========================
+                "getting marginal beta belief table"
+                joint_infer_m = self.sim.agents[0].predicted_intent_other
+                p_joint_h, lambda_h = self.sim.agents[0].predicted_intent_self[-1]
+                p_joint_m, lambda_m = joint_infer_m[-1]
 
-            "NOTE THAT P_JOINT IS LAMBDA X THETA"
-            "calculating the marginal for theta"
-            sum_h = p_joint_h.sum(axis=0)
-            sum_h = np.ndarray.tolist(sum_h)
-            sum_m = p_joint_m.sum(axis=0)
-            sum_m = np.ndarray.tolist(sum_m)  # [theta1, theta2]
-            for i in range(len(sum_h)):
-                if not len(self.intent_distri_h) == len(sum_h):  # create 2D array if not already
-                    for j in range(len(sum_h)):
-                        self.intent_distri_h.append([])
-                        self.intent_distri_m.append([])
-                self.intent_distri_h[i].append(sum_h[i])
-                self.intent_distri_m[i].append(sum_m[i])
+                "NOTE THAT P_JOINT IS LAMBDA X THETA"
+                "calculating the marginal for theta"
+                sum_h = p_joint_h.sum(axis=0)
+                sum_h = np.ndarray.tolist(sum_h)
+                sum_m = p_joint_m.sum(axis=0)
+                sum_m = np.ndarray.tolist(sum_m)  # [theta1, theta2]
+                for i in range(len(sum_h)):
+                    if not len(self.theta_distri_1) == len(sum_h):  # create 2D array if not already
+                        for j in range(len(sum_h)):
+                            self.theta_distri_1.append([])
+                            self.theta_distri_2.append([])
+                    self.theta_distri_1[i].append(sum_h[i])
+                    self.theta_distri_2[i].append(sum_m[i])
 
-            "calculating the marginal for lambda"
-            sum_lamb_h = p_joint_h.sum(axis=1)
-            sum_lamb_h = np.ndarray.tolist(sum_lamb_h)
-            sum_lamb_m = p_joint_m.sum(axis=1)
-            sum_lamb_m = np.ndarray.tolist(sum_lamb_m)  # [theta1, theta2]
-            for i in range(len(sum_lamb_h)):
-                if not len(self.intent_distri_h) == len(sum_lamb_h):  # create 2D array if not already
-                    for j in range(len(sum_lamb_h)):
-                        self.lambda_distri_h.append([])
-                        self.lambda_distri_m.append([])
-                self.lambda_distri_h[i].append(sum_lamb_h[i])
-                self.lambda_distri_m[i].append(sum_lamb_m[i])
-            "getting the point estimated p(theta, lambda)"  # NOT IN USE
-            # # for i in range(len(sum_lamb_h)):
-            # p_beta_true_par_h = p_joint_h[self.true_id[0][1]][self.true_id[0][0]]  # for p_joint lambdas are the rows
-            # p_beta_true_par_m = p_joint_m[self.true_id[1][1]][self.true_id[1][0]]
-            # p_beta_true_par_h /= sum_lamb_h[self.true_id[0][1]]
-            # p_beta_true_par_m /= sum_lamb_m[self.true_id[1][1]]
-            # self.true_intent_prob_h.append(p_beta_true_par_h)
-            # self.true_intent_prob_m.append(p_beta_true_par_m)
+                "calculating the marginal for lambda"
+                sum_lamb_h = p_joint_h.sum(axis=1)
+                sum_lamb_h = np.ndarray.tolist(sum_lamb_h)
+                sum_lamb_m = p_joint_m.sum(axis=1)
+                sum_lamb_m = np.ndarray.tolist(sum_lamb_m)  # [theta1, theta2]
+                for i in range(len(sum_lamb_h)):
+                    if not len(self.theta_distri_1) == len(sum_lamb_h):  # create 2D array if not already
+                        for j in range(len(sum_lamb_h)):
+                            self.lambda_distri_1.append([])
+                            self.lambda_distri_2.append([])
+                    self.lambda_distri_1[i].append(sum_lamb_h[i])
+                    self.lambda_distri_2[i].append(sum_lamb_m[i])
+                "getting the point estimated p(theta, lambda)"  # NOT IN USE
+                # # for i in range(len(sum_lamb_h)):
+                # p_beta_true_par_h = p_joint_h[self.true_id[0][1]][self.true_id[0][0]]  # for p_joint lambdas are the rows
+                # p_beta_true_par_m = p_joint_m[self.true_id[1][1]][self.true_id[1][0]]
+                # p_beta_true_par_h /= sum_lamb_h[self.true_id[0][1]]
+                # p_beta_true_par_m /= sum_lamb_m[self.true_id[1][1]]
+                # self.true_intent_prob_h.append(p_beta_true_par_h)
+                # self.true_intent_prob_m.append(p_beta_true_par_m)
+            elif self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_non_empathetic':
+                # TODO: record p_theta and p_lambda
+                true_beta_1, true_beta_2 = self.true_params
+                b_id_1 = self.beta_set.index(true_beta_1)
+                b_id_2 = self.beta_set.index(true_beta_2)
+                p_b_1 = np.transpose(p_beta_d)[b_id_2]  # get col p_beta
+                p_b_2 = p_beta_d[b_id_1]
+                beta_1 = self.beta_set[np.argmax(p_b_1)]
+                beta_2 = self.beta_set[np.argmax(p_b_2)]
 
-            self.true_intent_h.append(self.true_params[0][0])
-            self.true_noise_h.append(self.true_params[0][1])
-            self.true_intent_m.append(self.true_params[1][0])
-            self.true_noise_m.append(self.true_params[1][1])
+                self.intent_1.append(beta_1[0])
+                self.intent_2.append(beta_2[0])
+                self.lambda_1.append(beta_1[1])
+                self.lambda_2.append(beta_2[1])
 
-        else:
+                p_theta_1 = np.zeros((len(theta_list)))
+                p_theta_2 = np.zeros((len(theta_list)))
+                p_lambda_1 = np.zeros((len(lambda_list)))
+                p_lambda_2 = np.zeros((len(lambda_list)))
+                "get p_theta marginal"
+                # TODO: generalize this calculation to different param sizes
+                p_theta_1[0] = p_b_1[0] + p_b_1[1]  # NA
+                p_theta_1[1] = p_b_1[2] + p_b_1[3]  # A
+                p_theta_2[0] = p_b_2[0] + p_b_2[1]
+                p_theta_2[1] = p_b_2[2] + p_b_2[3]
+                p_lambda_1[0] = p_b_1[0] + p_b_1[2]  # noisy (refer to main.py)
+                p_lambda_1[1] = p_b_1[1] + p_b_1[3]  # non-noisy
+                p_lambda_2[0] = p_b_2[0] + p_b_2[2]
+                p_lambda_2[1] = p_b_2[1] + p_b_2[3]
+                p_theta_1 /= np.sum(p_theta_1)
+                p_theta_2 /= np.sum(p_theta_2)
+                p_lambda_1 /= np.sum(p_lambda_1)
+                p_lambda_2 /= np.sum(p_lambda_2)
+                assert round(np.sum(p_theta_1)) == 1
+                self.theta_distri_1[0].append(p_theta_1[0])
+                self.theta_distri_1[1].append(p_theta_1[1])
+                self.theta_distri_2[0].append(p_theta_2[0])
+                self.theta_distri_2[1].append(p_theta_2[1])
+
+            else:
+                print("WARNING! DECISION MODEL CHOICE NOT SUPPORTED!")
+
+        else:  # single agent inference
             joint_infer_m = self.sim.agents[1].predicted_intent_self
             theta_list = self.sim.theta_list
             lambda_list = self.sim.lambda_list
@@ -447,40 +489,40 @@ class VisUtils:
                 idx_h = sum_h.index(max(sum_h))
                 idx_m = sum_m.index(max(sum_m))
                 for i in range(len(sum_h)):
-                    if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
+                    if not len(self.theta_distri_1) == len(sum_h):  # create 2D array
                         j = 0
                         while j in range(len(sum_h)):
-                            self.intent_distri_h.append([])
-                            self.intent_distri_m.append([])
-                    self.intent_distri_h[i].append(sum_h[i])
-                    self.intent_distri_m[i].append(sum_m[i])
+                            self.theta_distri_1.append([])
+                            self.theta_distri_2.append([])
+                    self.theta_distri_1[i].append(sum_h[i])
+                    self.theta_distri_2[i].append(sum_m[i])
                 H_intent = theta_list[idx_h]
                 M_intent = theta_list[idx_m]
-                self.intent_h.append(H_intent)
-                self.intent_m.append(M_intent)
-                self.lambda_h.append(lambda_h)
-                self.lambda_m.append(lambda_m)
+                self.intent_1.append(H_intent)
+                self.intent_2.append(M_intent)
+                self.lambda_1.append(lambda_h)
+                self.lambda_2.append(lambda_m)
             else:
                 p_joint_h, lambda_h = self.sim.agents[1].predicted_intent_other[-1]
                 # print("-draw- p_joint_h: ", p_joint_h)
                 sum_h = p_joint_h.sum(axis=0)
                 sum_h = np.ndarray.tolist(sum_h)
                 for i in range(len(sum_h)):
-                    if not len(self.intent_distri_h) == len(sum_h):  # create 2D array
+                    if not len(self.theta_distri_1) == len(sum_h):  # create 2D array
                         j = 0
                         while j in range(len(sum_h)):
-                            self.intent_distri_h.append([])
-                    self.intent_distri_h[i].append(sum_h[i])
+                            self.theta_distri_1.append([])
+                    self.theta_distri_1[i].append(sum_h[i])
 
                 # print('sum of theta prob:', sum_h)
                 idx_h = sum_h.index(max(sum_h))
                 # TODO: assign list of theta and lambda somewhere in sim
                 H_intent = theta_list[idx_h]
                 print('probability of thetas H:', sum_h, 'H intent:', H_intent)
-                self.intent_h.append(H_intent)
-                self.lambda_h.append(lambda_h)
-                self.true_intent_h.append(self.true_params[0][0])
-                self.true_noise_h.append(self.true_params[0][1])
+                self.intent_1.append(H_intent)
+                self.lambda_1.append(lambda_h)
+                self.true_intent_1.append(self.true_params[0][0])
+                self.true_noise_1.append(self.true_params[0][1])
 
     def draw_intent(self):
         # TODO: need to revise the if condition
@@ -496,15 +538,15 @@ class VisUtils:
             fig2, (ax1, ax2, ax3, ax4, ax5) = pyplot.subplots(5, figsize=(5, 8))
             fig2.suptitle('Predicted intent and rationality')
 
-            ax1.plot(self.intent_h, label='predicted P1 intent')
-            ax1.plot(self.true_intent_h, label='true P1 intent', linestyle='--')
+            ax1.plot(self.intent_1, label='predicted P1 intent')
+            ax1.plot(self.true_intent_1, label='true P1 intent', linestyle='--')
             ax1.legend()
             ax1.set_yticks(theta_list)
             ax1.set_yticklabels(['na', 'a'])
             ax1.set(xlabel='frame', ylabel='P1 intent')
 
-            ax2.plot(self.intent_m, label='predicted P2 intent')
-            ax2.plot(self.true_intent_m, label='true P2 intent', linestyle='--')
+            ax2.plot(self.intent_2, label='predicted P2 intent')
+            ax2.plot(self.true_intent_2, label='true P2 intent', linestyle='--')
             ax2.legend()
             ax2.set_yticks(theta_list)
             ax2.set_yticklabels(['na', 'a'])
@@ -512,41 +554,41 @@ class VisUtils:
 
             w = 0.15
             # TODO: generalize for more than two thetas
-            x = list(range(0, len(self.intent_h)))
+            x = list(range(0, len(self.intent_1)))
             x1 = [i - w for i in x]
             x2 = [i + w for i in x]
-            ax3.bar(x1, self.intent_distri_h[0], width=0.15, label='theta 1')
-            ax3.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
+            ax3.bar(x1, self.theta_distri_1[0], width=0.15, label='theta 1')
+            ax3.bar(x2, self.theta_distri_1[1], width=0.15, label='theta 2')
             ax3.legend(loc="lower right")
             ax3.set_yticks([0.25, 0.5, 0.75])
             ax3.set(xlabel='frame', ylabel='P1 distri')
 
             w = 0.15
-            x = list(range(0, len(self.intent_m)))
+            x = list(range(0, len(self.intent_2)))
             x1 = [i - w for i in x]
             x2 = [i + w for i in x]
-            ax4.bar(x1, self.intent_distri_m[0], width=0.15, label='theta 1')
-            ax4.bar(x2, self.intent_distri_m[1], width=0.15, label='theta 2')
+            ax4.bar(x1, self.theta_distri_2[0], width=0.15, label='theta 1')
+            ax4.bar(x2, self.theta_distri_2[1], width=0.15, label='theta 2')
             ax4.legend(loc='lower right')
             ax4.set_yticks([0.25, 0.5, 0.75])
             ax4.set(xlabel='frame', ylabel='P2 distri')
 
             "plotting lambdas"
-            print('lambdas', self.lambda_h, self.lambda_m)
-            ax5.plot(self.lambda_h, label='P1 ration')
-            ax5.plot(self.lambda_m, label='P2 ration', linestyle='--')
+            print('lambdas', self.lambda_1, self.lambda_2)
+            ax5.plot(self.lambda_1, label='P1 ration')
+            ax5.plot(self.lambda_2, label='P2 ration', linestyle='--')
             ax5.legend()
             ax5.set_yticks(lambda_list)
             ax5.set(xlabel='frame', ylabel='noise')
-            print('Predicted P1 intent distri', self.intent_distri_h)
-            print('Predicted P2 intent distri', self.intent_distri_m)
+            print('Predicted P1 intent distri', self.theta_distri_1)
+            print('Predicted P2 intent distri', self.theta_distri_2)
         else:
-            print("predicted intent H", self.intent_h)
+            print("predicted intent H", self.intent_1)
             print("predicted intent for H from AV:", self.sim.agents[0].predicted_intent_self)
             fig2, (ax1, ax2, ax3) = pyplot.subplots(3)
             fig2.suptitle('Predicted intent of H agent')
-            ax1.plot(self.intent_h, label='predicted H intent')
-            ax1.plot(self.true_intent_h, label='true H intent', linestyle='--')
+            ax1.plot(self.intent_1, label='predicted H intent')
+            ax1.plot(self.true_intent_1, label='true H intent', linestyle='--')
             ax1.legend()
             # TODO: get actual intent from decision model/ autonomous vehicle
             ax1.set_yticks([1, 1000])
@@ -554,17 +596,17 @@ class VisUtils:
             ax1.set(xlabel='frame', ylabel='intent')
 
             w = 0.15
-            x = list(range(0, len(self.intent_h)))
+            x = list(range(0, len(self.intent_1)))
             x1 = [i-w for i in x]
             x2 = [i+w for i in x]
-            ax2.bar(x1, self.intent_distri_h[0], width=0.15, label='theta 1')
-            ax2.bar(x2, self.intent_distri_h[1], width=0.15, label='theta 2')
+            ax2.bar(x1, self.theta_distri_1[0], width=0.15, label='theta 1')
+            ax2.bar(x2, self.theta_distri_1[1], width=0.15, label='theta 2')
             ax2.legend()
             ax2.set_yticks([0.15, 0.5, 0.85])
             ax2.set(xlabel='frame', ylabel='probability')
 
             "plotting lambda h"
-            ax3.plot(self.lambda_h, label='predtd H rationality')
+            ax3.plot(self.lambda_1, label='predtd H rationality')
             ax3.legend()
             ax3.set_yticks(self.sim.lambda_list)
             ax3.set(xlabel='frame', ylabel='intent')
@@ -597,12 +639,12 @@ class VisUtils:
         # else:
         #     p_state_D, state_list = self.p_state_H[-1]
         self.frame = self.sim.frame
-        p_state_D, state_list = self.p_state_H[self.frame]
+        p_state_D, state_list = self.p_state_1[self.frame]
         #print("PLOTTING: ", state_list, "and ", p_state_D)
         "checking if predicted states are actually reached"
         if not self.frame == 0:
             # TODO: figure out how predicted state and actual state align
-            past_predicted_state = self.p_state_H[self.frame-1][1][0]  # time -> state_list -> agent
+            past_predicted_state = self.p_state_1[self.frame - 1][1][0]  # time -> state_list -> agent
             #print("-draw- Last state:" , self.sim.agents[0].state[-1])
             #print("-draw- past predicted states:", past_predicted_state)
             print(past_predicted_state, self.sim.agents[0].state[self.frame])
