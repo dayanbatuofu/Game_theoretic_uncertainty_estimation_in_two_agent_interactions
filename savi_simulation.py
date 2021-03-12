@@ -530,8 +530,8 @@ class Simulation:
         true_id_2 = self.theta_list.index(true_theta_2)
         # intent_prob_1 = self.vis.intent_distri_h[true_id_1]
         # intent_prob_2 = self.vis.intent_distri_m[true_id_2]
-        intent_prob_1 = self.vis.true_intent_prob_h
-        intent_prob_2 = self.vis.true_intent_prob_m
+        intent_prob_1 = self.vis.true_intent_prob_1
+        intent_prob_2 = self.vis.true_intent_prob_2
         for i in range(len(states_1) - 1):  # inference will be behind
             x1.append(states_1[i][1])
             x2.append(states_2[i][0])
