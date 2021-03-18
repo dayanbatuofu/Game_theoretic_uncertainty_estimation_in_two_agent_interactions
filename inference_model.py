@@ -2402,7 +2402,7 @@ class InferenceModel:
 
     def bvp_inference_2(self, agent, sim):
         """
-        FOR TESTING PURPOSE: INFERENCE MODEL FOR AGENT 1
+        INFERENCE MODEL FOR AGENT 1
         Using Q values from value network trained from BVP solver
         When QH also depends on xM,uM
         :return:P(beta_h, beta_m_hat | D(k))
@@ -2791,6 +2791,46 @@ class InferenceModel:
                     self.policy_choice[1].append(pred_beta_1_id)
                     p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
                                               new_beta_1, self.true_params[1], last_action_set[id - 1], self.time)
+
+                "FOR SINGLE AGENT THAT IS DOING Inference"
+            elif self.sim.decision_type_h == 'bvp_empathetic':
+                beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
+                new_beta_1 = self.beta_set[beta_pair_id[0]]
+                new_beta_2 = self.beta_set[beta_pair_id[1]]
+                self.past_beta.append([new_beta_1, new_beta_2])
+
+                "getting action probability"
+                if id == 0:
+                    self.policy_choice[0].append(beta_pair_id[1])
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              self.true_params[0], new_beta_2, last_action_set[id - 1], self.time)
+                elif id == 1:
+                    self.policy_choice[1].append(beta_pair_id[0])
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              new_beta_1, self.true_params[1], last_action_set[id - 1], self.time)
+
+            elif self.sim.decision_type_h == 'bvp_non_empathetic':
+                true_id = self.sim.true_params_id[id]  # true beta of other agent
+                if id == 0:  # agent 1's guess of agent 2's beta
+                    p_beta_d_i = p_beta_d[true_id]  # get row based on P1's true beta
+                    pred_beta_2_id = np.argmax(p_beta_d_i)
+
+                    new_beta_2 = self.beta_set[pred_beta_2_id]
+
+                    self.past_beta.append([new_beta_2])
+                    self.policy_choice[0].append(pred_beta_2_id)
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              self.true_params[0], new_beta_2, last_action_set[id - 1], self.time)
+                elif id == 1:  # agent 2's guess at agent 1's beta
+                    p_beta_d_i = np.transpose(p_beta_d)[true_id]  # get row based on P1's true beta
+                    pred_beta_1_id = np.argmax(p_beta_d_i)
+                    new_beta_1 = self.beta_set[pred_beta_1_id]  # new predicted beta for agent 2
+                    beta_pair_id = [pred_beta_1_id, pred_beta_2_id]
+                    self.past_beta[-1].append(new_beta_1)
+                    self.policy_choice[1].append(pred_beta_1_id)
+                    p_a_i = bvp_action_prob_2(id, curr_state_h, curr_state_m,
+                                              new_beta_1, self.true_params[1], last_action_set[id - 1], self.time)
+
             else:
                 print("WARNING! INCORRECT AGENT TYPE FOR BVP INFERENCE")
             best_action_i = self.action_set[np.argmax(p_a_i)]

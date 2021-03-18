@@ -50,7 +50,7 @@ parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'nfsp_baseline', 'bvp_baseline', 'baseline2', 'complete_information',
                              'non-empathetic', 'empathetic',
                              'bvp_non_empathetic', 'bvp_empathetic'],
-                    default=['bvp_non_empathetic', 'bvp_non_empathetic'])
+                    default=['bvp_empathetic', 'bvp_baseline'])
 
 """
 agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case

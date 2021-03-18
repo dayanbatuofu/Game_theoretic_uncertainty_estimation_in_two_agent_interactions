@@ -470,6 +470,90 @@ class VisUtils:
                 self.theta_distri_2[0].append(p_theta_2[0])
                 self.theta_distri_2[1].append(p_theta_2[1])
 
+            elif self.sim.decision_type[0] == 'bvp_empathetic':
+                self.intent_1.append(beta_h[0])
+                self.intent_2.append(beta_m[0])
+                self.lambda_1.append(beta_h[1])
+                self.lambda_2.append(beta_m[1])
+
+                "get highest row/col -> compare distribution of that col/row!!"
+                # =========================
+                # beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
+                # p_beta_dt = p_beta_d.transpose()
+                # p_b_m = p_beta_d[beta_pair_id[1]]  # []
+                # p_b_h = p_beta_dt[beta_pair_id[1]]
+                # =========================
+                "getting marginal beta belief table"
+                joint_infer_m = self.sim.agents[0].predicted_intent_other
+                p_joint_h, lambda_h = self.sim.agents[0].predicted_intent_self[-1]
+                p_joint_m, lambda_m = joint_infer_m[-1]
+
+                "NOTE THAT P_JOINT IS LAMBDA X THETA"
+                "calculating the marginal for theta"
+                sum_h = p_joint_h.sum(axis=0)
+                sum_h = np.ndarray.tolist(sum_h)
+                sum_m = p_joint_m.sum(axis=0)
+                sum_m = np.ndarray.tolist(sum_m)  # [theta1, theta2]
+                for i in range(len(sum_h)):
+                    if not len(self.theta_distri_1) == len(sum_h):  # create 2D array if not already
+                        for j in range(len(sum_h)):
+                            self.theta_distri_1.append([])
+                            self.theta_distri_2.append([])
+                    self.theta_distri_1[i].append(sum_h[i])
+                    self.theta_distri_2[i].append(sum_m[i])
+
+                "calculating the marginal for lambda"
+                sum_lamb_h = p_joint_h.sum(axis=1)
+                sum_lamb_h = np.ndarray.tolist(sum_lamb_h)
+                sum_lamb_m = p_joint_m.sum(axis=1)
+                sum_lamb_m = np.ndarray.tolist(sum_lamb_m)  # [theta1, theta2]
+                for i in range(len(sum_lamb_h)):
+                    if not len(self.theta_distri_1) == len(sum_lamb_h):  # create 2D array if not already
+                        for j in range(len(sum_lamb_h)):
+                            self.lambda_distri_1.append([])
+                            self.lambda_distri_2.append([])
+                    self.lambda_distri_1[i].append(sum_lamb_h[i])
+                    self.lambda_distri_2[i].append(sum_lamb_m[i])
+
+            elif self.sim.decision_type[0] == 'bvp_non_empathetic':
+                # TODO: record p_theta and p_lambda
+                true_beta_1, true_beta_2 = self.true_params
+                b_id_1 = self.beta_set.index(true_beta_1)
+                b_id_2 = self.beta_set.index(true_beta_2)
+                p_b_1 = np.transpose(p_beta_d)[b_id_2]  # get col p_beta
+                p_b_2 = p_beta_d[b_id_1]
+                beta_1 = self.beta_set[np.argmax(p_b_1)]
+                beta_2 = self.beta_set[np.argmax(p_b_2)]
+
+                self.intent_1.append(beta_1[0])
+                self.intent_2.append(beta_2[0])
+                self.lambda_1.append(beta_1[1])
+                self.lambda_2.append(beta_2[1])
+
+                p_theta_1 = np.zeros((len(theta_list)))
+                p_theta_2 = np.zeros((len(theta_list)))
+                p_lambda_1 = np.zeros((len(lambda_list)))
+                p_lambda_2 = np.zeros((len(lambda_list)))
+                "get p_theta marginal"
+                # TODO: generalize this calculation to different param sizes
+                p_theta_1[0] = p_b_1[0] + p_b_1[1]  # NA
+                p_theta_1[1] = p_b_1[2] + p_b_1[3]  # A
+                p_theta_2[0] = p_b_2[0] + p_b_2[1]
+                p_theta_2[1] = p_b_2[2] + p_b_2[3]
+                p_lambda_1[0] = p_b_1[0] + p_b_1[2]  # noisy (refer to main.py)
+                p_lambda_1[1] = p_b_1[1] + p_b_1[3]  # non-noisy
+                p_lambda_2[0] = p_b_2[0] + p_b_2[2]
+                p_lambda_2[1] = p_b_2[1] + p_b_2[3]
+                p_theta_1 /= np.sum(p_theta_1)
+                p_theta_2 /= np.sum(p_theta_2)
+                p_lambda_1 /= np.sum(p_lambda_1)
+                p_lambda_2 /= np.sum(p_lambda_2)
+                assert round(np.sum(p_theta_1)) == 1
+                self.theta_distri_1[0].append(p_theta_1[0])
+                self.theta_distri_1[1].append(p_theta_1[1])
+                self.theta_distri_2[0].append(p_theta_2[0])
+                self.theta_distri_2[1].append(p_theta_2[1])
+
             else:
                 print("WARNING! DECISION MODEL CHOICE NOT SUPPORTED!")
 

@@ -39,6 +39,7 @@ class Simulation:
         self.sharing_belief = True  # True for empathetic inferences
         self.theta_priors = None  # For test_baseline and baseline inference
         self.drawing_prob = True  # if function for displaying future states are enabled
+        "turn on intent graph over time"
         if self.inference_type[1] == 'none' and self.inference_type[0] == 'none':
             self.drawing_intent = False
         else:
@@ -336,6 +337,7 @@ class Simulation:
 
         elif self.inference_type[0] == 'none' and self.inference_type[1] == 'none':
             belief = None  # no inference
+            return
 
         # not in use! we only use the game theoretic inference
         else:  # get belief on H agent only
