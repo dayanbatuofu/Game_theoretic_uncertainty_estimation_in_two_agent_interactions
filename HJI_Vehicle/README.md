@@ -1,5 +1,5 @@
 # HJI_Vehicle
-This code is written by Pytorch based on https://github.com/Tenavi/HJB_NN. For our current application, please review the `problem_def.py` from `/examples/vehicle/`. If you want to see all the applied equation in the code, please review `HJI_Equation_Derivation_Rev1`.
+For our current application, please review the `problem_def.py` from `/examples/vehicle/`. If you want to see all the applied equation in the code, please review `HJI_Equation_Derivation_Rev1`.
 
 #### Software recommendations:
 
