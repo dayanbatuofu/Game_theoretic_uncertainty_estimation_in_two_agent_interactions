@@ -41,14 +41,13 @@ class DecisionModel:
             self.plan = self.bvp_non_empathetic
         elif model == 'bvp_empathetic':  # using BVP value network
             self.plan = self.bvp_empathetic
-
         else:
             # placeholder for future development
             print("WARNING!!! NO DECISION MODEL FOUND")
             pass
 
-        self.policy_or_Q = 'Q'
-        self.noisy = False  # if baseline is randomly picking action based on distribution
+        self.policy_or_Q = 'Q'  # for nfsp
+        self.noisy = False  # if baseline is randomly picking action based on distribution (for nfsp baseline)
 
         self.true_params = self.sim.true_params
         self.belief_params = self.sim.initial_belief
@@ -419,40 +418,7 @@ class DecisionModel:
         beta_1 = self.beta_set[np.argmax(p_b_1)]
         beta_2 = self.beta_set[np.argmax(p_b_2)]
 
-        "METHOD 1: Get the whole p_action table using true param of self and other"
-        # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
-        # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, true_beta_m)
-
-        # actions = []
-        # p_a_1 = []
-        # for i, p_a in enumerate([p_action1, p_action2]):
-        #     ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-        #     ui_i = action_set.index(ui)
-        #     if i == 0:
-        #         p_a_t = np.transpose(p_a)
-        #         p_a_self = p_a_t[ui_i]
-        #     elif i == 1:
-        #         p_a_self = p_a[ui_i]
-        #     else:
-        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
-        #     p_a_self /= np.sum(p_a_self)
-        #     p_a_1.append(p_a_self)
-        #     p_a_self = np.array(p_a_self).tolist()
-        #     # "drawing action from action set using the distribution"
-        #     # # ===================================
-        #     # p_a_s = []
-        #     # for pa in p_a:
-        #     #     p_a_s.append(sum(pa))
-        #     # assert len(p_a_s) == len(action_set)
-        #     # # ===================================
-        #     # action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-        #     # actions.append(action[0])
-        #     ai = np.argmax(p_a_self)
-        #     actions.append(action_set[ai])
-        # self.sim.action_distri_1.append(p_action1)
-        # self.sim.action_distri_2.append(p_action2)
-
-        "METHOD 2: Get p_action based on only the last action observed"
+        "Get p_action based on only the last action observed"
         actions = []
         p_a_2 = []
         for i in range(self.sim.n_agents):
@@ -498,39 +464,7 @@ class DecisionModel:
             p_beta, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
         true_beta_h, true_beta_m = self.true_params
 
-        "METHOD 1: Get the whole p_action table using true param of self and other"
-        # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, beta_m)
-        # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, beta_h, true_beta_m)
-        # actions = []
-        # p_a_1 = []
-        # for i, p_a in enumerate([p_action1, p_action2]):
-        #     ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-        #     ui_i = action_set.index(ui)
-        #     if i == 0:
-        #         p_a_t = np.transpose(p_a)
-        #         p_a_self = p_a_t[ui_i]
-        #     elif i == 1:
-        #         p_a_self = p_a[ui_i]
-        #     else:
-        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
-        #     p_a_self /= np.sum(p_a_self)
-        #     p_a_1.append(p_a_self)
-        #     p_a_self = np.array(p_a_self).tolist()
-        #     # "drawing action from action set using the distribution"
-        #     # # ===================================
-        #     # p_a_s = []
-        #     # for pa in p_a:
-        #     #     p_a_s.append(sum(pa))
-        #     # assert len(p_a_s) == len(action_set)
-        #     # # ===================================
-        #     # action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-        #     # actions.append(action[0])
-        #     ai = np.argmax(p_a_self)
-        #     actions.append(action_set[ai])
-        # self.sim.action_distri_1.append(p_action1)
-        # self.sim.action_distri_2.append(p_action2)
-
-        "METHOD 2: Get p_action based on only the last action observed"
+        "Get p_action based on only the last action observed"
         actions = []
         p_a_2 = []  # for comparison
         for i in range(self.sim.n_agents):

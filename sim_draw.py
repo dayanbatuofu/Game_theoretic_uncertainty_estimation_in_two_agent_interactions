@@ -432,7 +432,7 @@ class VisUtils:
                 # self.true_intent_prob_h.append(p_beta_true_par_h)
                 # self.true_intent_prob_m.append(p_beta_true_par_m)
             elif self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_non_empathetic':
-                # TODO: record p_theta and p_lambda
+                # TODO: record p_lambda
                 true_beta_1, true_beta_2 = self.true_params
                 b_id_1 = self.beta_set.index(true_beta_1)
                 b_id_2 = self.beta_set.index(true_beta_2)
@@ -516,7 +516,7 @@ class VisUtils:
                     self.lambda_distri_2[i].append(sum_lamb_m[i])
 
             elif self.sim.decision_type[0] == 'bvp_non_empathetic':
-                # TODO: record p_theta and p_lambda
+                # TODO: record p_lambda
                 true_beta_1, true_beta_2 = self.true_params
                 b_id_1 = self.beta_set.index(true_beta_1)
                 b_id_2 = self.beta_set.index(true_beta_2)
@@ -600,7 +600,7 @@ class VisUtils:
 
                 # print('sum of theta prob:', sum_h)
                 idx_h = sum_h.index(max(sum_h))
-                # TODO: assign list of theta and lambda somewhere in sim
+
                 H_intent = theta_list[idx_h]
                 print('probability of thetas H:', sum_h, 'H intent:', H_intent)
                 self.intent_1.append(H_intent)

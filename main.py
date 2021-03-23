@@ -41,23 +41,22 @@ agent model parameters
 """
 # choose inference model: use bvp_empathetic_2 for our sim, and only for 2nd player
 parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic',
-                                                            'bvp', 'bvp_2',
-                                                            'trained_baseline_2U'],
-                    default=['bvp_2', 'none'])
+                                                            'bvp', 'trained_baseline_2U'],
+                    default=['bvp', 'none'])
 
 # choose decision model: use the same model for the two agent, bvp_non_empathetic or bvp_empathetic
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'nfsp_baseline', 'bvp_baseline', 'baseline2', 'complete_information',
                              'non-empathetic', 'empathetic',
                              'bvp_non_empathetic', 'bvp_empathetic'],
-                    default=['bvp_empathetic', 'bvp_baseline'])
+                    default=['bvp_non_empathetic', 'bvp_non_empathetic'])
 
 """
 agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case
 """
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning (NOT IN USE)
-parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT TRUE PARAM
+parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT TRUE PARAM [P1, P2]
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT BELIEF
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
