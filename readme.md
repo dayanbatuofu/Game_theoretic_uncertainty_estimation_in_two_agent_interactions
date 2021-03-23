@@ -12,9 +12,7 @@ Human-robot  interactions  (HRI)  can  be  modeledas differential games with inc
 
 ## Video presentation
 
-
-https://user-images.githubusercontent.com/55328878/112080845-e7050b00-8b3f-11eb-9d10-76c065213135.mp4
-
+https://youtu.be/fOoF42ORAwk
 
 
 ## Notations
