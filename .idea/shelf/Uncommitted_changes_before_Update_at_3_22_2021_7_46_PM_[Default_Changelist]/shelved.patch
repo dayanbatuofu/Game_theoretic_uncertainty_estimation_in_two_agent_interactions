@@ -1,0 +1,32 @@
+Index: readme.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># When Shall I Be Empathetic? The Utility of Empathetic ParameterEstimation in Multi-Agent Interactions\r\n\r\nContributors: Yi Chen, Merry Tanner, Lei Zhang, Sunny Amatya, Yi Ren, Wenlong Zhang\r\n\r\n## Overview of the repo\r\n\r\nThis repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047\r\n\r\n## Simulation\r\n### Aggressive Empathetic agents with Non-aggressive beliefs\r\n<a href=\"url\"><img src=\"./plot/movie_E_theta1=na_theta2=na_time_horizon=3.0.gif\" height=\"400\" width=\"400\" ></a>\r\n\r\n\r\n### Aggressive Non-empathetic agents with Non-aggressive beliefs (closer encounters)\r\n<a href=\"url\"><img src=\"./plot/movie_NE_theta1=na_theta2=na_time_horizon=3.0.gif\" height=\"400\" width=\"400\" ></a>\r\n\r\n## Instruction of reproducing the results <a name=\"instruction\"></a>\r\nIn general, the simulation can be conducted by \r\nrunning main.py. \r\n### To generate the baseline simulation, use [none, none] for inference model, [bvp_baseline, bvp_baseline] for decision.\r\n### To generate the empathetic simulation, use [bvp_2, none] for inference model, [bvp_empathetic, bvp_empathetic] for decision.\r\n### To generate the empathetic simulation, use [bvp_2, none] for inference model, [bvp_non_empathetic, bvp_non_empathetic] for decision.\r\n- The agent's parameters can be changed in main.py on line 60, 61.\r\n- The initial belief can be changed in main.py on line 62, 63.\r\n- The initial position of agents can be changed in environment.py, on line 187~190.\r\n- The type of agent (decision) can be changed in main.py on line 53.\r\n\r\n## Models\r\nDifferent agent decision models (agent type):\r\n- BVP_empathetic: allows other agent to have misunderstanding of self\r\n- BVP_non_empathetic: assumes other agent knows ego's parameter\r\n- Baseline: no inference/interaction, only plays according to own parameter and what it assumes other agent to be \r\n\r\n### Main.py\r\n\r\nSetting of the initial conditions of the simulation are done here. \r\n\r\n### environment.py\r\n\r\nThe simulation environment is generated here, using the parameters\r\nfrom main.py. \r\n\r\n### savi_simulation.py\r\n\r\nInitial conditions are processed for the simulation here, such as\r\nagent parameters (beta) and action set. The initialization belief table \r\nis also done here through the function get_initial_belief(). \r\n\r\n### Inference_model.py\r\n\r\nInference is done after observing the state. There are several models\r\nimplemented here: bvp, baseline, etc. \r\nThe inference algorithm updates the belief table at each time step using the \r\nselected model defined in main.py.\r\n\r\n### Decision_model.py\r\n\r\nDecision model returns an action for each agent, depending on the type\r\nof agent defined in main.py. Models include bvp_empathetic, bvp_non_empathetic,\r\nbaseline, etc.\r\n\r\n### draw_sim.py\r\n\r\nThe simulation data are collected and shown using the algorithm here\r\nafter the simulation has ended.\r\n\r\n\r\n\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- readme.md	(revision d775362fa0416512e0727433b839d2c52be4ceff)
++++ readme.md	(date 1616467584231)
+@@ -6,6 +6,22 @@
+ 
+ This repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047
+ 
++## Introduction
++
++Human-robot  interactions  (HRI)  can  be  modeledas differential games with incomplete information, where eachagent   holds   private   reward   parameters.   Due   to   the   openchallenge in finding perfect Bayesian equilibria of such games,existing  studies  often  decouple  the  belief  and  physical  dy-namics  by  iterating  between  belief  update  and  motion  plan-ning.  Importantly,  the  robot’s  reward  parameters  are  oftenassumed  to  be  known  to  the  humans,  in  order  to  simplifythe   computation.   We   show   in   this   paper   that   under   thissimplification, the robot performs non-empathetic belief updateabout the humans’ parameters, which causes high safety risksin uncontrolled intersection scenarios. In contrast, we proposea model for empathetic belief update, where the agent updatesthe  joint  probabilities  of  all  agents’  parameter  combinations.The update uses a neural network that approximates the Nashequilibrial  action-values  of  agents.  We  compare  empatheticand  non-empathetic  belief  update  methods  on  a  two-vehicleuncontrolled intersection case with short reaction time. Resultsshow  that  when  both  agents  are  unknowingly  aggressive  (ornon-aggressive),  empathy  is  necessary  for  avoiding  collisionswhen agents have false believes about each others’ parameters.This paper demonstrates the importance of acknowledging theincomplete-information  nature  of  HRI.
++
++## Video presentation
++
++https://youtu.be/fOoF42ORAwk
++
++
++## Notations
++- beta: agent's parameter, composed of theta and lambda.
++- theta: agent's reward/intent parameter
++- lambda: agent's noise parameter, affects the Boltzmann distribution of the action probability
++- empathetic / non-empathetic (E / NE): types of agent on whether they consider other agent's belief on its own parameter
++
++
+ ## Simulation
+ ### Aggressive Empathetic agents with Non-aggressive beliefs
+ <a href="url"><img src="./plot/movie_E_theta1=na_theta2=na_time_horizon=3.0.gif" height="400" width="400" ></a>

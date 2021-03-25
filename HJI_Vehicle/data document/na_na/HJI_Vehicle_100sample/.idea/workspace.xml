@@ -1,0 +1,665 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="25db6019-17a9-4cb4-bab7-c55257968cb9" name="Default Changelist" comment="" />
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileEditorManager">
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/generate.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="3610">
+              <caret line="190" column="22" selection-start-line="190" selection-start-column="22" selection-end-line="190" selection-end-column="22" />
+              <folding>
+                <element signature="e#70#88#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/vehicle/problem_def.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="665">
+              <caret line="230" selection-start-line="230" selection-end-line="230" />
+              <folding>
+                <element signature="e#0#18#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>batch</find>
+      <find>self.RG</find>
+      <find>running</find>
+      <find>U1</find>
+      <find>self.problem.U_star</find>
+      <find>self.t1</find>
+      <find>bc_tol</find>
+      <find>spilu</find>
+      <find>drop_tol</find>
+    </findStrings>
+  </component>
+  <component name="Git.Settings">
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/predict_value.py" />
+        <option value="$PROJECT_DIR$/simulate.py" />
+        <option value="$PROJECT_DIR$/simulate_noise.py" />
+        <option value="$PROJECT_DIR$/LBFGS.py" />
+        <option value="$PROJECT_DIR$/examples/burgers/problem_def.py" />
+        <option value="$PROJECT_DIR$/utilities/sample" />
+        <option value="$PROJECT_DIR$/examples/satellite/problem_def.py" />
+        <option value="$PROJECT_DIR$/test_sample.py" />
+        <option value="$PROJECT_DIR$/examples/vehicle/test.py" />
+        <option value="$PROJECT_DIR$/examples/vehicle/problem_def_copy.py" />
+        <option value="$PROJECT_DIR$/generate_copy.py" />
+        <option value="$PROJECT_DIR$/utilities/other.py" />
+        <option value="$PROJECT_DIR$/test_pytorch_draw.py" />
+        <option value="$PROJECT_DIR$/examples/vehicle/test_latin_sampling.py" />
+        <option value="D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/sparse/linalg/dsolve/linsolve.py" />
+        <option value="$PROJECT_DIR$/examples/problem_def_template.py" />
+        <option value="$PROJECT_DIR$/examples/data_collection.py" />
+        <option value="$PROJECT_DIR$/examples/choose_problem.py" />
+        <option value="$PROJECT_DIR$/data_filter.py" />
+        <option value="$PROJECT_DIR$/test_drawing_3D.py" />
+        <option value="$PROJECT_DIR$/test_draw.py" />
+        <option value="$PROJECT_DIR$/examples/vehicle/test_BVP_2D.py" />
+        <option value="$PROJECT_DIR$/sim_draw.py" />
+        <option value="$PROJECT_DIR$/test_BVP_2D.py" />
+        <option value="$PROJECT_DIR$/train.py" />
+        <option value="D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_bvp.py" />
+        <option value="$PROJECT_DIR$/test_sample_draw.py" />
+        <option value="$PROJECT_DIR$/test_new_BVP_drawing.py" />
+        <option value="$PROJECT_DIR$/utilities/neural_networks.py" />
+        <option value="$PROJECT_DIR$/generate.py" />
+        <option value="$PROJECT_DIR$/examples/vehicle/problem_def.py" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="25" />
+    <option name="y" value="95" />
+    <option name="width" value="1655" />
+    <option name="height" value="950" />
+  </component>
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="HJI_Vehicle_100sample" type="b2602c69:ProjectViewProjectNode" />
+              <item name="HJI_Vehicle_100sample" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="HJI_Vehicle_100sample" type="b2602c69:ProjectViewProjectNode" />
+              <item name="HJI_Vehicle_100sample" type="462c0819:PsiDirectoryNode" />
+              <item name="examples" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="HJI_Vehicle_100sample" type="b2602c69:ProjectViewProjectNode" />
+              <item name="HJI_Vehicle_100sample" type="462c0819:PsiDirectoryNode" />
+              <item name="examples" type="462c0819:PsiDirectoryNode" />
+              <item name="vehicle" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope" />
+    </panes>
+  </component>
+  <component name="PropertiesComponent">
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../HJI_Vehicle_data_collection_na_na" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings module-name="HJB" is-module-sdk="true">
+        <envs>
+          <env key="PATH" value="D:\Anaconda\envs\pytorch_gpu;D:\Anaconda\envs\pytorch_gpu\Library\mingw-w64\bin;D:\Anaconda\envs\pytorch_gpu\Library\usr\bin;D:\Anaconda\envs\pytorch_gpu\Library\bin;D:\Anaconda\envs\pytorch_gpu\Scripts;D:\Anaconda\envs\pytorch_gpu\bin;D:\Anaconda\condabin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\bin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\libnvvp;" />
+        </envs>
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myModuleName" value="HJB" />
+        <option name="myEnvs">
+          <map>
+            <entry key="PATH" value="D:\Anaconda\envs\pytorch_gpu;D:\Anaconda\envs\pytorch_gpu\Library\mingw-w64\bin;D:\Anaconda\envs\pytorch_gpu\Library\usr\bin;D:\Anaconda\envs\pytorch_gpu\Library\bin;D:\Anaconda\envs\pytorch_gpu\Scripts;D:\Anaconda\envs\pytorch_gpu\bin;D:\Anaconda\condabin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\bin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0\libnvvp;" />
+          </map>
+        </option>
+      </console-settings>
+    </option>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="RunManager" selected="Python.generate">
+    <configuration name="generate" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="HJB" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="PATH" value="D:\Anaconda\envs\pytorch_gpu\Library\bin" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/generate.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="sim_draw" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="HJB" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/sim_draw.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test_BVP_2D (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="HJB" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test_BVP_2D.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test_new_BVP_drawing" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="HJB" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test_new_BVP_drawing.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test_sample_draw" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="HJB" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test_sample_draw.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="train" type="PythonConfigurationType" factoryName="Python">
+      <module name="HJB" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="PATH" value="D:\Anaconda\envs\pytorch_gpu\Library\bin" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/train.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.train" />
+      <item itemvalue="Python.generate" />
+      <item itemvalue="Python.test_BVP_2D (1)" />
+      <item itemvalue="Python.test_new_BVP_drawing" />
+      <item itemvalue="Python.sim_draw" />
+      <item itemvalue="Python.test_sample_draw" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.generate" />
+        <item itemvalue="Python.test_new_BVP_drawing" />
+        <item itemvalue="Python.test_sample_draw" />
+        <item itemvalue="Python.sim_draw" />
+        <item itemvalue="Python.test_BVP_2D (1)" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="25db6019-17a9-4cb4-bab7-c55257968cb9" name="Default Changelist" comment="" />
+      <created>1594184156860</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1594184156860</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TodoView">
+    <todo-panel id="selected-file">
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+    <todo-panel id="all">
+      <are-packages-shown value="true" />
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="-7" y="-7" width="1550" height="838" extended-state="6" />
+    <editor active="true" />
+    <layout>
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.15455747" />
+      <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
+      <window_info id="Favorites" order="2" side_tool="true" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.329429" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.49603698" weight="0.36510265" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.4966975" weight="0.4809384" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32844576" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32991204" />
+      <window_info anchor="bottom" id="Terminal" order="8" sideWeight="0.4993395" weight="0.23607038" />
+      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.5033025" side_tool="true" weight="0.49120235" />
+      <window_info anchor="bottom" id="Python Console" order="10" sideWeight="0.497358" weight="0.3856305" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+    </layout>
+    <layout-to-restore>
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.16908851" />
+      <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
+      <window_info id="Favorites" order="2" side_tool="true" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.329429" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.49603698" visible="true" weight="0.3372434" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49867898" weight="0.25513196" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32844576" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32991204" />
+      <window_info anchor="bottom" id="Terminal" order="8" sideWeight="0.4993395" weight="0.23607038" />
+      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.503963" side_tool="true" weight="0.3240469" />
+      <window_info anchor="bottom" id="Python Console" order="10" sideWeight="0.497358" weight="0.31085044" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+    </layout-to-restore>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/vehicle/test_latin_sampling.py</url>
+          <line>25</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/vehicle/test_latin_sampling.py</url>
+          <line>26</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/vehicle/test_latin_sampling.py</url>
+          <line>27</line>
+          <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_bvp.py</url>
+          <line>1125</line>
+          <option name="timeStamp" value="38" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_bvp.py</url>
+          <line>1128</line>
+          <option name="timeStamp" value="44" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_bvp.py</url>
+          <line>1101</line>
+          <option name="timeStamp" value="46" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_bvp.py</url>
+          <line>1109</line>
+          <option name="timeStamp" value="47" />
+        </line-breakpoint>
+      </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="debuggerHistoryManager">
+    <expressions id="watch">
+      <expression>
+        <expression-string>self.loss</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>self.dVdX_1</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+    </expressions>
+    <expressions id="evaluateExpression">
+      <expression>
+        <expression-string>train_data</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>self.dVdX_1</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>self.dVdX</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>X_guess</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>t_guess</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>X0</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>X_OUT</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>t_OUT</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>V1</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+    </expressions>
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/lbfgsnew.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/torch/autograd/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="120">
+          <caret line="156" selection-start-line="156" selection-end-line="156" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/torch/nn/modules/module.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="145">
+          <caret line="522" selection-start-line="522" selection-end-line="522" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test_pytorch_tf.py" />
+    <entry file="file://$PROJECT_DIR$/test_time_march.py" />
+    <entry file="file://$PROJECT_DIR$/test_warm_start.py" />
+    <entry file="file://$PROJECT_DIR$/simulate.py" />
+    <entry file="file://$PROJECT_DIR$/simulate_noise.py" />
+    <entry file="file://$PROJECT_DIR$/utilities/sample" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/optimize/optimize.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="210">
+          <caret line="47" column="20" selection-start-line="47" selection-start-column="20" selection-end-line="47" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/AppData/Roaming/Python/Python36/site-packages/numpy/core/fromnumeric.py" />
+    <entry file="file://$USER_HOME$/AppData/Roaming/Python/Python36/site-packages/numpy/lib/shape_base.py" />
+    <entry file="file://$USER_HOME$/AppData/Roaming/Python/Python36/site-packages/numpy/core/numeric.py" />
+    <entry file="file://$PROJECT_DIR$/examples/satellite/problem_def.py" />
+    <entry file="file://$USER_HOME$/AppData/Roaming/Python/Python36/site-packages/numpy/core/shape_base.py" />
+    <entry file="file://$PROJECT_DIR$/examples/vehicle/test.py" />
+    <entry file="file://$PROJECT_DIR$/examples/vehicle/problem_def_copy.py" />
+    <entry file="file://$PROJECT_DIR$/generate_copy.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/codecs.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="157">
+          <caret line="310" selection-start-line="310" selection-end-line="310" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test_sample.py" />
+    <entry file="file://$PROJECT_DIR$/utilities/neural_networks_reference.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_ivp/base.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="137">
+          <caret line="138" selection-start-line="138" selection-end-line="138" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_ivp/rk.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="133">
+          <caret line="94" selection-start-line="94" selection-end-line="94" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_ivp/ivp.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="137">
+          <caret line="542" selection-start-line="542" selection-end-line="542" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utilities/other.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="574">
+          <caret line="68" column="20" selection-start-line="68" selection-start-column="20" selection-end-line="68" selection-end-column="20" />
+          <folding>
+            <element signature="e#51#69#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test_pytorch_draw.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/__future__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="113" selection-start-line="113" selection-end-line="113" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/vehicle/test_latin_sampling.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/sparse/linalg/dsolve/linsolve.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="304">
+          <caret line="328" column="26" selection-start-line="328" selection-start-column="26" selection-end-line="328" selection-end-column="26" />
+          <folding>
+            <element signature="e#0#64#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/burgers/problem_def.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/torch/optim/adam.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="147">
+          <caret line="29" column="8" selection-start-line="29" selection-start-column="8" selection-end-line="29" selection-end-column="8" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/problem_def_template.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="304">
+          <caret line="75" column="60" selection-start-line="75" selection-start-column="8" selection-end-line="75" selection-end-column="60" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/LBFGS.py" />
+    <entry file="file://$PROJECT_DIR$/examples/choose_problem.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="114">
+          <caret line="6" selection-start-line="6" selection-end-line="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/data_filter.py" />
+    <entry file="file://$PROJECT_DIR$/examples/vehicle/test_BVP_2D.py" />
+    <entry file="file://$PROJECT_DIR$/rect.png" />
+    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/pydevd.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="288">
+          <caret line="1740" selection-start-line="1740" selection-end-line="1740" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/sim_draw.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/interpolate/interpolate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2983">
+          <caret line="1298" selection-start-line="1298" selection-end-line="1298" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test_drawing_3D.py" />
+    <entry file="file://$PROJECT_DIR$/examples/data_collection.py" />
+    <entry file="file://$PROJECT_DIR$/test_sample_draw.py" />
+    <entry file="file://$PROJECT_DIR$/test_draw.py" />
+    <entry file="file://$PROJECT_DIR$/test_BVP_2D.py" />
+    <entry file="file://$PROJECT_DIR$/train.py" />
+    <entry file="file://D:/Anaconda/envs/tf_test/Lib/site-packages/scipy/integrate/_bvp.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="21375">
+          <caret line="1125" selection-start-line="1125" selection-end-line="1125" />
+          <folding>
+            <element signature="e#37#101#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test_new_BVP_drawing.py" />
+    <entry file="file://$PROJECT_DIR$/utilities/neural_networks.py" />
+    <entry file="file://$PROJECT_DIR$/examples/vehicle/problem_def.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="665">
+          <caret line="230" selection-start-line="230" selection-end-line="230" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/generate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3610">
+          <caret line="190" column="22" selection-start-line="190" selection-start-column="22" selection-end-line="190" selection-end-column="22" />
+          <folding>
+            <element signature="e#70#88#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+  </component>
+</project>

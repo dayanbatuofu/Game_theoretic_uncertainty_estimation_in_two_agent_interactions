@@ -620,7 +620,7 @@ class VisUtils:
             # print('intent distribution:', self.intent_distri_h, self.intent_distri_m)
 
             fig2, (ax1, ax2, ax3, ax4, ax5) = pyplot.subplots(5, figsize=(5, 8))
-            fig2.suptitle('Predicted intent and rationality')
+            fig2.suptitle('Predicted intent and noise of agents')
 
             ax1.plot(self.intent_1, label='predicted P1 intent')
             ax1.plot(self.true_intent_1, label='true P1 intent', linestyle='--')
@@ -641,8 +641,8 @@ class VisUtils:
             x = list(range(0, len(self.intent_1)))
             x1 = [i - w for i in x]
             x2 = [i + w for i in x]
-            ax3.bar(x1, self.theta_distri_1[0], width=0.15, label='theta 1')
-            ax3.bar(x2, self.theta_distri_1[1], width=0.15, label='theta 2')
+            ax3.bar(x1, self.theta_distri_1[0], width=0.15, label='NA')
+            ax3.bar(x2, self.theta_distri_1[1], width=0.15, label='A')
             ax3.legend(loc="lower right")
             ax3.set_yticks([0.25, 0.5, 0.75])
             ax3.set(xlabel='frame', ylabel='P1 distri')
@@ -651,8 +651,8 @@ class VisUtils:
             x = list(range(0, len(self.intent_2)))
             x1 = [i - w for i in x]
             x2 = [i + w for i in x]
-            ax4.bar(x1, self.theta_distri_2[0], width=0.15, label='theta 1')
-            ax4.bar(x2, self.theta_distri_2[1], width=0.15, label='theta 2')
+            ax4.bar(x1, self.theta_distri_2[0], width=0.15, label='NA')
+            ax4.bar(x2, self.theta_distri_2[1], width=0.15, label='A')
             ax4.legend(loc='lower right')
             ax4.set_yticks([0.25, 0.5, 0.75])
             ax4.set(xlabel='frame', ylabel='P2 distri')

@@ -39,7 +39,7 @@ parser.add_argument('--env_name', type=str, choices=['test_intersection', 'train
 """
 agent model parameters
 """
-# choose inference model: use bvp_empathetic_2 for our sim, and only for 2nd player
+# choose inference model: use bvp for our experiment, and only for 1st player
 parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic',
                                                             'bvp', 'trained_baseline_2U'],
                     default=['bvp', 'none'])
