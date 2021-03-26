@@ -6,6 +6,10 @@ Contributors: Yi Chen, Merry Tanner, Lei Zhang, Sunny Amatya, Yi Ren, Wenlong Zh
 
 This repo is implemented with the empathetic and non-empathetic agents studied in the 2021 ICRA paper: https://arxiv.org/abs/2011.02047
 
+Home directory contains the simulation code, including parameter estimation, motion planning and other utilities.
+
+Neural network and HJI BVP formulation code can be found in the folder /HJI_Vehicle. Please refer to the readme file.
+
 ## Introduction
 
 Human-robot  interactions  (HRI)  can  be  modeledas differential games with incomplete information, where eachagent   holds   private   reward   parameters.   Due   to   the   openchallenge in finding perfect Bayesian equilibria of such games,existing  studies  often  decouple  the  belief  and  physical  dy-namics  by  iterating  between  belief  update  and  motion  plan-ning.  Importantly,  the  robot’s  reward  parameters  are  oftenassumed  to  be  known  to  the  humans,  in  order  to  simplifythe   computation.   We   show   in   this   paper   that   under   thissimplification, the robot performs non-empathetic belief updateabout the humans’ parameters, which causes high safety risksin uncontrolled intersection scenarios. In contrast, we proposea model for empathetic belief update, where the agent updatesthe  joint  probabilities  of  all  agents’  parameter  combinations.The update uses a neural network that approximates the Nashequilibrial  action-values  of  agents.  We  compare  empatheticand  non-empathetic  belief  update  methods  on  a  two-vehicleuncontrolled intersection case with short reaction time. Resultsshow  that  when  both  agents  are  unknowingly  aggressive  (ornon-aggressive),  empathy  is  necessary  for  avoiding  collisionswhen agents have false believes about each others’ parameters.This paper demonstrates the importance of acknowledging theincomplete-information  nature  of  HRI.
