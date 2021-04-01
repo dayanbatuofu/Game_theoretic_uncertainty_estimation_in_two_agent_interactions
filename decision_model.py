@@ -18,7 +18,8 @@ import dynamics
 #from arguments import get_args
 from models.rainbow.common.utils import epsilon_scheduler, beta_scheduler, update_target, print_log
 #from set_nfsp_models import get_models
-
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class DecisionModel:
     def __init__(self, model, sim):
@@ -44,7 +45,7 @@ class DecisionModel:
 
         else:
             # placeholder for future development
-            print("WARNING!!! NO DECISION MODEL FOUND")
+            logging.debug("WARNING!!! NO DECISION MODEL FOUND")
             pass
 
         self.policy_or_Q = 'Q'
@@ -124,7 +125,7 @@ class DecisionModel:
                     q_1 = Q_na_a
                     q_2 = Q_a_na
                 else:
-                    print("ERROR: THETA DOES NOT EXIST")
+                    logging.debug("ERROR: THETA DOES NOT EXIST")
             elif theta_id[0] == 1:  # 1: A
                 if theta_id[1] == 0:
                     q_1 = Q_a_na
@@ -133,9 +134,9 @@ class DecisionModel:
                     q_1 = Q_a_a_2
                     q_2 = Q_a_a
                 else:
-                    print("ERROR: THETA DOES NOT EXIST")
+                    logging.debug("ERROR: THETA DOES NOT EXIST")
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
             q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
             q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
             p_action1 = self.nfsp_action_prob(q1_vals, beta_h[1])
@@ -151,7 +152,7 @@ class DecisionModel:
                     action = action_set[a_i]
                 actions.append(action[0])
 
-        # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # logging.debug("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
         return {'action': actions}
 
     def bvp_baseline(self):
@@ -267,16 +268,16 @@ class DecisionModel:
             elif theta_id[1] == 1:  # 1: na, 2:a
                 q_1 = Q_na_a
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
         elif true_intent_id[0] == 1:  # 1: A
             if theta_id[1] == 0:
                 q_1 = Q_a_na
             elif theta_id[1] == 1:
                 q_1 = Q_a_a_2
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
         else:
-            print("ERROR: THETA DOES NOT EXIST")
+            logging.debug("ERROR: THETA DOES NOT EXIST")
         "for agent 2 (M)"
         if true_intent_id[1] == 0:
             if theta_id[0] == 0:
@@ -284,16 +285,16 @@ class DecisionModel:
             elif theta_id[0] == 1:  # 2: na, 1:a
                 q_2 = Q_a_na
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
         elif true_intent_id[1] == 1:  # 2: A
             if theta_id[0] == 0:
                 q_2 = Q_na_a
             elif theta_id[0] == 1:
                 q_2 = Q_a_a
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
         else:
-            print("ERROR: THETA DOES NOT EXIST")
+            logging.debug("ERROR: THETA DOES NOT EXIST")
         q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
         p_action1 = self.nfsp_action_prob(q1_vals, _lambda=beta_h[1])
@@ -306,7 +307,7 @@ class DecisionModel:
             actions.append(action[0])
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
-        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # logging.debug("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
         # actions = [action1, action2]
         return {'action': actions}
 
@@ -356,7 +357,7 @@ class DecisionModel:
                 q_1 = Q_na_a
                 q_2 = Q_a_na
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
 
         elif theta_id[0] == 1:  # 1: A
             if theta_id[1] == 0:
@@ -366,9 +367,9 @@ class DecisionModel:
                 q_1 = Q_a_a_2
                 q_2 = Q_a_a
             else:
-                print("ERROR: THETA DOES NOT EXIST")
+                logging.debug("ERROR: THETA DOES NOT EXIST")
         else:
-            print("ERROR: THETA DOES NOT EXIST")
+            logging.debug("ERROR: THETA DOES NOT EXIST")
         q1_vals = q_1.forward(t.FloatTensor(p1_state_nn).to(t.device("cpu")))
         q2_vals = q_2.forward(t.FloatTensor(p2_state_nn).to(t.device("cpu")))
         p_action1 = self.nfsp_action_prob(q1_vals, beta_h[1])
@@ -381,7 +382,7 @@ class DecisionModel:
             actions.append(action[0])
         self.sim.action_distri_1.append(p_action1)
         self.sim.action_distri_2.append(p_action2)
-        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # logging.debug("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
 
         return {'action': actions}
 
@@ -434,7 +435,7 @@ class DecisionModel:
         #     elif i == 1:
         #         p_a_self = p_a[ui_i]
         #     else:
-        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+        #         logging.debug("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
         #     p_a_self /= np.sum(p_a_self)
         #     p_a_1.append(p_a_self)
         #     p_a_self = np.array(p_a_self).tolist()
@@ -464,7 +465,7 @@ class DecisionModel:
             p_a_2.append(p_action_i)
             actions.append(action_set[np.argmax(p_action_i)])
 
-        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # logging.debug("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
 
         return {'action': actions}
 
@@ -512,7 +513,7 @@ class DecisionModel:
         #     elif i == 1:
         #         p_a_self = p_a[ui_i]
         #     else:
-        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+        #         logging.debug("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
         #     p_a_self /= np.sum(p_a_self)
         #     p_a_1.append(p_a_self)
         #     p_a_self = np.array(p_a_self).tolist()
@@ -542,7 +543,7 @@ class DecisionModel:
             p_a_2.append(p_action_i)
             actions.append(action_set[np.argmax(p_action_i)])
 
-        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # logging.debug("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
         # actions = [action1, action2]
         return {'action': actions}
 
@@ -595,7 +596,7 @@ class DecisionModel:
         # TODO: do the assertion work???
         assert (not pa == 0 for pa in exp_Q)
         assert (np.isnan(pa) for pa in exp_Q)
-        print("exp_Q:", exp_Q)
+        logging.debug("exp_Q:", exp_Q)
         return exp_Q
 
     def bvp_action_prob(self, state_h, state_m, beta_h, beta_m):
@@ -649,9 +650,9 @@ class DecisionModel:
         _p_action_1 = np.exp(_p_action_1)
         _p_action_2 = np.exp(_p_action_2)
 
-        print('p1 state:', p1_state_nn)
-        print("action prob 1 from bvp:", _p_action_1)
-        print("action prob 2 from bvp:", _p_action_2)
+        logging.debug('p1 state:', p1_state_nn)
+        logging.debug("action prob 1 from bvp:", _p_action_1)
+        logging.debug("action prob 2 from bvp:", _p_action_2)
         assert round(np.sum(_p_action_1)) == 1
         assert round(np.sum(_p_action_2)) == 1
 
@@ -705,7 +706,7 @@ class DecisionModel:
                                          (theta_1, theta_2))
                 _p_action[i] = q2 * lambda_2
         else:
-            print("WARNING! AGENT COUNT EXCEEDED 2")
+            logging.debug("WARNING! AGENT COUNT EXCEEDED 2")
 
         "using logsumexp to prevent nan"
         Q_logsumexp = logsumexp(_p_action)
@@ -713,7 +714,7 @@ class DecisionModel:
         _p_action -= Q_logsumexp
         _p_action = np.exp(_p_action)
 
-        print("action prob 1 from bvp:", _p_action)
+        logging.debug("action prob 1 from bvp:", _p_action)
         assert round(np.sum(_p_action)) == 1
 
         return _p_action  # exp_Q

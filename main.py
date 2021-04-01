@@ -8,8 +8,13 @@ Important files:
 5. >>> savi_simulation: executes the simulation <<<
 Change the DEFAULT values below to change actual model used!
 """
+import math
 import os
 import argparse
+import re
+
+import scipy.io
+
 import utils
 import torch as t
 import numpy as np
@@ -21,7 +26,7 @@ parser = argparse.ArgumentParser()
 simulation parameters
 """
 parser.add_argument('--sim_duration', type=int, default=100)  # time span for simulation
-parser.add_argument('--sim_dt', type=int, default=0.05)  # time step in simulation: choices: [0.01, 0.25, 1]
+parser.add_argument('--sim_dt', type=int, default= 0.01) #0.0001)  # time step in simulation: choices: [0.01, 0.25, 1]
 parser.add_argument('--sim_lr', type=float, default=0.1)  # learning rate
 parser.add_argument('--sim_nepochs', type=int, default=100)  # number of training epochs
 parser.add_argument('--save', type=str, default='./experiment')  # save dir
@@ -43,14 +48,14 @@ agent model parameters
 parser.add_argument('--agent_inference', type=str, choices=['none', 'test_baseline', 'nfsp_baseline', 'empathetic',
                                                             'bvp', 'bvp_2',
                                                             'trained_baseline_2U'],
-                    default=['bvp_2', 'none'])
+                    default=['none', 'none'])
 
 # choose decision model: use the same model for the two agent, bvp_non_empathetic or bvp_empathetic
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'nfsp_baseline', 'bvp_baseline', 'baseline2', 'complete_information',
                              'non-empathetic', 'empathetic',
                              'bvp_non_empathetic', 'bvp_empathetic'],
-                    default=['bvp_empathetic', 'bvp_baseline'])
+                    default=['bvp_baseline', 'bvp_baseline'])
 
 """
 agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent case
@@ -59,13 +64,12 @@ agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent ca
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning (NOT IN USE)
 parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT TRUE PARAM
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
-parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT BELIEF
+parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT BELIEF
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--belief_weight', type=float, default=0.8)
 
 # parser.add_argument('', type=str, choices=[], default=[])
 args = parser.parse_args()
-
 
 if __name__ == "__main__":
     utils.makedirs(args.save)
@@ -79,7 +83,7 @@ if __name__ == "__main__":
         sim_par = {"theta": [5, 1],  # NA, A
                    "lambda": [0.1, 0.5],  # N, NN
                    # "action_set": [-5, -3, -1, 0, 2, 4, 6, 8, 10],
-                   "action_set": [-5, 0, 3, 7, 10],
+                   "action_set": [-5, -4, -3, -2, -1, 0, 2, 10],
                    # "action_set": close_action_set,
                    }
     elif args.env_name == 'trained_intersection':
@@ -93,25 +97,84 @@ if __name__ == "__main__":
                    "action_set": [-8, -4, 0, 4, 8],
                    }
 
-    e = Environment(args.env_name, sim_par, args.sim_dt, args.agent_intent, args.agent_noise, args.agent_intent_belief,
-                    args.agent_noise_belief)
-    assert len(args.agent_inference) == e.N_AGENTS and len(args.agent_decision) == e.N_AGENTS
-
-    kwargs = {"env": e,
-              "duration": args.sim_duration,
-              "n_agents": e.N_AGENTS,
-              "inference_type": args.agent_inference,
-              "decision_type": args.agent_decision,
-              "sim_dt": args.sim_dt,
-              "sim_lr": args.sim_lr,
-              "sim_par": sim_par,
-              "sim_nepochs": args.sim_nepochs,
-              "belief_weight": args.belief_weight}
-    s = Simulation(**kwargs)
-    s.run()
+    # import csv
+    # with open(f"/mnt/e3641809-fbba-49ea-86ed-f89021679b99/home/varun"
+    #           f"/carla/PythonAPI/gaze_carla/data/test_states.csv", newline='') as csvfile:
+    #     spamreader = csv.reader(csvfile)
+    #     for index, row in enumerate(spamreader):
+    #         if index > 0:
+    #             init_state = eval(row[0])
+    #             # print(index, init_state)
+    #
+    #             # print('------')
+    #
+    #             e = Environment(args.env_name, sim_par, args.sim_dt, args.agent_intent, args.agent_noise, args.agent_intent_belief,
+    #                             args.agent_noise_belief, init_state)
+    #             assert len(args.agent_inference) == e.N_AGENTS and len(args.agent_decision) == e.N_AGENTS
+    #
+    #             kwargs = {"env": e,
+    #                       "duration": args.sim_duration,
+    #                       "n_agents": e.N_AGENTS,
+    #                       "inference_type": args.agent_inference,
+    #                       "decision_type": args.agent_decision,
+    #                       "sim_dt": args.sim_dt,
+    #                       "sim_lr": args.sim_lr,
+    #                       "sim_par": sim_par,
+    #                       "sim_nepochs": args.sim_nepochs,
+    #                       "belief_weight": args.belief_weight}
+    #             # if index == 3:
+    #             s = Simulation(**kwargs)
+    #             s.run(index)
 
     # add analysis stuff here
     # s.postprocess()
 
+    data = scipy.io.loadmat(f"/mnt/e3641809-fbba-49ea-86ed-f89021679b99/home/varun/PycharmProjects/max_ICRA21/code/"
+                            f"HJI_Vehicle/examples/vehicle/data_discrete_train_na_na.mat")
 
+    w = 0.25
+    action1s = data['U'][0,:]
+    action2s = data['U'][1,:]
+    n = math.ceil((action1s.max() - action1s.min()) / w)
+    import matplotlib.pyplot as plt
+    plt.hist(action1s, bins=n)
+    plt.show()
+
+
+
+    t = data['t']
+    X = data['X']
+    A = data['A']
+    data.update({'t0': data['t']})
+    idx0 = np.nonzero(np.equal(data.pop('t0'), 0))[1]
+    print(len(idx0))
+    X0 = np.zeros((len(idx0), 4))
+    for n in range(1, len(idx0) + 1):
+        if n == len(idx0):
+            X0[n - 1, :] = X[:, idx0[n - 1]]
+        else:
+            X0[n - 1, :] = X[:, idx0[n - 1]]
+
+    for index, init_state in enumerate(X0):
+        # print('state: {}'.format(init_state))
+        # sys.exit()
+        # print('----------------')
+        e = Environment(args.env_name, sim_par, args.sim_dt, args.agent_intent, args.agent_noise,
+                        args.agent_intent_belief, args.agent_noise_belief, init_state.tolist())
+        assert len(args.agent_inference) == e.N_AGENTS and len(args.agent_decision) == e.N_AGENTS
+
+        kwargs = {"env": e,
+                  "duration": args.sim_duration,
+                  "n_agents": e.N_AGENTS,
+                  "inference_type": args.agent_inference,
+                  "decision_type": args.agent_decision,
+                  "sim_dt": args.sim_dt,
+                  "sim_lr": args.sim_lr,
+                  "sim_par": sim_par,
+                  "sim_nepochs": args.sim_nepochs,
+                  "belief_weight": args.belief_weight}
+        s = Simulation(**kwargs)
+        s.run(index+1)
+        if index > 10:
+            break
 

@@ -7,7 +7,8 @@ import scipy
 from sim_data import DataUtil
 import pygame as pg
 import dynamics
-
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class AutonomousVehicle:
     """
@@ -71,7 +72,7 @@ class AutonomousVehicle:
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)
-        print("chosen action", action)
+        logging.debug("chosen action", action)
         self.dynamics(action)
 
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
@@ -94,7 +95,7 @@ class AutonomousVehicle:
                 vy_new = vy + u * dt * vy #/ (np.linalg.norm([vx, vy]) + 1e-12)
                 sx_new = sx + (vx + vx_new) * dt * 0.5
                 sy_new = sy + (vy + vy_new) * dt * 0.5
-            print("ID:", self.id, "action:", u, "old vel:", vx, vy, "new vel:", vx_new, vy_new)
+            logging.debug("ID:", self.id, "action:", u, "old vel:", vx, vy, "new vel:", vx_new, vy_new)
             return sx_new, sy_new, vx_new, vy_new
 
         # if self.env.name == "merger":
@@ -119,7 +120,7 @@ class AutonomousVehicle:
         #         sx_new = sx + (vx + vx_new) * dt * 0.5
         #         sy_new = sy + (vy + vy_new) * dt * 0.5
         #         theta_new = theta + u[0]
-        #     print("ID:", self.id, "action:", u[0],"," ,u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
+        #     logging.debug("ID:", self.id, "action:", u[0],"," ,u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
         #     return sx_new, sy_new, theta_new, vy_new
         # if self.env.name == "merger":
         #     self.state.append(f_environment(self.state[-1], action, self.sim.dt))
@@ -146,7 +147,7 @@ class AutonomousVehicle:
                 # sx_new = sx + (vx + vx_new) * dt * 0.5
                 # sy_new = sy + (vy + vy_new) * dt * 0.5
                 # theta_new = theta + u[0]
-            print("ID:", self.id, "action:", u[0], "," , u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
+            logging.debug("ID:", self.id, "action:", u[0], "," , u[1], "old vel:", vy, "new vel:", vy_new, "angle", theta_new)
             return sx_new, sy_new, theta_new, delta_new, vy_new
         if self.env.name == "merger":
             self.state.append(f_environment_sc(self.state[-1], action, self.sim.dt))

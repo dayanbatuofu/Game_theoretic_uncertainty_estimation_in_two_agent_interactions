@@ -1,6 +1,8 @@
 """
 Environment class: create agent information/parameters and initial states
 """
+import os
+
 import numpy as np
 from models import constants as C
 import savi_simulation as sim
@@ -12,11 +14,12 @@ import dynamics
 import torch as t
 import random
 from scipy.special import logsumexp
-
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class Environment:
     # add: intent, noise, intent belief, noise belief
-    def __init__(self, env_name, sim_par, sim_dt, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief):
+    def __init__(self, env_name, sim_par, sim_dt, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief, init_state=None):
 
         self.name = env_name
         self.sim = sim
@@ -148,26 +151,27 @@ class Environment:
                     elif self.car_par[i]["belief"][0] == theta_list[1]:  # NA_A
                         qi = q_sets[2]
                     else:
-                        print("WARNING: NO CORRESPONDING THETA FOUND")
+                        logging.debug("WARNING: NO CORRESPONDING THETA FOUND")
                 elif self.car_par[i]["par"][0] == theta_list[1]:
                     if self.car_par[i]["belief"][0] == theta_list[0]:  # A_NA
                         qi = q_sets[3]
                     elif self.car_par[i]["belief"][0] == theta_list[1]:  # A_A
                         qi = q_sets[4]  # use a_a
                     else:
-                        print("WARNING: NO CORRESPONDING THETA FOUND")
+                        logging.debug("WARNING: NO CORRESPONDING THETA FOUND")
                 else:
-                    print("WARNING: NO CORRESPONDING THETA FOUND")
+                    logging.debug("WARNING: NO CORRESPONDING THETA FOUND")
                 q_vals_i = qi.forward(t.FloatTensor(pi_state[i]).to(t.device("cpu")))
                 p_a = self.action_prob(q_vals_i, self.car_par[i]["par"][1])
                 action_i = random.choices(action_set, weights=p_a, k=1)  # draw action using the distribution
                 self.car_par[i]["initial_action"] = [action_i[0]]
-            print("initial params: ", self.car_par)
+            logging.debug("initial params: ", self.car_par)
 
         elif self.name == 'bvp_intersection':
             self.N_AGENTS = 2
-            self.CAR_WIDTH = 1.5  # m
-            self.CAR_LENGTH = 3  # m
+            self.CAR_WIDTH = 1.081725001335144  # m
+            self.CAR_LENGTH = 2.3958897590637207  # m
+
             self.MIN_SPEED = 0.1
             self.MAX_SPEED = 30
 
@@ -180,17 +184,26 @@ class Environment:
             "randomly pick initial states:"
             # initial state range: x: 15 to 20, v: 18 to 25
             # u range: [-5 10]
-            # sy_H = np.random.uniform(15, 20)
-            # vy_H = np.random.uniform(18, 25)
-            # sx_M = np.random.uniform(15, 20)
-            # vx_M = np.random.uniform(18, 25)
-            sy_H = 20  # P1
-            vy_H = 18
-            sx_M = 15  # P2
-            vx_M = 18
 
-            assert 20 >= sy_H >= 15
-            assert 20 >= sx_M >= 15
+            if init_state:
+                sy_H, vy_H, sx_M, vx_M = init_state[0], init_state[1], init_state[2], init_state[3]
+            else:
+                sy_H = np.random.uniform(15, 20)
+                vy_H = np.random.uniform(18, 25)
+                sx_M = np.random.uniform(15, 20)
+                vx_M = np.random.uniform(18, 25)
+
+            logging.info(f'init_state: {(sx_M, vx_M, sy_H, vy_H)}')
+
+            # sx_M = sy_H
+            # vx_M = vy_H
+            # sy_H = 20  # P1
+            # vy_H = 18
+            # sx_M = 15  # P2
+            # vx_M = 18
+
+            # assert 20 >= sy_H >= 15
+            # assert 20 >= sx_M >= 15
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
@@ -261,7 +274,7 @@ class Environment:
             max_speed = np.sqrt((sy_H - 1 - C.CONSTANTS.CAR_LENGTH * 0.5) * 2.
                                 * abs(merger.MAX_DECELERATION))
             vy_H = np.random.uniform(max_speed * 0.1, max_speed * 0.5)
-            print("merging ", "initial vel:", vy_M, -vy_H, "initial pos:", -sy_M, -sy_H)
+            logging.debug("merging ", "initial vel:", vy_M, -vy_H, "initial pos:", -sy_M, -sy_H)
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, -sy_M, 0,0, vy_M]],  # pos_x, pos_y, theta, delta, positive vel
                              "desired_state": [0, 0.4],  # pos_x, pos_y
@@ -327,7 +340,7 @@ class Environment:
 
         "normalizing"
         exp_Q /= sum(exp_Q)
-        # print("exp_Q normalized:", exp_Q)
+        # logging.debug("exp_Q normalized:", exp_Q)
         return exp_Q
 
     def bvp_action_prob(self, state_h, state_m, beta_h, beta_m):
@@ -381,9 +394,9 @@ class Environment:
         _p_action_1 = np.exp(_p_action_1)
         _p_action_2 = np.exp(_p_action_2)
 
-        print('p1 state:', p1_state_nn)
-        print("action prob 1 from bvp:", _p_action_1)
-        print("action prob 2 from bvp:", _p_action_2)
+        logging.debug('p1 state:', p1_state_nn)
+        logging.debug("action prob 1 from bvp:", _p_action_1)
+        logging.debug("action prob 2 from bvp:", _p_action_2)
         assert round(np.sum(_p_action_1)) == 1
         assert round(np.sum(_p_action_2)) == 1
 

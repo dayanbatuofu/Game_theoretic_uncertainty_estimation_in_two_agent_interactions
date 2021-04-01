@@ -14,11 +14,12 @@ import numpy as np
 from scipy.special import logsumexp
 # from sklearn.preprocessing import normalize
 from models.rainbow.set_nfsp_models import get_models
-from HJI_Vehicle.utilities.neural_networks import HJB_network_t0 as HJB_network
+#from HJI_Vehicle.utilities.neural_networks import HJB_network_t0 as HJB_network
 from HJI_Vehicle.NN_output import get_Q_value
 import dynamics
 import pdb
-
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class InferenceModel:
     def __init__(self, model, sim):  # model = inference type, sim = simulation class
@@ -101,7 +102,7 @@ class InferenceModel:
 
     # @staticmethod
     def no_inference(self, agents, sim):
-        print("frame {}".format(sim.frame))
+        logging.debug("frame {}".format(sim.frame))
         return
 
     def test_baseline_inference(self, agents, sim):
@@ -168,7 +169,7 @@ class InferenceModel:
             "Check agent movement axis then calculate Q value for given action"
             if sx == 0 and vx == 0: #For the case of y direction movement
                 # Q = FUNCTION MATH HERE USING SY, VY
-                #print("Y direction movement detected")
+                #logging.debug("Y direction movement detected")
                 goal_s = goal_s[0]
                 next_v = vy + action * dt
                 "Deceleration only leads to 0 velocity!"
@@ -179,7 +180,7 @@ class InferenceModel:
                     Q = -abs(goal_s - sy) / (vy + action * dt + delta)
             elif sy == 0 and vy == 0: #For the case of X direction movement
                 # Q = FUNCTION MATH HERE USING SX, VX
-                print("X direction movement detected")
+                logging.debug("X direction movement detected")
                 goal_s = goal_s[1]
                 next_v = vx + action * dt
                 "Deceleration only leads to 0 velocity!"
@@ -247,12 +248,12 @@ class InferenceModel:
 
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
-                    print("WARNING: state list is not composed of tuples!")
+                    logging.debug("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list] #put it in a list to iterate
 
                 for s in _state_list:
                     for a in _actions:
-                        #print("STATE", s)
+                        #logging.debug("STATE", s)
                         _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
 
@@ -282,25 +283,25 @@ class InferenceModel:
             """
             # Need to add some filtering for states with no legal action: q = -inf
             Q = q_values(state, self.goal[0])
-            #print("Q values array:", Q)
+            #logging.debug("Q values array:", Q)
 
             exp_Q = []
 
             "Q*lambda"
             # np.multiply(Q,_lambda,out = Q)
             Q = [q * _lambda for q in Q]
-            #print("Q*lambda:", Q)
+            #logging.debug("Q*lambda:", Q)
 
             "Q*lambda/(sum(Q*lambda))"
             # np.exp(Q, out=Q)
             for q in Q:
                 exp_Q.append(np.exp(q))
-            #print("EXP_Q:", exp_Q)
+            #logging.debug("EXP_Q:", exp_Q)
 
             "normalizing"
             # normalize(exp_Q, norm = 'l1', copy = False)
             exp_Q /= sum(exp_Q)
-            print("exp_Q normalized:", exp_Q)
+            logging.debug("exp_Q normalized:", exp_Q)
             return exp_Q
 
         def traj_probabilities(state, _lambda, dt, prior = None):
@@ -330,16 +331,16 @@ class InferenceModel:
                     p_a = action_probabilities(state, _lambda)
                     p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
                     # transition is deterministic -> 1, prob state(k) = 1
-                    # print("P STATES", p_states)
+                    # logging.debug("P STATES", p_states)
 
                 else:
                     p_s_t = [] #storing p_states for time t (or i)
                     for j, s in enumerate(state_list[i-1]):
-                        # print(state_list[i-1])
-                        # print(p_states)
-                        # print(type(p_states[0]))
-                        # print("Current time:",i,"working on state:", j)
-                        # print(p_states[i-1][j])
+                        # logging.debug(state_list[i-1])
+                        # logging.debug(p_states)
+                        # logging.debug(type(p_states[0]))
+                        # logging.debug("Current time:",i,"working on state:", j)
+                        # logging.debug(p_states[i-1][j])
                         p_a = action_probabilities(s, _lambda) * p_states[i-1][j]
                         p_s_t.extend(p_a.tolist())
 
@@ -374,8 +375,8 @@ class InferenceModel:
             if theta_priors is None:
                 # theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
                 theta_priors = self.initial_joint_prob
-            print("-----theta priors: {}".format(theta_priors))
-            print("traj: {}".format(traj))
+            logging.debug("-----theta priors: {}".format(theta_priors))
+            logging.debug("traj: {}".format(traj))
             suited_lambdas = np.empty(len(thetas))
             # L = len(lambdas)
 
@@ -397,14 +398,14 @@ class InferenceModel:
                 # scores = np.empty(L)
                 scores = []
                 for i, (s, a) in enumerate(traj):  # pp score calculation method
-                    # print("--i, (s, a), lambda:", i, (s, a), _lambda)
+                    # logging.debug("--i, (s, a), lambda:", i, (s, a), _lambda)
                     p_a = action_probabilities(s, _lambda)  # get probability of action in each state given a lambda
                     # scores[i] = p_a[s, a]
-                    # print("-p_a[a]:", p_a[a_i])
+                    # logging.debug("-p_a[a]:", p_a[a_i])
                     # scores[i] = p_a[a]
                     a_i = self.action_set.index(a)
                     scores.append(p_a[a_i])
-                # print("scores at frame {}:".format(self.frame), scores)
+                # logging.debug("scores at frame {}:".format(self.frame), scores)
                 log_scores = np.log(scores)
                 return np.sum(log_scores)
 
@@ -446,7 +447,7 @@ class InferenceModel:
                             # p_action = action_probabilities(s, suited_lambdas[theta_t])  # 1D array
                             # a_i = self.action_set.index(a)
                             p_action_l = self.past_scores[_lambda][t]
-                            # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                            # logging.debug("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                             p_theta_prime[l][theta_t] = p_action_l * p_theta[l][theta_t]
                 else:  # for state action pair that is not at time zero
                     for theta_t in range(len(thetas)):  # cycle through theta at time t or K
@@ -459,7 +460,7 @@ class InferenceModel:
                                     p_theta_prime[l][theta_t] += p_action_l * p_theta[l_past][theta_past]
 
             "In the case p_theta is 2d array:"
-            print(p_theta_prime, sum(p_theta_prime))
+            logging.debug(p_theta_prime, sum(p_theta_prime))
             p_theta_prime /= np.sum(p_theta_prime)  # normalize
 
             "(OLD) Joint inference update for (lambda, theta)"
@@ -477,10 +478,10 @@ class InferenceModel:
             #                 p_theta_prime[theta_t] += p_action[a_i] * p_theta[theta_past]
             # p_theta_prime /= sum(p_theta_prime)  # normalize
 
-            # print(p_theta_prime)
-            # print(np.sum(p_theta_prime))
+            # logging.debug(p_theta_prime)
+            # logging.debug(np.sum(p_theta_prime))
             assert 0.9 <= np.sum(p_theta_prime) <= 1.1  # check if it is properly normalized
-            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
+            logging.debug("-----p_thetas at frame {0}: {1}".format(self.frame, p_theta_prime))
             # return {'predicted_intent_other': [p_theta_prime, suited_lambdas]}
             return p_theta_prime, suited_lambdas
 
@@ -504,17 +505,17 @@ class InferenceModel:
 
             "get required information"
             lamb1, lamb2 = best_lambdas
-            # print("WATCH for p_state", traj_probabilities(state, lamb1))
+            # logging.debug("WATCH for p_state", traj_probabilities(state, lamb1))
             p_state_beta1, state_list = traj_probabilities(state, lamb1, dt)
             p_state_beta2 = traj_probabilities(state, lamb2, dt)[0]
-            print("p theta:",p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
-            # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
-            # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
+            logging.debug("p theta:",p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
+            # logging.debug('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
+            # logging.debug('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
 
             "calculate marginal"
             # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
             p_state_D = []
-            print(p_state_D)
+            logging.debug(p_state_D)
             for k in range(len(state_list)): #k refers to the number of future time steps: currently max k=1
                 p_state_beta1k = p_state_beta1[k]
                 p_state_beta2k = p_state_beta2[k]
@@ -525,9 +526,9 @@ class InferenceModel:
                     for j in range(len(p_theta)):
                         temp += p_state_beta1k[i] * p_theta[j][0] + p_state_beta2k[i] * p_theta[j][1]
                     p_state_Dk.append(temp)
-                    # print(p_state_Dk[i])
-            print('p_state_D at time ', self.frame, ' :', p_state_D)
-            print("state of H:", state_list)  # sx, sy, vx, vy
+                    # logging.debug(p_state_Dk[i])
+            logging.debug('p_state_D at time ', self.frame, ' :', p_state_D)
+            logging.debug("state of H:", state_list)  # sx, sy, vx, vy
 
             assert 0.99 <= np.sum(p_state_D[0]) <= 1.001  # check
             # return {'predicted_policy_other': [p_state_D, state_list]}
@@ -642,27 +643,27 @@ class InferenceModel:
             else:
                 intent = "a_na"
 
-            print(intent)
+            logging.debug(intent)
             q_vals = q_values(state_h, state_m, intent=intent)
             exp_Q = []
 
             "Q*lambda"
             # np.multiply(Q,_lambda,out = Q)
             q_vals = q_vals.detach().numpy() #detaching tensor
-            #print("q values: ",q_vals)
+            #logging.debug("q values: ",q_vals)
             Q = [q * _lambda for q in q_vals]
-            # print("Q*lambda:", Q)
+            # logging.debug("Q*lambda:", Q)
             "Q*lambda/(sum(Q*lambda))"
             # np.exp(Q, out=Q)
 
             for q in Q:
                 exp_Q.append(np.exp(q))
-            # print("EXP_Q:", exp_Q)
+            # logging.debug("EXP_Q:", exp_Q)
 
             "normalizing"
             # normalize(exp_Q, norm = 'l1', copy = False)
             exp_Q /= sum(exp_Q)
-            print("exp_Q normalized:", exp_Q)
+            logging.debug("exp_Q normalized:", exp_Q)
             return exp_Q
 
         def get_state_list(state, T, dt):
@@ -684,12 +685,12 @@ class InferenceModel:
 
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
-                    # print("WARNING: state list is not composed of tuples!")
+                    # logging.debug("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list]  # put it in a list to iterate
 
                 for s in _state_list:
                     for a in _actions:
-                        # print("STATE", s)
+                        # logging.debug("STATE", s)
                         # _s_prime.append(calc_state(s, a, dt))
                         _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
@@ -734,16 +735,16 @@ class InferenceModel:
                     p_a = action_prob(state_h, state_m, _lambda, theta)
                     p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
                     # transition is deterministic -> 1, prob state(k) = 1
-                    # print("P STATES", p_states)
+                    # logging.debug("P STATES", p_states)
 
                 else:
                     p_s_t = []  # storing p_states for time t (or i)
                     for j, s in enumerate(state_list[i - 1]):
-                        # print(state_list[i-1])
-                        # print(p_states)
-                        # print(type(p_states[0]))
-                        # print("Current time:",i,"working on state:", j)
-                        # print(p_states[i-1][j])
+                        # logging.debug(state_list[i-1])
+                        # logging.debug(p_states)
+                        # logging.debug(type(p_states[0]))
+                        # logging.debug("Current time:",i,"working on state:", j)
+                        # logging.debug(p_states[i-1][j])
                         p_a = action_prob(state_h, state_m, _lambda, theta) * p_states[i - 1][j]
                         p_s_t.extend(p_a.tolist())
 
@@ -778,8 +779,8 @@ class InferenceModel:
                 # theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
                 priors = self.initial_joint_prob
 
-            print("-----theta priors: {}".format(priors))
-            print("traj: {}".format(traj_h))
+            logging.debug("-----theta priors: {}".format(priors))
+            logging.debug("traj: {}".format(traj_h))
             # pdb.set_trace()
 
             # this is not in use, but it works by recording how each lambda explains the trajectory
@@ -787,7 +788,7 @@ class InferenceModel:
             def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
                 p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..]
                 a_h = _traj_h[-1][1]
-                #print(_traj_h)
+                #logging.debug(_traj_h)
                 a_i = self.action_set.index(a_h)
                 if _theta == self.theta_list[0]:
                     if _lambda in self.past_scores1:  # add to existing list
@@ -816,10 +817,10 @@ class InferenceModel:
                 # suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
 
             p_joint_prior = np.copy(priors)
-            # print("prior:", p_theta)
+            # logging.debug("prior:", p_theta)
             "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
             p_joint_prior = resample(p_joint_prior, epsilon == 0.05)  # resample from uniform belief
-            # print("resampled:", p_theta)
+            # logging.debug("resampled:", p_theta)
             # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
             p_joint_prime = np.empty((len(lambdas), len(theta_list)))
 
@@ -835,15 +836,15 @@ class InferenceModel:
                     p_action_l = p_action[a_i]
                     if theta == theta_list[0]:
                         # p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
-                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        # logging.debug("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                         p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
                     else:  # theta 2
                         # p_action_l = self.past_scores2[_lambda][t]
-                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        # logging.debug("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                         p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
 
             "In the case p_theta is 2d array:"
-            # print(p_theta_prime, sum(p_theta_prime))
+            # logging.debug(p_theta_prime, sum(p_theta_prime))
             p_joint_prime /= np.sum(p_joint_prime)  # normalize
 
             "get best lambda from distribution"
@@ -852,7 +853,7 @@ class InferenceModel:
                 suited_lambdas[t] = self.lambda_list[np.argmax(theta)]
 
             assert 0.9 <= np.sum(p_joint_prime) <= 1.1  # check if it is properly normalized
-            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
+            logging.debug("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
             return p_joint_prime, suited_lambdas
 
         def marginal_state(state_h, state_m, p_theta, dt):
@@ -871,18 +872,18 @@ class InferenceModel:
             # lamb1, lamb2 = best_lambdas
             lambdas = self.lambda_list
             theta1, theta2 = self.theta_list
-            # print("WATCH for p_state", traj_probabilities(state, lamb1))
+            # logging.debug("WATCH for p_state", traj_probabilities(state, lamb1))
             "get P(x(k+1)|theta,lambda) for the 2 thetas"
             p_state_beta1= traj_prob(state_h, state_m, lambdas[0], theta1, dt)[0]
             # p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
-            # print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
-            # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
-            # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
+            # logging.debug("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
+            # logging.debug('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
+            # logging.debug('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
 
             "calculate marginal"
             # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
             p_state_D = {}
-            print(p_state_beta1)
+            logging.debug(p_state_beta1)
             for t in range(len(p_state_beta1)):
                 p_state_D[t] = np.zeros(len(p_state_beta1[t]))
             for t, theta in enumerate(self.theta_list):
@@ -892,10 +893,10 @@ class InferenceModel:
                         for i in range(len(_p_state_beta[k])):
                             p_state_D[k][i] += _p_state_beta[k][i] * p_theta[l][t]
 
-                    # print(p_state_Dk[i])
+                    # logging.debug(p_state_Dk[i])
             _state_list = get_state_list(state_h, self.T, dt)
-            print('p_state_D at time ', self.frame, ' :', p_state_D)
-            print("state of H:", state_h, _state_list)  # sx, sy, vx, vy
+            logging.debug('p_state_D at time ', self.frame, ' :', p_state_D)
+            logging.debug("state of H:", state_h, _state_list)  # sx, sy, vx, vy
             assert round(np.sum(p_state_D[0])) == 1  # check
 
             return p_state_D, _state_list
@@ -1003,7 +1004,7 @@ class InferenceModel:
                     Q_h = q_set[2]
                     # Q_m = q_set[3]
                 else:
-                    print("ID FOR THETA DOES NOT EXIST")
+                    logging.debug("ID FOR THETA DOES NOT EXIST")
             elif id_h == 1:
                 if id_m == 0:
                     Q_h = q_set[3]
@@ -1012,7 +1013,7 @@ class InferenceModel:
                     Q_h = q_set[4]
                     # Q_m = q_set[5]
                 else:
-                    print("ID FOR THETA DOES NOT EXIST")
+                    logging.debug("ID FOR THETA DOES NOT EXIST")
             "Need state for agent H: xH, vH, xM, vM"
             # state = [state_h[0], state_h[2], state_m[1], state_m[3]]
             state = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
@@ -1050,9 +1051,9 @@ class InferenceModel:
             "Q*lambda"
             # np.multiply(Q,_lambda,out = Q)
             q_vals = q_vals.detach().numpy()  # detaching tensor
-            # print("q values: ",q_vals)
+            # logging.debug("q values: ",q_vals)
             Q = [q * _lambda for q in q_vals]
-            # print("Q*lambda:", Q)
+            # logging.debug("Q*lambda:", Q)
             "Q*lambda/(sum(Q*lambda))"
             # np.exp(Q, out=Q)
 
@@ -1062,7 +1063,7 @@ class InferenceModel:
             "normalizing"
             # normalize(exp_Q, norm = 'l1', copy = False)
             exp_Q /= sum(exp_Q)
-            # print("exp_Q normalized:", exp_Q)
+            # logging.debug("exp_Q normalized:", exp_Q)
             assert (not pa == 0 for pa in exp_Q)
             return exp_Q
 
@@ -1094,15 +1095,15 @@ class InferenceModel:
                 #theta_priors = np.ones((len(lambdas), len(thetas))) / (len(thetas)*len(lambdas))
                 priors = self.initial_joint_prob
 
-            print("-----theta priors: {}".format(priors))
-            print("traj: {}".format(traj_h))
+            logging.debug("-----theta priors: {}".format(priors))
+            logging.debug("traj: {}".format(traj_h))
             # pdb.set_trace()
 
             # "USE THIS to record scores for past traj to speed up run time!"
             # def get_last_score(_traj_h, _traj_m, _lambda, _theta):  # add score to existing list of score
             #     p_a = action_prob(_traj_h[-1][0], _traj_m[-1][0], _lambda, _theta) #traj: [(s, a), (s2, a2), ..]
             #     a_h = _traj_h[-1][1]
-            #     #print(_traj_h)
+            #     #logging.debug(_traj_h)
             #     a_i = self.action_set.index(a_h)
             #     if _theta == self.thetas[0]:
             #         if _lambda in self.past_scores1:  # add to existing list
@@ -1131,10 +1132,10 @@ class InferenceModel:
                 # suited_lambdas[i] = lambdas[max_lambda_j]  # recording the best suited lambda for corresponding theta[i]
 
             p_joint_prior = np.copy(priors)
-            # print("prior:", p_theta)
+            # logging.debug("prior:", p_theta)
             "Re-sampling from initial distribution (shouldn't matter if p_theta = prior?)"
             p_joint_prior = resample(p_joint_prior, epsilon == 0.05)  # resample from uniform belief
-            # print("resampled:", p_theta)
+            # logging.debug("resampled:", p_theta)
             # lengths = len(thetas) * len(lambdas) #size of p_theta = size(thetas)*size(lambdas)
             p_joint_prime = np.empty((len(lambdas), len(theta_list)))
 
@@ -1150,15 +1151,15 @@ class InferenceModel:
                     p_action_l = p_action[a_i] #
                     if theta == theta_list[0]:
                         # p_action_l = self.past_scores1[_lambda][t]  # get prob of action done at time t
-                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        # logging.debug("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                         p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t]
                     else:  # theta 2
                         # p_action_l = self.past_scores2[_lambda][t]
-                        # print("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
+                        # logging.debug("p_a:{0}, p_t:{1}".format(p_action_l, p_theta))
                         p_joint_prime[l][theta_t] = p_action_l * p_joint_prior[l][theta_t] # update p]
 
             "In the case p_theta is 2d array:"
-            # print(p_theta_prime, sum(p_theta_prime))
+            # logging.debug(p_theta_prime, sum(p_theta_prime))
             p_joint_prime /= np.sum(p_joint_prime)  # normalize
 
             "get best lambda from distribution"
@@ -1167,7 +1168,7 @@ class InferenceModel:
                 suited_lambdas[t] = self.lambda_list[np.argmax(theta)]
 
             assert 0.9 <= np.sum(p_joint_prime) <= 1.1  # check if it is properly normalized
-            print("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
+            logging.debug("-----p_thetas at frame {0}: {1}".format(self.frame, p_joint_prime))
             return p_joint_prime, suited_lambdas\
 
         def get_state_list(state, T, dt):
@@ -1191,12 +1192,12 @@ class InferenceModel:
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 # TODO: fix this!!!
                 if not isinstance(_state_list[0], tuple):
-                    # print("WARNING: state list is not composed of tuples!")
+                    # logging.debug("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list]  # put it in a list to iterate
 
                 for s in _state_list:
                     for a in _actions:
-                        # print("STATE", s)
+                        # logging.debug("STATE", s)
                         # _s_prime.append(calc_state(s, a, dt))
                         #_s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                         _s_prime.append(dynamics.dynamics_2d(s, a, dt, self.min_speed, self.max_speed))
@@ -1242,16 +1243,16 @@ class InferenceModel:
                     p_a = action_prob(state_h, state_m, _lambda, theta)
                     p_states.append(p_a.tolist())  # 1 step look ahead only depends on action prob
                     # transition is deterministic -> 1, prob state(k) = 1
-                    # print("P STATES", p_states)
+                    # logging.debug("P STATES", p_states)
 
                 else:
                     p_s_t = []  # storing p_states for time t (or i)
                     for j, s in enumerate(state_list[i - 1]):
-                        # print(state_list[i-1])
-                        # print(p_states)
-                        # print(type(p_states[0]))
-                        # print("Current time:",i,"working on state:", j)
-                        # print(p_states[i-1][j])
+                        # logging.debug(state_list[i-1])
+                        # logging.debug(p_states)
+                        # logging.debug(type(p_states[0]))
+                        # logging.debug("Current time:",i,"working on state:", j)
+                        # logging.debug(p_states[i-1][j])
                         p_a = action_prob(state_h, state_m, _lambda, theta) * p_states[i - 1][j]
                         p_s_t.extend(p_a.tolist())
 
@@ -1276,18 +1277,18 @@ class InferenceModel:
             # lamb1, lamb2 = best_lambdas
             lambdas = self.lambda_list
             theta1, theta2 = self.theta_list
-            # print("WATCH for p_state", traj_probabilities(state, lamb1))
+            # logging.debug("WATCH for p_state", traj_probabilities(state, lamb1))
             "get P(x(k+1)|theta,lambda) for the 2 thetas"
             p_state_beta1= traj_prob(state_h, state_m, lambdas[0], theta1, dt)[0]
             # p_state_beta2 = traj_prob(state_h, state_m, lamb2, theta2, dt)[0] #only probability no state list
-            # print("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
-            # print('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
-            # print('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
+            # logging.debug("p theta:", p_theta, "sum:", np.sum(p_theta), "len", len(p_theta))
+            # logging.debug('p_state_beta1 at time ', self.frame, ' :', p_state_beta1)
+            # logging.debug('p_state_beta2 at time ', self.frame, ' :', p_state_beta2)
 
             "calculate marginal"
             # p_state_D = p_state_beta1.copy() #<- this creates a list connected to original...? (nested?)
             p_state_D = {}
-            print(p_state_beta1)
+            logging.debug(p_state_beta1)
             for t in range(len(p_state_beta1)):
                 p_state_D[t] = np.zeros(len(p_state_beta1[t]))
             for t, theta in enumerate(self.theta_list):
@@ -1297,10 +1298,10 @@ class InferenceModel:
                         for i in range(len(_p_state_beta[k])):
                             p_state_D[k][i] += _p_state_beta[k][i] * p_theta[l][t]
 
-                    # print(p_state_Dk[i])
+                    # logging.debug(p_state_Dk[i])
             _state_list = get_state_list(state_h, self.T, dt)
-            print('p_state_D at time ', self.frame, ' :', p_state_D)
-            print("state of H:", state_h, _state_list)  # sx, sy, vx, vy
+            logging.debug('p_state_D at time ', self.frame, ' :', p_state_D)
+            logging.debug("state of H:", state_h, _state_list)  # sx, sy, vx, vy
             assert round(np.sum(p_state_D[0])) == 1  # check
 
             return p_state_D, _state_list
@@ -1401,7 +1402,7 @@ class InferenceModel:
                     Q_h = q_set[2]
                     Q_m = q_set[3]
                 else:
-                    print("ID FOR THETA DOES NOT EXIST")
+                    logging.debug("ID FOR THETA DOES NOT EXIST")
             elif id_h == 1:
                 if id_m == 0:
                     Q_h = q_set[3]
@@ -1410,9 +1411,9 @@ class InferenceModel:
                     Q_h = q_set[4]
                     Q_m = q_set[5]
                 else:
-                    print("ID FOR THETA DOES NOT EXIST")
+                    logging.debug("ID FOR THETA DOES NOT EXIST")
             else:
-                print("ID FOR THETA DOES NOT EXIST")
+                logging.debug("ID FOR THETA DOES NOT EXIST")
 
             "Need state for agent H: xH, vH, xM, vM"
             p1_state_nn = [-state_h[1], abs(state_h[3]), state_m[0], abs(state_m[2])]
@@ -1448,20 +1449,20 @@ class InferenceModel:
             # q_vals_h = q_vals_h.detach().numpy()  # detaching tensor
             # q_vals_m = q_vals_m.detach().numpy()
             # q_vals_pair = [q_vals_h, q_vals_m]
-            # print("q values: ",q_vals)
+            # logging.debug("q values: ",q_vals)
             exp_Q_pair = []
             _lambda = [lambda_h, lambda_m]
             for i, q_vals in enumerate(q_vals_pair):
                 exp_Q = []
                 Q = [q * _lambda[i] for q in q_vals]
-                # print("Q*lambda:", Q)
+                # logging.debug("Q*lambda:", Q)
                 "Q*lambda/(sum(Q*lambda))"
                 # np.exp(Q, out=Q)
 
                 for q in Q:
-                    #print(exp_Q)
+                    #logging.debug(exp_Q)
                     exp_Q.append(np.exp(q))
-                # print("EXP_Q:", exp_Q)
+                # logging.debug("EXP_Q:", exp_Q)
 
                 "normalizing"
                 # normalize(exp_Q, norm = 'l1', copy = False)
@@ -1493,18 +1494,18 @@ class InferenceModel:
             for i, q_vals in enumerate(q_vals_pair):
                 exp_Q = []
                 Q = [q * _lambda[i] for q in q_vals]
-                # print("Q*lambda:", Q)
+                # logging.debug("Q*lambda:", Q)
                 "Q*lambda/(sum(Q*lambda))"
                 # np.exp(Q, out=Q)
 
                 for q in Q:
                     exp_Q.append(np.exp(q))
-                # print("EXP_Q:", exp_Q)
+                # logging.debug("EXP_Q:", exp_Q)
 
                 "normalizing"
                 # normalize(exp_Q, norm = 'l1', copy = False)
                 exp_Q /= sum(exp_Q)
-                # print("exp_Q normalized:", exp_Q)
+                # logging.debug("exp_Q normalized:", exp_Q)
                 assert round(np.sum(exp_Q)) == 1
                 exp_Q_pair.append(exp_Q)
 
@@ -1593,7 +1594,7 @@ class InferenceModel:
             "get intent of q_pair from q_pairs"
             "q_pairs (QH, QM): [[Q_na_na, Q_na_na2], [Q_na_a, Q_a_na], [Q_a_na, Q_na_a], [Q_a_a, Q_a_a2]]"
             # q_id = q_pairs.index(q_pair)  # 0, 1, 2, 3
-            # print("Q id:", q_id)
+            # logging.debug("Q id:", q_id)
             if q_id == 0:
                 th = 0; tm = 0
             elif q_id == 1:
@@ -1642,7 +1643,7 @@ class InferenceModel:
                     p_q2_beta = prob_q2_beta((i, j), q_id)  # scalar
                     p_beta_q2[i][j] = p_q2_beta * p_betas_prior[i][j]
 
-            # print(p_beta_q2)
+            # logging.debug(p_beta_q2)
             p_beta_q2 /= np.sum(p_beta_q2)
             # assert 0.99 <= np.sum(p_beta_q2) <= 1.01  # check if properly normalized
 
@@ -1683,12 +1684,12 @@ class InferenceModel:
 
                 "Checking if _states is composed of tuples of state info (initially _state is just a tuple)"
                 if not isinstance(_state_list[0], tuple):
-                    print("WARNING: state list is not composed of tuples!")
+                    logging.debug("WARNING: state list is not composed of tuples!")
                     _state_list = [_state_list]  # put it in a list to iterate
 
                 for s in _state_list:
                     for a in _actions:
-                        # print("STATE", s)
+                        # logging.debug("STATE", s)
                         # _s_prime.append(calc_state(s, a, dt))
                         _s_prime.append(dynamics.dynamics_1d(s, a, dt, self.min_speed, self.max_speed))
                 return _s_prime
@@ -1798,16 +1799,16 @@ class InferenceModel:
                 if i == 0:
                     p_states[i] = p_a  # 1 step look ahead only depends on action prob
                     # transition is deterministic -> 1, prob state(k) = 1
-                    # print("P STATES", p_states)
+                    # logging.debug("P STATES", p_states)
 
                 else:  # time steps at i > 0
                     p_s_t = []  # storing p_states for time t (or i)
                     for j, ps in enumerate(state_list_h[i - 1]):
-                        # print(state_list[i-1])
-                        # print(p_states)
-                        # print(type(p_states[0]))
-                        # print("Current time:",i,"working on state:", j)
-                        # print(p_states[i-1][j])
+                        # logging.debug(state_list[i-1])
+                        # logging.debug(p_states)
+                        # logging.debug(type(p_states[0]))
+                        # logging.debug("Current time:",i,"working on state:", j)
+                        # logging.debug(p_states[i-1][j])
                         p_s = p_a * p_states[i - 1][j]  # assume same action prob at all time
                         p_s_t.extend(p_s.tolist())
                     p_states[i] = p_s_t
@@ -1922,7 +1923,7 @@ class InferenceModel:
         q_pairs, p_q2_d = prob_q_vals(self.q2_prior, curr_state_h, curr_state_m,
                                       traj_h=self.traj_h, traj_m=self.traj_m,
                                       beta_h=last_beta_h, beta_m=last_beta_m)  # betas are used for action_prob
-        # print("Q pairs at time {0}:".format(self.frame), q_pairs, len(q_pairs))
+        # logging.debug("Q pairs at time {0}:".format(self.frame), q_pairs, len(q_pairs))
         # p_beta_q = prob_beta_given_q(beta_h, beta_m,
         #                              p_betas_prior=self.p_betas_prior, q_pairs=[q2], q_pair=q2)
         p_beta_d = prob_beta_pair(p_q2=p_q2_d, q_pairs=q_pairs)  # this calls p_beta_q internally
@@ -1930,7 +1931,7 @@ class InferenceModel:
         'future state prediction'
         p_traj, state_list = traj_prob(curr_state_h, curr_state_m, last_beta_h, last_beta_m, dt=self.dt)
         p_q2 = np.array(p_q2_d).tolist()
-        print('p_traj:', p_traj)
+        logging.debug('p_traj:', p_traj)
 
         marginal_state = marginal_state_prob(curr_state_h, curr_state_m,
                                              p_q2=p_q2, Q_pairs=q_pairs, dt=self.dt)
@@ -1941,7 +1942,7 @@ class InferenceModel:
 
         'getting best predicted betas'
         beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
-        # print("best betas ID at time {0}".format(self.frame), beta_pair_id)
+        # logging.debug("best betas ID at time {0}".format(self.frame), beta_pair_id)
 
         new_beta_h = self.beta_set[beta_pair_id[0]]
         new_beta_m = self.beta_set[beta_pair_id[1]]
@@ -1966,23 +1967,23 @@ class InferenceModel:
         marginal_state_h = {}
         marginal_state_m = {}
         for t, marginal_s in enumerate(marginal_state):  # time step
-            print(marginal_state[t])
+            logging.debug(marginal_state[t])
             marginal_state_h[t] = [sum(marg) for marg in marginal_state[t]]
             marginal_state_m[t] = [sum(marg) for marg in zip(*marginal_state[t])]
-            print(marginal_state[t])
+            logging.debug(marginal_state[t])
             assert round(sum(marginal_state_m[t])) == 1 and round(sum(marginal_state_h[t])) == 1
 
         # p_theta_prime, suited_lambdas <- predicted_intent other
         # p_betas: [BH x BM]
-        # print("state list and prob for H: ", state_list, marginal_state)
-        # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
+        # logging.debug("state list and prob for H: ", state_list, marginal_state)
+        # logging.debug("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
         # variables:
         # predicted_intent_other: BH hat,
         # predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat,
         # predicted_policy_self: QM tilde
-        # print("-inf- marginal state for m: ", marginal_state_m)
-        # print("-Intent_inf- marginal state H: ", marginal_state_h)
+        # logging.debug("-inf- marginal state for m: ", marginal_state_m)
+        # logging.debug("-Intent_inf- marginal state H: ", marginal_state_h)
         return {'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be M
                 'predicted_actions_other': predicted_actions[0],
                 'predicted_intent_other': [p_beta_d_h, new_beta_h],
@@ -2196,7 +2197,7 @@ class InferenceModel:
     #                                          (theta_1, theta_2))
     #                 _p_action[i] = q2 * lambda_2
     #         else:
-    #             print("WARNING! AGENT COUNT EXCEEDED 2")
+    #             logging.debug("WARNING! AGENT COUNT EXCEEDED 2")
     #
     #         "using logsumexp to prevent nan"
     #         Q_logsumexp = logsumexp(_p_action)
@@ -2204,7 +2205,7 @@ class InferenceModel:
     #         _p_action -= Q_logsumexp
     #         _p_action = np.exp(_p_action)
     #
-    #         print("action prob 1 from bvp:", _p_action)
+    #         logging.debug("action prob 1 from bvp:", _p_action)
     #         assert round(np.sum(_p_action)) == 1
     #
     #         return _p_action  # exp_Q
@@ -2321,7 +2322,7 @@ class InferenceModel:
     #
     #     'getting best predicted betas, only for empathetic decision'
     #     beta_pair_id = np.unravel_index(p_beta_d.argmax(), p_beta_d.shape)
-    #     # print("best betas ID at time {0}".format(self.frame), beta_pair_id)
+    #     # logging.debug("best betas ID at time {0}".format(self.frame), beta_pair_id)
     #
     #     new_beta_h = self.beta_set[beta_pair_id[0]]
     #     new_beta_m = self.beta_set[beta_pair_id[1]]
@@ -2382,14 +2383,14 @@ class InferenceModel:
     #     # IMPORTANT: Best beta pair =/= Best beta !!!
     #     # p_theta_prime, suited_lambdas <- predicted_intent other
     #     # p_betas: [BH x BM]
-    #     # print("state list and prob for H: ", state_list, marginal_state)
-    #     # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
+    #     # logging.debug("state list and prob for H: ", state_list, marginal_state)
+    #     # logging.debug("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
     #     # variables:
     #     # predicted_intent_other: BH hat,
     #     # predicted_intent_self: BM tilde,
     #     # predicted_policy_other: QH hat,
     #     # predicted_policy_self: QM tilde
-    #     # print("-Intent_inf- marginal state H: ", marginal_state_h)
+    #     # logging.debug("-Intent_inf- marginal state H: ", marginal_state_h)
     #     return {# 'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
     #             'predicted_actions_other': predicted_actions[0],
     #             'predicted_intent_other': [p_beta_d_h, new_beta_h],
@@ -2606,7 +2607,7 @@ class InferenceModel:
                                              (theta_1, theta_2))
                     _p_action[i] = q2 * lambda_2
             else:
-                print("WARNING! AGENT COUNT EXCEEDED 2")
+                logging.debug("WARNING! AGENT COUNT EXCEEDED 2")
 
             "using logsumexp to prevent nan"
             Q_logsumexp = logsumexp(_p_action)
@@ -2614,7 +2615,7 @@ class InferenceModel:
             _p_action -= Q_logsumexp
             _p_action = np.exp(_p_action)
 
-            print("action prob 1 from bvp:", _p_action)
+            logging.debug("this:-> action prob 1 from bvp:", _p_action)
             assert round(np.sum(_p_action)) == 1
 
             return _p_action  # exp_Q
@@ -2832,7 +2833,7 @@ class InferenceModel:
                                               new_beta_1, self.true_params[1], last_action_set[id - 1], self.time)
 
             else:
-                print("WARNING! INCORRECT AGENT TYPE FOR BVP INFERENCE")
+                logging.debug("WARNING! INCORRECT AGENT TYPE FOR BVP INFERENCE")
             best_action_i = self.action_set[np.argmax(p_a_i)]
             predicted_actions.append(best_action_i)
 
@@ -2842,14 +2843,14 @@ class InferenceModel:
         # IMPORTANT: Best beta pair =/= Best beta !!!
         # p_theta_prime, suited_lambdas <- predicted_intent other
         # p_betas: [BH x BM]
-        # print("state list and prob for H: ", state_list, marginal_state)
-        # print("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
+        # logging.debug("state list and prob for H: ", state_list, marginal_state)
+        # logging.debug("size of state list at t=1", len(state_list[0]))  # should be 5x5 2D
         # variables:
         # predicted_intent_other: BH hat,
         # predicted_intent_self: BM tilde,
         # predicted_policy_other: QH hat,
         # predicted_policy_self: QM tilde
-        # print("-Intent_inf- marginal state H: ", marginal_state_h)
+        # logging.debug("-Intent_inf- marginal state H: ", marginal_state_h)
         return {# 'predicted_states_other': (marginal_state_h, get_state_list(curr_state_h, self.T, self.dt)),  # col of 2D should be H
                 'predicted_actions_other': predicted_actions[1],
                 'predicted_intent_other': [p_beta_d_h, new_beta_1],

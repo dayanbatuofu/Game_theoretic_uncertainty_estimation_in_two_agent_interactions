@@ -20,6 +20,8 @@ import imageio
 import os
 import pdb
 
+from scipy.stats import entropy
+
 LIGHT_GREY = (230, 230, 230)
 RED = (230, 0, 0)
 
@@ -96,12 +98,13 @@ class VisUtils:
             # self.car2_image = pg.transform.rotate(pg.image.load(self.asset_location+ self.sim.agents[1].car_par["sprite"]),
             #                                       -self.sim.agents[1].car_par["orientation"])
             self.car_image = [pg.transform.rotate(pg.transform.scale(pg.image.load(self.asset_location
-                                                                                   + self.sim.agents[i].car_par["sprite"]),
+                                                                                   + self.sim.agents[i].car_par[
+                                                                                       "sprite"]),
                                                                      (img_width, img_height)),
                                                   -self.sim.agents[i].car_par["orientation"])
                               for i in range(self.sim.N_AGENTS)]
 
-            #self.origin = np.array([-15.0, 15.0])
+            # self.origin = np.array([-15.0, 15.0])
             self.origin = np.array([0, 0])
 
         elif self.env.name == 'bvp_intersection':
@@ -113,8 +116,8 @@ class VisUtils:
             self.asset_location = 'assets/'
             self.fps = 24  # max framework
 
-            self.car_width = 1.5
-            self.car_length = 3
+            self.car_width = 1.081725001335144
+            self.car_length = 2.3958897590637207
 
             img_width = int(self.car_width * self.coordinate_scale * self.zoom)
             img_height = int(self.car_length * self.coordinate_scale * self.zoom)
@@ -188,11 +191,24 @@ class VisUtils:
                 self.bvp_draw_axes()
             else:
                 self.draw_axes()
+
+            cb1, cb2 = self.sim.collision_box1, self.sim.collision_box2
+            pg.draw.polygon(self.screen, (0, 255, 0),
+                            [self.bvp_c2p((cb1[0][0], cb1[0][1])),
+                             self.bvp_c2p((cb1[1][0], cb1[1][1])),
+                             self.bvp_c2p((cb1[2][0], cb1[2][1])),
+                             self.bvp_c2p((cb1[3][0], cb1[3][1]))])
+
+            pg.draw.polygon(self.screen, (255, 0, 0), [self.bvp_c2p([cb2[0][0], cb2[0][1]]),
+                                                       self.bvp_c2p([cb2[1][0], cb2[1][1]]),
+                                                       self.bvp_c2p([cb2[2][0], cb2[2][1]]),
+                                                       self.bvp_c2p([cb2[3][0], cb2[3][1]])])
+
             # Draw Images
             for i in range(self.sim.n_agents):
                 "getting pos of agent"
                 pos_old = np.array(self.sim.agents[i].state[frame][:2])
-                pos_new = np.array(self.sim.agents[i].state[frame+1][:2])  # get 0th and 1st element (not include 2)
+                pos_new = np.array(self.sim.agents[i].state[frame + 1][:2])  # get 0th and 1st element (not include 2)
 
                 "smooth out the movement between each step"
                 pos = pos_old * (1 - k * 1. / steps) + pos_new * (k * 1. / steps)
@@ -210,8 +226,8 @@ class VisUtils:
                 "update car display"
                 self.screen.blit(self.car_image[i],
                                  (pixel_pos_car[0] - size_car[0] / 2, pixel_pos_car[1] - size_car[1] / 2))
-                if self.sleep_between_step:
-                    time.sleep(0.03)
+                # if self.sleep_between_step:
+                #     time.sleep(0.03)
             # Annotations
             # font = pg.font.SysFont("Arial", 30)
             font = pg.font.SysFont("Arial", 15)
@@ -220,15 +236,15 @@ class VisUtils:
             label_y = 260
             label_y_offset = 30
             "Labeling new states and actions"
-            pos_h, speed_h = self.sim.agents[0].state[frame+1][1], self.sim.agents[0].state[frame+1][3]
+            pos_h, speed_h = self.sim.agents[0].state[frame + 1][1], self.sim.agents[0].state[frame + 1][3]
             label = font.render("Car 1 position and speed: (%5.4f , %5.4f)" % (pos_h, speed_h), 1,
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y))
-            pos_m, speed_m = self.sim.agents[1].state[frame+1][0], self.sim.agents[1].state[frame+1][2]
+            pos_m, speed_m = self.sim.agents[1].state[frame + 1][0], self.sim.agents[1].state[frame + 1][2]
             label = font.render("Car 2 position and speed: (%5.4f , %5.4f)" % (pos_m, speed_m), 1,
                                 (0, 0, 0))
             self.screen.blit(label, (label_x, label_y + label_y_offset))
-            action1, action2 = self.sim.agents[0].action[frame+1], self.sim.agents[1].action[frame+1]
+            action1, action2 = self.sim.agents[0].action[frame + 1], self.sim.agents[1].action[frame + 1]
             if self.env.name == 'merger':
                 label = font.render("Car 1 action: " % action1, 1, (0, 0, 0))
             else:
@@ -243,6 +259,9 @@ class VisUtils:
             self.screen.blit(label, (label_x, label_y + 3 * label_y_offset))
             label = font.render("Frame: %i" % self.sim.frame, 1, (0, 0, 0))
             self.screen.blit(label, (10, 10))
+
+            label = font.render("Collision: %i" % self.sim.isCollision, 1, (0, 0, 0))
+            self.screen.blit(label, (10, 25))
 
             "drawing the map of state distribution"
             # pg.draw.circle(self.screen, (255, 255, 255), pos2, 10)  # surface,  color, (x, y),radius>=1  # test
@@ -269,15 +288,17 @@ class VisUtils:
                 _bound2 = self.c2p((b_max, 0))
 
                 bounds = np.array([_bound1[0], _bound2[0]])
-                road_width = bounds[1]-bounds[0]+ 2 # offset for road
-                pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2), 1),
-                             (((bounds[1] + bounds[0])/2), self.screen_height * self.coordinate_scale,
+                road_width = bounds[1] - bounds[0] + 2  # offset for road
+                pg.draw.line(self.screen, LIGHT_GREY, (((bounds[1] + bounds[0]) / 2), 1),
+                             (((bounds[1] + bounds[0]) / 2), self.screen_height * self.coordinate_scale,
                               ), bounds[1] - bounds[0])
 
                 if self.env.name == 'merger':
-                    pg.draw.line(self.screen,LIGHT_GREY , (((bounds[1] + bounds[0])/2+ road_width), 1),
-                             (((bounds[1] + bounds[0])/2+road_width), self.screen_height * self.coordinate_scale,
-                              ), bounds[1] - bounds[0])
+                    pg.draw.line(self.screen, LIGHT_GREY, (((bounds[1] + bounds[0]) / 2 + road_width), 1),
+                                 (
+                                     ((bounds[1] + bounds[0]) / 2 + road_width),
+                                     self.screen_height * self.coordinate_scale,
+                                 ), bounds[1] - bounds[0])
             if bound_y:
                 b_min, b_max = bound_y[0], bound_y[1]
                 _bound1 = self.c2p((0, b_min))
@@ -297,7 +318,7 @@ class VisUtils:
 
     def draw_axes_lanes(self):
         # draw lanes based on environment TODO: lanes are defined as bounds of agent state spaces, need to generalize
-        #pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing
+        # pg.draw.line(self.screen, LIGHT_GREY, self.c2p((-10, 10)), self.c2p((10, -10)), 1)  # testing
         for a in self.env.bounds:
             bound_x, bound_y = a[0], a[1]
             if bound_x:
@@ -305,8 +326,8 @@ class VisUtils:
                 _bound1 = self.c2p((b_min, 0))
                 _bound2 = self.c2p((b_max, 0))
                 bounds = np.array([_bound1[0], _bound2[0]])
-                pg.draw.line(self.screen,LIGHT_GREY , ((bounds[1] + bounds[0])/2, 1),
-                             ((bounds[1] + bounds[0])/2, self.screen_height * self.coordinate_scale,
+                pg.draw.line(self.screen, LIGHT_GREY, ((bounds[1] + bounds[0]) / 2, 1),
+                             ((bounds[1] + bounds[0]) / 2, self.screen_height * self.coordinate_scale,
                               ), bounds[1] - bounds[0])
             if bound_y:
                 b_min, b_max = bound_y[0], bound_y[1]
@@ -322,7 +343,7 @@ class VisUtils:
         plotting distance between cars and action taken
         :return:
         """
-        fig1, (ax1, ax2, ax3) = pyplot.subplots(3) #3 rows
+        fig1, (ax1, ax2, ax3) = pyplot.subplots(3)  # 3 rows
         fig1.suptitle('Euclidean distance and Agent Actions')
         ax1.plot(self.dist, label='car dist')
         ax1.legend()
@@ -608,7 +629,7 @@ class VisUtils:
                 self.true_intent_1.append(self.true_params[0][0])
                 self.true_noise_1.append(self.true_params[0][1])
 
-    def draw_intent(self):
+    def draw_intent(self, run_id, isCollision):
         # TODO: need to revise the if condition
         joint_infer_m = self.sim.agents[0].predicted_intent_other
         theta_list = self.sim.theta_list
@@ -619,7 +640,7 @@ class VisUtils:
             # print('predicted intent:', self.intent_h, self.intent_m)
             # print('intent distribution:', self.intent_distri_h, self.intent_distri_m)
 
-            fig2, (ax1, ax2, ax3, ax4, ax5) = pyplot.subplots(5, figsize=(5, 8))
+            fig2, (ax1, ax2, ax3, ax4, ax5, ax6) = pyplot.subplots(6, figsize=(6, 8))
             fig2.suptitle('Predicted intent and rationality')
 
             ax1.plot(self.intent_1, label='predicted P1 intent')
@@ -643,6 +664,12 @@ class VisUtils:
             x2 = [i + w for i in x]
             ax3.bar(x1, self.theta_distri_1[0], width=0.15, label='theta 1')
             ax3.bar(x2, self.theta_distri_1[1], width=0.15, label='theta 2')
+
+            p1_entropy = entropy(self.theta_distri_1, base=2)
+            p2_entropy = entropy(self.theta_distri_2, base=2)
+            p1_entropy_sum = round(np.sum(p1_entropy), 2)
+            p2_entropy_sum = round(np.sum(p2_entropy), 2)
+            total_entropy_sum = round(p1_entropy_sum + p2_entropy_sum, 2)
             ax3.legend(loc="lower right")
             ax3.set_yticks([0.25, 0.5, 0.75])
             ax3.set(xlabel='frame', ylabel='P1 distri')
@@ -666,6 +693,12 @@ class VisUtils:
             ax5.set(xlabel='frame', ylabel='noise')
             print('Predicted P1 intent distri', self.theta_distri_1)
             print('Predicted P2 intent distri', self.theta_distri_2)
+
+            ax6.plot(np.array(self.sim.agents[0].state)[:, 1] / np.array(self.sim.agents[1].state)[:, 0],
+                     label='d1/d2')
+            ax6.legend()
+            ax6.set_ylim([0.5, 2.])
+            ax6.set(xlabel='frame', ylabel='d1/d2 ratio')
         else:
             print("predicted intent H", self.intent_1)
             print("predicted intent for H from AV:", self.sim.agents[0].predicted_intent_self)
@@ -681,8 +714,8 @@ class VisUtils:
 
             w = 0.15
             x = list(range(0, len(self.intent_1)))
-            x1 = [i-w for i in x]
-            x2 = [i+w for i in x]
+            x1 = [i - w for i in x]
+            x2 = [i + w for i in x]
             ax2.bar(x1, self.theta_distri_1[0], width=0.15, label='theta 1')
             ax2.bar(x2, self.theta_distri_1[1], width=0.15, label='theta 2')
             ax2.legend()
@@ -696,8 +729,9 @@ class VisUtils:
             ax3.set(xlabel='frame', ylabel='intent')
 
         # TODO: plot actual distributions
-        #pyplot.tight_layout()
-        pyplot.show()
+        # pyplot.tight_layout()
+        # pyplot.show()
+        pyplot.savefig(f'./plot/{run_id}_{isCollision}_{p1_entropy_sum}_{p2_entropy_sum}_{total_entropy_sum}.png')
 
     def draw_prob(self):
         """
@@ -716,21 +750,21 @@ class VisUtils:
         purple = (0, 100, 255)
 
         "get state distribution"
-        #p_state1 = (0.25, [0, 0, 0, 0])  # [p_state, (sx, sy, vx, vy)]
-        #print(self.p_state_H[-1])
+        # p_state1 = (0.25, [0, 0, 0, 0])  # [p_state, (sx, sy, vx, vy)]
+        # print(self.p_state_H[-1])
         # if self.frame == 0: # or self.frame == 1:
         #     p_state_D, state_list  = self.p_state_H[0]
         # else:
         #     p_state_D, state_list = self.p_state_H[-1]
         self.frame = self.sim.frame
         p_state_D, state_list = self.p_state_1[self.frame]
-        #print("PLOTTING: ", state_list, "and ", p_state_D)
+        # print("PLOTTING: ", state_list, "and ", p_state_D)
         "checking if predicted states are actually reached"
         if not self.frame == 0:
             # TODO: figure out how predicted state and actual state align
             past_predicted_state = self.p_state_1[self.frame - 1][1][0]  # time -> state_list -> agent
-            #print("-draw- Last state:" , self.sim.agents[0].state[-1])
-            #print("-draw- past predicted states:", past_predicted_state)
+            # print("-draw- Last state:" , self.sim.agents[0].state[-1])
+            # print("-draw- past predicted states:", past_predicted_state)
             print(past_predicted_state, self.sim.agents[0].state[self.frame])
             assert self.sim.agents[0].state[self.frame] in past_predicted_state
 
@@ -741,14 +775,14 @@ class VisUtils:
 
             for i in range(len(state_list[0])):
                 x, y = states_k[i][0], states_k[i][1]
-                #print("X, Y: ", x, y)
+                # print("X, Y: ", x, y)
                 nx, ny = self.c2p((x, y))
                 p_s = p_state_Dk[i]
-                #TODO: change the range of color! (we will have different distribution)
-                #TODO: continuous distribution of color?
+                # TODO: change the range of color! (we will have different distribution)
+                # TODO: continuous distribution of color?
                 "plot different colors base on their probabilities"
                 if p_s > 0.22:
-                    pg.draw.circle(self.screen, red, (nx, ny), 6) #(surface, color, pos, radius)
+                    pg.draw.circle(self.screen, red, (nx, ny), 6)  # (surface, color, pos, radius)
                 elif 0.21 < p_s <= 0.22:
                     pg.draw.circle(self.screen, orange, (nx, ny), 6)
                 elif 0.20 < p_s <= 0.21:
@@ -768,7 +802,7 @@ class VisUtils:
         states_2 = self.sim.agents[1].state
         x1 = []
         x2 = []
-        for i in range(len(states_1)-1):
+        for i in range(len(states_1) - 1):
             x1.append(states_1[i][1])
             x2.append(states_2[i][0])
         assert len(x1) == len(loss)
@@ -829,7 +863,8 @@ class VisUtils:
         images = []
         for filename in img_list:
             images.append(imageio.imread(filename))
-        tag = 'theta1' + '=' + str(problem.theta1) + '_' + 'theta2' + '=' + str(problem.theta2) + '_' + 'time horizon' + '=' + str(config.t1)
+        tag = 'theta1' + '=' + str(problem.theta1) + '_' + 'theta2' + '=' + str(
+            problem.theta2) + '_' + 'time horizon' + '=' + str(config.t1)
         imageio.mimsave(path + 'movie_' + tag + '.gif', images, 'GIF', duration=0.2)
         # Delete images
         [os.remove(path + file) for file in os.listdir(path) if ".png" in file]

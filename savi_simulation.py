@@ -6,17 +6,24 @@ import pickle
 import torch as t
 import numpy as np
 import csv
+
+from shapely.geometry import Polygon, box
+
 from inference_model import InferenceModel
 from decision_model import DecisionModel
 from autonomous_vehicle import AutonomousVehicle
 from sim_draw import VisUtils
 from models import constants as C  # for terminal state check (car length)
 import pdb
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 class Simulation:
 
-    def __init__(self, env, duration, n_agents, inference_type, decision_type, sim_dt, sim_lr, sim_par, sim_nepochs, belief_weight):
+    def __init__(self, env, duration, n_agents, inference_type, decision_type, sim_dt, sim_lr, sim_par, sim_nepochs,
+                 belief_weight):
 
         self.duration = duration
         self.n_agents = n_agents
@@ -34,6 +41,7 @@ class Simulation:
         self.inference_type = inference_type
         self.env = env
         self.agents = []
+        self.isCollision = False
 
         "Some switches for visuals"
         self.sharing_belief = True  # True for empathetic inferences
@@ -96,6 +104,7 @@ class Simulation:
         self.past_loss1 = []  # for storing loss of simulation
         self.past_loss2 = []
         self.policy_correctness = [[], []]  # for the two agents
+        self.disp_frames = []
 
         if self.n_agents == 2:
             # simulations with 2 cars
@@ -110,11 +119,10 @@ class Simulation:
                                              decision_model=decision_model[i],
                                              i=i) for i in range(len(car_parameter))]
 
-        self.draw = True  # visualization during sim
+        self.draw = False  # visualization during sim
         self.capture = False  # save images during visualization
         # DISPLAY
         if self.draw:
-
             self.vis = VisUtils(self)  # initialize visualization
             # self.vis.draw_frame()
             # if self.capture:
@@ -128,21 +136,29 @@ class Simulation:
         # take a snapshot of the current system state
         return self.agents.copy()
 
-    def run(self):
+    def run(self, run_id):
         while self.running:
+            # for event in pg.event.get():
+            #     if event.type == pg.QUIT:
+            #         pg.quit()
+            #         self.running = False
+            #     elif event.type == pg.KEYDOWN:
+            #         if event.key == pg.K_p:
+            #             self.paused = not self.paused
+            #         if event.key == pg.K_q:
+            #             pg.quit()
+            #             self.running = False
+
             # Update model here
             if not self.paused:
                 for agent in self.agents:
                     agent.update(self)  # Run simulation
-            self.calc_loss()
-            self.time_stamp.append(self.time)
+                self.calc_loss()
+                self.time_stamp.append(self.time)
             # termination criteria
 
-            if self.draw:
+            if self.draw and not self.paused:
                 self.vis.draw_frame()  # Draw frame
-                # if self.capture:
-                #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
-
                 for event in pg.event.get():
                     if event.type == pg.QUIT:
                         pg.quit()
@@ -153,15 +169,19 @@ class Simulation:
                         if event.key == pg.K_q:
                             pg.quit()
                             self.running = False
-                        # if event.key == pg.K_d:
-                        #     self.car_num_display = ~self.car_num_display
+                if self.capture:
+                    self.disp_frames.append(pg.surfarray.array3d(self.vis.screen))
+                #     pg.image.save(v.screen, "%simg%03d.jpeg" % (self.output_dir, self.frame))
+
+                # if event.key == pg.K_d:
+                #     self.car_num_display = ~self.car_num_display
 
                 # Keep fps
 
             "Termination conditions"
-            if self.frame >= 35:  # for dt=0.05
-                print('Simulation ended with duration exceeded limit')
-                break
+            # if self.frame >= 200:  # for dt=0.05
+            #     logging.debug('Simulation ended with duration exceeded limit')
+            #     break
             # pdb.set_trace()
             x_H = self.agents[0].state[self.frame][0]  # sy_H ??
             x_M = self.agents[1].state[self.frame][0]  # sx_M
@@ -169,18 +189,18 @@ class Simulation:
             y_M = self.agents[1].state[self.frame][1]  # sy_M
             if self.env.name == "merger":
                 if y_H >= 50 and y_M > 50:
-                    print("terminating on vehicle merger:")
+                    logging.debug("terminating on vehicle merger:")
                     break
             elif self.env.name == 'bvp_intersection':
                 if y_H >= 38 and x_M >= 38:
-                    print("terminating on vehicle passed intersection:", y_H, x_M)
+                    logging.debug("terminating on vehicle passed intersection:", y_H, x_M)
                     break
             else:
                 if y_H >= 5 and x_M <= -5:
                     # road width = 2.0 m
                     # if crossed the intersection, done or max time reached
                     # if (x_ego >= 0.5 * C.CONSTANTS.CAR_LENGTH + 10. and x_other <= -0.5 * C.CONSTANTS.CAR_LENGTH - 10.):
-                    print("terminating on vehicle passed intersection:", x_H, x_M)
+                    logging.debug("terminating on vehicle passed intersection:", x_H, x_M)
                     break
 
             # draw stuff after each iteration
@@ -209,45 +229,58 @@ class Simulation:
                 self.time += self.dt
 
         pg.quit()
+        if self.capture:
+            import glob, imageio, time
+            logging.debug('creating movie')
+            fname = f'./plot/{run_id}_{self.isCollision}.mp4'
+
+            writer = imageio.get_writer(fname, fps=20)
+            for image in self.disp_frames:
+                array = image.swapaxes(0, 1)
+                writer.append_data(array)
+            writer.close()
+        del self.disp_frames
         if self.env.name == 'bvp_intersection':
-            self.write_loss()
-            print('writing to cvs file')
+            self.write_loss(run_id)
+            logging.debug('writing to cvs file')
             # if self.inference_type[1] == 'bvp_empathetic':
             #     self.write_intent_predict()
         "drawing results"
-        self.vis.draw_dist_n_action()
-        if self.drawing_intent:
-            self.vis.draw_intent()
-        if self.env.name == 'bvp_intersection':
-            self.vis.plot_loss()
-        print("-------Simulation results:-------")
-        print("inference types:", self.inference_type)
-        print("decision types:", self.decision_type)
-        print("initial intents:", self.env.car_par[0]['par'], self.env.car_par[1]['par'])
-        print("Frames:", self.frame)
-        print("len of action and states:", len(self.agents[0].action), len(self.agents[0].state))
-        print("action distribution", self.action_distri_1)
-        print("Initial belief:", self.initial_belief)
-        # print("states of H:", self.agents[0].state)
-        # print("states of H predicted by M:", self.agents[1].predicted_states_other)
-        print("Action taken by P1:", self.agents[0].action)
-        print("Action of P1 predicted by P2:", self.agents[1].predicted_actions_other)
-        print("Action taken by P2:", self.agents[1].action)
-        # print("lambda prob of P1:", self.vis.lambda_distri_h)
-        # print("lambda prob of P2:", self.vis.lambda_distri_m)
-        print("Loss of H (p1):", self.past_loss1)
-        print("Loss of M (p2):", self.past_loss2)
+        # self.vis.draw_dist_n_action()
+        if self.drawing_intent and self.draw:
+            self.vis.draw_intent(run_id, self.isCollision)
+        # if self.env.name == 'bvp_intersection':
+        #     self.vis.plot_loss()
+        logging.debug("-------Simulation results:-------")
+        logging.debug("inference types:", self.inference_type)
+        logging.debug("decision types:", self.decision_type)
+        logging.debug("initial intents:", self.env.car_par[0]['par'], self.env.car_par[1]['par'])
+        logging.debug("Frames:", self.frame)
+        logging.debug("len of action and states:", len(self.agents[0].action), len(self.agents[0].state))
+        logging.debug("action distribution", self.action_distri_1)
+        logging.debug("Initial belief:", self.initial_belief)
+        # logging.debug("states of H:", self.agents[0].state)
+        # logging.debug("states of H predicted by M:", self.agents[1].predicted_states_other)
+        logging.debug("Action taken by P1:", self.agents[0].action)
+        logging.debug("Action of P1 predicted by P2:", self.agents[1].predicted_actions_other)
+        logging.debug("Action taken by P2:", self.agents[1].action)
+        # logging.debug("lambda prob of P1:", self.vis.lambda_distri_h)
+        # logging.debug("lambda prob of P2:", self.vis.lambda_distri_m)
+        logging.debug("Loss of H (p1):", self.past_loss1)
+        logging.debug("Loss of M (p2):", self.past_loss2)
         if self.inference_type[1] == 'bvp' or self.inference_type[0] == 'bvp_2':
-            print("Count of each belief:", self.agents[0].belief_count[-1])
+            logging.debug("Count of each belief:", self.agents[0].belief_count[-1])
             policy_count_1, policy_count_2 = self.calc_policy_choice()
-            self.write_policy_predict()
-            print("Policy correctness:", self.policy_correctness)
-            print("Policy correctness for P1:", policy_count_1)
-            print("Policy correctness for P2:", policy_count_2)
+            # self.write_policy_predict(run_id)
+            logging.debug("Policy correctness:", self.policy_correctness)
+            logging.debug("Policy correctness for P1:", policy_count_1)
+            logging.debug("Policy correctness for P2:", policy_count_2)
+        elif self.inference_type[0] == 'none':
+            self.write_policy(run_id)
         loss_1 = np.sum(self.past_loss1) * self.dt
         loss_2 = np.sum(self.past_loss2) * self.dt
-        print("agent 1's loss:", loss_1)
-        print("sum of 2 agent's loss:", loss_1 + loss_2)
+        logging.debug("agent 1's loss:", loss_1)
+        logging.debug("sum of 2 agent's loss:", loss_1 + loss_2)
 
     def get_initial_belief(self, theta_1, theta_2, lambda_1, lambda_2, weight):
         """
@@ -299,7 +332,8 @@ class Simulation:
                     #     belief[i][j] = weight
                     # else:
                     #     belief[i][j] = 1
-        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_2' or self.inference_type[0] == 'bvp':
+        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_2' or self.inference_type[
+            0] == 'bvp':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
@@ -357,7 +391,7 @@ class Simulation:
                         else:
                             belief[i][j] *= (1 - weight) / (len(theta_list) - 1)
         # THIS SHOULD NOT NEED TO BE NORMALIZED!
-        # print(belief, np.sum(belief))
+        # logging.debug(belief, np.sum(belief))
         assert round(np.sum(belief)) == 1
         return belief
 
@@ -367,6 +401,7 @@ class Simulation:
         self.paused = False
         self.end = False
         self.frame = 0
+        self.isCollision = False
 
     def postprocess(self):
         # import matplotlib.pyplot as plt
@@ -382,7 +417,7 @@ class Simulation:
         # plt.plot(range(1,self.frame+1), car_2_theta[:,0], range(1,self.frame+1), car_2_theta[:,1])
         # plt.show()
         # # pickle.dump(self.sim_data, self.sim_out, pickle.HIGHEST_PROTOCOL)
-        # print('Output pickled and dumped.')
+        # logging.debug('Output pickled and dumped.')
         # if self.capture:
         #     # Compile to video
         #     # os.system("ffmpeg -f image2 -framerate 1 -i %simg%%03d.jpeg %s/output_video.mp4 " % (self.output_dir, self.output_dir))
@@ -395,8 +430,8 @@ class Simulation:
         #     #
         #     # # Delete images
         #     # [os.remove(self.output_dir + file) for file in os.listdir(self.output_dir) if ".jpeg" in file]
-        #     # print("Simulation video output saved to %s." % self.output_dir)
-        # print("Simulation ended.")
+        #     # logging.debug("Simulation video output saved to %s." % self.output_dir)
+        # logging.debug("Simulation ended.")
         pass
 
     def calc_loss(self):
@@ -411,10 +446,10 @@ class Simulation:
         theta2 = self.true_params[1][0]
         R1 = 70
         R2 = 70
-        W1 = 1.5
-        W2 = 1.5
-        L1 = 3
-        L2 = 3
+        W1 = self.env.CAR_WIDTH
+        W2 = self.env.CAR_WIDTH
+        L1 = self.env.CAR_LENGTH
+        L2 = self.env.CAR_LENGTH
         beta = 10000.
         x1_in = (xh - R1 / 2 + theta1 * W2 / 2) * 10
         x1_out = -(xh - R1 / 2 - W2 / 2 - L1) * 10
@@ -425,6 +460,48 @@ class Simulation:
                         t.sigmoid(x2_in) * t.sigmoid(x2_out)
         U1 = self.agents[0].action[self.frame]
         U2 = self.agents[1].action[self.frame]
+        # print(f'{self.agents[0].state[-1], self.agents[1].state[-1]}')
+        other_pose = self.agents[0].state[-1]
+        ego_pose = self.agents[1].state[-1]
+
+        x_ego, y_ego = ego_pose[0], 35
+        x_other, y_other = 35, other_pose[1]
+
+        # other_pose = [state_h[1], state_h[3]]
+        # ego_pose = [state_m[0], state_m[2]]
+        # x_ego, y_ego = ego_pose[0], 35
+        # x_other, y_other = 35, other_pose[0]
+
+        # print(f'ego_pose:{ego_pose}, other_pose:{other_pose}')
+        # self.collision_box1 = [[x_ego - L1 / 2, y_ego - W1 / 2],
+        #                        [x_ego - L1 / 2, y_ego + W1 / 2],
+        #                        [x_ego + L1 / 2, y_ego - W1 / 2],
+        #                        [x_ego + L1 / 2, y_ego + W1 / 2]]
+        # self.collision_box2 = [[x_other - W2 / 2, y_other - L2 / 2],
+        #                        [x_other - W2 / 2, y_other + L2 / 2],
+        #                        [x_other + W2 / 2, y_other - L2 / 2],
+        #                        [x_other + W2 / 2, y_other + L2 / 2]]
+
+        cb1 = box(min(x_ego - L1 / 2, x_ego + L1 / 2), min(y_ego - W1 / 2, y_ego + W1 / 2),
+                 max(x_ego - L1 / 2, x_ego + L1 / 2), max(y_ego - W1 / 2, y_ego + W1 / 2))
+
+        cb2 = box(min(x_other - W2 / 2, x_other + W2 / 2), min(y_other - L2 / 2, y_other + L2 / 2),
+                 max(x_other - W2 / 2, x_other + W2 / 2), max(y_other - L2 / 2, y_other + L2 / 2))
+
+        self.collision_box1 = cb1.exterior.coords
+        self.collision_box2 = cb2.exterior.coords
+
+
+
+        # polygon1 = Polygon(self.collision_box1)  # .buffer(0)
+        # polygon2 = Polygon(self.collision_box2)  # .buffer(0)
+        # assert polygon1.area == polygon1.minimum_rotated_rectangle.area
+        # assert polygon2.area == polygon2.minimum_rotated_rectangle.area
+
+        # print('herer')
+        if cb1 .intersects(cb2):
+            self.isCollision = True
+            # print("Collision occurred")
         L1 = U1 ** 2 + Collision_F_x.detach().numpy()
         L2 = U2 ** 2 + Collision_F_x.detach().numpy()
         # L1 = 1*Collision_F_x.detach().numpy()
@@ -433,7 +510,7 @@ class Simulation:
         self.past_loss2.append(L2)
         return
 
-    def write_loss(self):
+    def write_loss(self, run_id):
         """
         Writing loss to csv file
         """
@@ -443,15 +520,16 @@ class Simulation:
         x2 = []
         time_stamp = self.time_stamp
         for i in range(len(states_1) - 1):
-            x1.append(states_1[i][1])
-            x2.append(states_2[i][0])
-        assert len(x1) == len(self.past_loss1)
+            x1.append((states_1[i][1], states_1[i][3]))
+            x2.append((states_2[i][0], states_2[i][2]))
+        # assert len(x1) == len(self.past_loss1)
         # assert len(time_stamp) == len(self.past_loss1)
 
         'writing to csv file'
-
-        filename = 'experiment/' + 'traj_loss' + str(x1[0]) + str(x2[0])+'_'\
-                   + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0])+'.csv'
+        # print(x1[0][0])
+        filename = f'experiment/traj_loss_{run_id}_{x1[0][0], x1[0][1], x2[0][0], x2[0][1]}_' \
+                   + str(self.env.car_par[0]['par'][0]) + str(
+            self.env.car_par[1]['par'][0]) + f'_{self.isCollision}.csv'
         with open(filename, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(time_stamp)
@@ -469,7 +547,7 @@ class Simulation:
         half = round(len(self.beta_set) / 2)
         policy_choice = self.agents[0].policy_choice[-1]
         for i in range(self.n_agents):
-            if self.true_params_id[i-1] < half:  # meaning true param of the other is NA
+            if self.true_params_id[i - 1] < half:  # meaning true param of the other is NA
                 for choice in policy_choice[i]:
                     if choice < half:  # same as true param
                         self.policy_correctness[i].append(1)  # 1 for true
@@ -486,7 +564,7 @@ class Simulation:
         count_2 = {0: self.policy_correctness[1].count(0), 1: self.policy_correctness[1].count(1)}
         return count_1, count_2
 
-    def write_policy_predict(self):
+    def write_policy_predict(self, run_id):
         """
         Write policy choices to csv file
         """
@@ -503,14 +581,17 @@ class Simulation:
         policy_choice_1 = self.policy_correctness[0]
         policy_choice_2 = self.policy_correctness[1]
         for i in range(len(states_1) - 1):  # inference will be behind
-            x1.append(states_1[i][1])
-            x2.append(states_2[i][0])
+            x1.append((states_1[i][1], states_1[i][3]))
+            x2.append((states_2[i][0], states_2[i][2]))
         # assert len(x1) == len(intent_prob_1)
         # assert len(time_stamp) == len(self.past_loss1)
 
         'writing to csv file'
-        filename = 'experiment/' + 'traj_policy_choice' + str(x1[0]) + str(x2[0]) + '_' \
-                   + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0]) + '.csv'
+        # filename = 'experiment/' + 'traj_policy_choice' + str(x1[0]) + str(x2[0]) + '_' \
+        #            + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0]) + '.csv'
+
+        filename = f"experiment/traj_policy_choice_{run_id}_{x1[0][0], x1[0][1], x2[0][0], x2[0][1]}_" \
+                   f"{self.env.car_par[0]['par'][0]}_{self.env.car_par[1]['par'][0]}_{self.isCollision}.csv"
         with open(filename, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(time_stamp)
@@ -518,6 +599,40 @@ class Simulation:
             csv_writer.writerow(policy_choice_2)
             csv_writer.writerow(x1)
             csv_writer.writerow(x2)
+
+    def write_policy(self, run_id):
+        """
+        Write policy choices to csv file
+        """
+        states_1 = self.agents[0].state
+        states_2 = self.agents[1].state
+        action_1 = self.agents[0].action
+        action_2 = self.agents[1].action
+        x1 = []
+        x2 = []
+        time_stamp = self.time_stamp
+
+        for i in range(len(states_1) - 1):  # inference will be behind
+            x1.append((states_1[i][1], states_1[i][3]))
+            x2.append((states_2[i][0], states_2[i][2]))
+        # assert len(x1) == len(intent_prob_1)
+        # assert len(time_stamp) == len(self.past_loss1)
+
+        'writing to csv file'
+        # filename = 'experiment/' + 'traj_policy_choice' + str(x1[0]) + str(x2[0]) + '_' \
+        #            + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0]) + '.csv'
+
+        filename = f"experiment/traj_policy_choice_{run_id}_{x1[0][0], x1[0][1], x2[0][0], x2[0][1]}_" \
+                   f"{self.env.car_par[0]['par'][0]}_{self.env.car_par[1]['par'][0]}_{self.isCollision}.csv"
+        with open(filename, 'w') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(time_stamp)
+            csv_writer.writerow('-1')  # loss1 should be same as loss2
+            csv_writer.writerow('-1')
+            csv_writer.writerow(x1)
+            csv_writer.writerow(x2)
+            csv_writer.writerow(action_1)
+            csv_writer.writerow(action_2)
 
     def write_intent_predict(self):  # NOT IN USE!
         states_1 = self.agents[0].state
@@ -550,5 +665,3 @@ class Simulation:
             csv_writer.writerow(intent_prob_2)
             csv_writer.writerow(x1)
             csv_writer.writerow(x2)
-
-
