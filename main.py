@@ -62,9 +62,9 @@ agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent ca
 """
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning (NOT IN USE)
-parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT TRUE PARAM
+parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT TRUE PARAM
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
-parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['NA', 'NA'])  # AGENT BELIEF
+parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT BELIEF
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--belief_weight', type=float, default=0.8)
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         sim_par = {"theta": [5, 1],  # NA, A
                    "lambda": [0.1, 0.5],  # N, NN
                    # "action_set": [-5, -3, -1, 0, 2, 4, 6, 8, 10],
-                   "action_set": [-5, -4, -3, -2, -1, 0, 2, 10],
+                   "action_set": [-5, -3, -2.75, -2.5, -2, -1, 0, 1.25, 1.5, 1.75, 2, 10],
                    # "action_set": close_action_set,
                    }
     elif args.env_name == 'trained_intersection':
@@ -130,15 +130,15 @@ if __name__ == "__main__":
     # s.postprocess()
 
     data = scipy.io.loadmat(f"/mnt/e3641809-fbba-49ea-86ed-f89021679b99/home/varun/PycharmProjects/max_ICRA21/code/"
-                            f"HJI_Vehicle/examples/vehicle/data_discrete_train_na_na.mat")
+                            f"HJI_Vehicle/examples/vehicle/data_discrete_train_a_a.mat")
 
-    w = 0.25
-    action1s = data['U'][0,:]
-    action2s = data['U'][1,:]
-    n = math.ceil((action1s.max() - action1s.min()) / w)
-    import matplotlib.pyplot as plt
-    plt.hist(action1s, bins=n)
-    plt.show()
+    # w = 0.25
+    # action1s = data['U'][0,:]
+    # action2s = data['U'][1,:]
+    # n = math.ceil((action2s.max() - action2s.min()) / w)
+    # import matplotlib.pyplot as plt
+    # plt.hist(action2s, bins=n)
+    # plt.show()
 
 
 
@@ -175,6 +175,6 @@ if __name__ == "__main__":
                   "belief_weight": args.belief_weight}
         s = Simulation(**kwargs)
         s.run(index+1)
-        if index > 10:
+        if index > 49:
             break
 
