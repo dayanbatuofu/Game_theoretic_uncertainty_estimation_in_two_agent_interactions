@@ -214,12 +214,7 @@ class Simulation:
             print('writing to cvs file')
             # if self.inference_type[1] == 'bvp_empathetic':
             #     self.write_intent_predict()
-        "drawing results"
-        self.vis.draw_dist_n_action()
-        if self.drawing_intent:
-            self.vis.draw_intent()
-        if self.env.name == 'bvp_intersection':
-            self.vis.plot_loss()
+
         print("-------Simulation results:-------")
         print("inference types:", self.inference_type)
         print("decision types:", self.decision_type)
@@ -233,21 +228,34 @@ class Simulation:
         print("Action taken by P1:", self.agents[0].action)
         print("Action of P1 predicted by P2:", self.agents[1].predicted_actions_other)
         print("Action taken by P2:", self.agents[1].action)
+        print("last actions: ", self.agents[0].last_actions, self.agents[1].last_actions)
         # print("lambda prob of P1:", self.vis.lambda_distri_h)
         # print("lambda prob of P2:", self.vis.lambda_distri_m)
         print("Loss of H (p1):", self.past_loss1)
         print("Loss of M (p2):", self.past_loss2)
-        if self.inference_type[1] == 'bvp' or self.inference_type[0] == 'bvp_2':
-            print("Count of each belief:", self.agents[0].belief_count[-1])
-            policy_count_1, policy_count_2 = self.calc_policy_choice()
-            self.write_policy_predict()
-            print("Policy correctness:", self.policy_correctness)
-            print("Policy correctness for P1:", policy_count_1)
-            print("Policy correctness for P2:", policy_count_2)
         loss_1 = np.sum(self.past_loss1) * self.dt
         loss_2 = np.sum(self.past_loss2) * self.dt
         print("agent 1's loss:", loss_1)
         print("sum of 2 agent's loss:", loss_1 + loss_2)
+        # TODO: save action to csv here
+
+        if self.inference_type[0] == 'bvp' or self.inference_type[0] == 'bvp_continuous':
+            print("Count of each belief:", self.agents[0].belief_count[-1])
+            policy_count_1, policy_count_2 = self.calc_policy_choice()
+            self.write_policy_choice()
+            print("Policy correctness:", self.policy_correctness)
+            print("Policy correctness for P1:", policy_count_1)
+            print("Policy correctness for P2:", policy_count_2)
+            return loss_2 + loss_1, [policy_count_1[1], policy_count_2[1]]
+
+        "drawing results"
+        # self.vis.draw_dist_n_action()
+        # if self.drawing_intent:
+        #     self.vis.draw_intent()
+        # if self.env.name == 'bvp_intersection':
+        #     self.vis.plot_loss()
+
+        return loss_2 + loss_1
 
     def get_initial_belief(self, theta_1, theta_2, lambda_1, lambda_2, weight):
         """
@@ -259,12 +267,13 @@ class Simulation:
         :param weight: determines the distribution of the common belief: concentrated or spread
         :return:
         """
+        # TODO: organize this conditioning
         # given weights for certain param, calculate the joint distribution (p(theta_1), p(lambda_1) = 0.8, ...)
         theta_list = self.theta_list
         lambda_list = self.lambda_list
         beta_list = self.beta_set
 
-        if self.inference_type[1] == 'empathetic' or self.inference_type[1] == 'bvp':
+        if self.inference_type[1] == 'empathetic' or self.inference_type[1] == 'bvp' or self.inference_type[1] == 'bvp_continuous':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
@@ -299,7 +308,8 @@ class Simulation:
                     #     belief[i][j] = weight
                     # else:
                     #     belief[i][j] = 1
-        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_2' or self.inference_type[0] == 'bvp':
+        elif self.inference_type[0] == 'empathetic' or self.inference_type[0] == 'bvp_2' \
+                or self.inference_type[0] == 'bvp' or self.inference_type[0] == 'bvp_continuous':
             # beta_list = beta_list.flatten()
             belief = np.ones((len(beta_list), len(beta_list)))
             for i, beta_h in enumerate(beta_list):  # H: the rows
@@ -469,7 +479,7 @@ class Simulation:
         half = round(len(self.beta_set) / 2)
         policy_choice = self.agents[0].policy_choice[-1]
         for i in range(self.n_agents):
-            if self.true_params_id[i-1] < half:  # meaning true param of the other is NA
+            if self.true_params_id[i-1] < half:  # if true param of the other agent is NA
                 for choice in policy_choice[i]:
                     if choice < half:  # same as true param
                         self.policy_correctness[i].append(1)  # 1 for true
@@ -486,7 +496,7 @@ class Simulation:
         count_2 = {0: self.policy_correctness[1].count(0), 1: self.policy_correctness[1].count(1)}
         return count_1, count_2
 
-    def write_policy_predict(self):
+    def write_policy_choice(self):
         """
         Write policy choices to csv file
         """
@@ -509,7 +519,7 @@ class Simulation:
         # assert len(time_stamp) == len(self.past_loss1)
 
         'writing to csv file'
-        filename = 'experiment/' + 'traj_policy_choice' + str(x1[0]) + str(x2[0]) + '_' \
+        filename = 'experiment/' + str(self.decision_type_h) + 'traj_policy_choice' + str(x1[0]) + str(x2[0]) + '_' \
                    + str(self.env.car_par[0]['par'][0]) + str(self.env.car_par[1]['par'][0]) + '.csv'
         with open(filename, 'w') as csv_file:
             csv_writer = csv.writer(csv_file)

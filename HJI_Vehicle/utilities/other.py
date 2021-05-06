@@ -57,16 +57,23 @@ def int_input(message, binary=True):
 def load_NN(model_path, return_stats=False):
     model_dict = loadmat(model_path)
 
-    parameters = {'weights1': model_dict['weights1'][0],
-                  'biases1': model_dict['biases1'][0],
-                  'weights2': model_dict['weights2'][0],
-                  'biases2': model_dict['biases2'][0]}
+    # parameters = {'weights1': model_dict['weights1'][0],
+    #               'biases1': model_dict['biases1'][0],
+    #               'weights2': model_dict['weights2'][0],
+    #               'biases2': model_dict['biases2'][0]}
+
+
+    parameters = {'weights': model_dict['weights'][0],
+                  'biases': model_dict['biases'][0]}
 
     scaling = {'lb': model_dict['lb'], 'ub': model_dict['ub'],
                'A_lb': model_dict['A_lb'], 'A_ub': model_dict['A_ub'],
                'U_lb': model_dict['U_lb'], 'U_ub': model_dict['U_ub'],
                'V_min': model_dict['V_min'],
-               'V_max': model_dict['V_max']}
+               'V_max': model_dict['V_max']}  # for value network
+    #
+    # scaling = {'lb': model_dict['lb'], 'ub': model_dict['ub'],
+    #            'A_lb': model_dict['A_lb'], 'A_ub': model_dict['A_ub']}  # for costate network
 
     if return_stats:
         train_time = model_dict['train_time']

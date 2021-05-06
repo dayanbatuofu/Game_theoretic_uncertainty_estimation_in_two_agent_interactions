@@ -7,12 +7,16 @@ import torch as t
 import sys
 import random
 from scipy.special import logsumexp
+from scipy.optimize import Bounds, minimize, minimize_scalar
 # TODO: organize this
 sys.path.append('/models/rainbow/')
 from models.rainbow.arguments import get_args
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
 from HJI_Vehicle.NN_output import get_Q_value
+from HJI_Vehicle_costate.NN_output_costate import get_Costate
+from HJI_Vehicle.NN_output_costate import get_Hamilton
+
 import dynamics
 #sys.path.append('/models/intersection_simple_nfsp/')
 #from arguments import get_args
@@ -25,22 +29,34 @@ class DecisionModel:
         self.sim = sim
         self.frame = self.sim.frame
         self.time = self.sim.time
+        self.dt = self.sim.dt
         if model == 'constant_speed':
             self.plan = self.constant_speed
-        elif model == 'complete_information':  # not in use
-            self.plan = self.complete_information
-        elif model == 'nfsp_baseline':  # use with nfsp trained models
-            self.plan = self.nfsp_baseline
-        elif model == 'bvp_baseline':  # for testing the value network
+        elif model == 'bvp_baseline':  # for testing the value network by iterating through actions
             self.plan = self.bvp_baseline
-        elif model == 'non-empathetic':  # use estimated params of other and known param of self to choose action
-            self.plan = self.non_empathetic
-        elif model == 'empathetic':  # game, using NFSP, import inferred params for both agents
-            self.plan = self.empathetic
+        elif model == 'bvp_optimize_costate':
+            self.plan = self.bvp_optimize_costate
+        elif model == 'bvp_optimize':
+            self.plan = self.bvp_optimize
         elif model == 'bvp_non_empathetic':  # using BVP value network
             self.plan = self.bvp_non_empathetic
         elif model == 'bvp_empathetic':  # using BVP value network
             self.plan = self.bvp_empathetic
+        elif model == 'bvp_e_optimize':
+            self.plan = self.bvp_e_optimize
+        elif model == 'bvp_ne_optimize':
+            self.plan = self.bvp_ne_optimize
+
+        # below are the ones that are not in use!
+        elif model == 'complete_information':  # not in use
+            self.plan = self.complete_information
+        elif model == 'nfsp_baseline':  # use with nfsp trained models
+            self.plan = self.nfsp_baseline
+        elif model == 'non-empathetic':  # use estimated params of other and known param of self to choose action
+            self.plan = self.nfsp_non_empathetic
+        elif model == 'empathetic':  # game, using NFSP, import inferred params for both agents
+            self.plan = self.nfsp_empathetic  # NOT IN USE
+
         else:
             # placeholder for future development
             print("WARNING!!! NO DECISION MODEL FOUND")
@@ -60,6 +76,512 @@ class DecisionModel:
     @staticmethod
     def constant_speed():
         return {'action': 0}  # just keep the speed
+
+    def bvp_baseline(self):
+        """
+        Choose action according to given intent, using the BVP value approximated model
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+
+        "Baseline: get self true betas from initial setting"
+        true_beta_h, true_beta_m = self.true_params
+
+        "METHOD 1: Get the whole p_action table using true param of self and other"
+        # p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
+        # # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
+        #
+        # actions = []
+        # p_a_1 = []
+        # for i, p_a in enumerate([p_action1, p_action2]):
+        #     ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
+        #     ui_i = action_set.index(ui)
+        #     if i == 0:
+        #         p_a_t = np.transpose(p_a)
+        #         p_a_self = p_a_t[ui_i]
+        #     elif i == 1:
+        #         p_a_self = p_a[ui_i]
+        #     else:
+        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
+        #     "noisy: randomly pick action, otherwise extract from highest mass"
+        #     p_a_self /= np.sum(p_a_self)
+        #     p_a_1.append(p_a_self)
+        #     if self.noisy:
+        #         p_a_self = np.array(p_a_self).tolist()
+        #         "drawing action from action set using the distribution"
+        #         action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
+        #         actions.append(action[0])
+        #     else:
+        #         action_id = np.argmax(p_a_self)
+        #         # action_id = np.unravel_index(p_a.argmax(), p_a.shape)
+        #         actions.append(action_set[action_id])
+
+        "METHOD 2: Get p_action based on only the last action observed"
+        actions = []
+
+        for i in range(self.sim.n_agents):
+            last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
+            p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, true_beta_m, last_a_other)
+            actions.append(action_set[np.argmax(p_action_i)])
+
+        # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
+        return {'action': actions}
+
+    def bvp_optimize_costate(self):
+        """
+        Uses costate network to find best action for baseline test
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        dt = self.dt
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+        "Baseline: get self true betas from initial setting"
+        true_beta_h, true_beta_m = self.true_params
+        theta_1 = true_beta_h[0]
+        theta_2 = true_beta_m[0]
+        # x_nn should be new x after the action
+        time = np.array([[self.time]])
+        last_a_1 = self.sim.agents[0].last_actions[-1][0]
+        last_a_2 = self.sim.agents[0].last_actions[-1][1]
+        # new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
+        # new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
+
+        x1_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
+
+        "getting the u* from lambda/2, lambda is costate"
+        u1, u2 = get_Costate(x1_nn, time, (true_beta_h[0], true_beta_m[0]))
+
+        res = [u1[0], u2[0]]
+        actions = []
+        for a in res:
+            if a > 10:
+                actions.append(10)
+            elif a < -5:
+                actions.append(-5)
+            else:
+                actions.append(a)
+
+        assert len(actions) == 2
+        return {'action': actions}
+
+    def bvp_optimize_global(self):
+        """
+        Uses scipy optimizer to find best action for baseline test
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        dt = self.dt
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+        "Baseline: get self true betas from initial setting"
+        true_beta_h, true_beta_m = self.true_params
+        theta_1 = true_beta_h[0]
+        theta_2 = true_beta_m[0]
+        # x_nn should be new x after the action
+        time = np.array([[self.time]])
+        last_a_1 = self.sim.agents[0].last_actions[-1][0]
+        last_a_2 = self.sim.agents[0].last_actions[-1][1]
+        new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
+        new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
+        x1_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
+
+        # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+        # new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+
+        def q_function_helper1(action):  # for agent 1
+            # new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action, dt)
+            # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s_last[0]], [new_p2_s_last[2]]])
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[action], [last_a_2]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q1, q2 = get_Q_value(x1_nn, time, np.array([[action], [last_a_2]]),
+                                  (true_beta_h[0], true_beta_m[0]))
+            q1 = -q1[0][0]
+            print(action, q1)
+            return q1
+
+        def q_function_helper2(action):  # for agent 2
+            # new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action, dt)
+            # new_x1_nn = np.array([[new_p1_s_last[1]], [new_p1_s_last[3]], [new_p2_s[0]], [new_p2_s[2]]])
+            q1, q2 = get_Q_value(x1_nn, time, np.array([[last_a_1], [action]]),
+                                 (true_beta_h[0], true_beta_m[0]))
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[last_a_1], [action]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q2 = -q2[0][0]
+            print(action, q2)
+            return q2
+
+        res1 = minimize_scalar(q_function_helper1)  # for agent 1
+        res2 = minimize_scalar(q_function_helper2)
+        res = [res1.x, res2.x]
+        actions = []
+        for a in res:
+            if a > 10:
+                actions.append(10)
+            elif a < -5:
+                actions.append(-5)
+            else:
+                actions.append(a)
+
+        assert len(actions) == 2
+        return {'action': actions}
+
+    def bvp_optimize(self):
+        """
+        Uses scipy optimizer to find best action for baseline test
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        dt = self.dt
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+        "Baseline: get self true betas from initial setting"
+        true_beta_h, true_beta_m = self.true_params
+        theta_1 = true_beta_h[0]
+        theta_2 = true_beta_m[0]
+        # x_nn should be new x after the action
+        time = np.array([[self.time]])
+        last_a_1 = self.sim.agents[0].last_actions[-1][0]
+        last_a_2 = self.sim.agents[0].last_actions[-1][1]
+        new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
+        new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
+        # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+        # new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+        x1_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
+
+        def q_function_helper1(action):  # for agent 1
+            new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action, dt)
+            new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s_last[0]], [new_p2_s_last[2]]])
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[action], [last_a_2]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action], [last_a_2]]),
+                                 (true_beta_h[0], true_beta_m[0]))
+            q1 = -q1[0][0]
+            print(action, q1)
+            return q1
+
+        def q_function_helper2(action):  # for agent 2
+            new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action, dt)
+            new_x1_nn = np.array([[new_p1_s_last[1]], [new_p1_s_last[3]], [new_p2_s[0]], [new_p2_s[2]]])
+            q1, q2 = get_Q_value(new_x1_nn, time, np.array([[last_a_1], [action]]),
+                                 (true_beta_h[0], true_beta_m[0]))
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[last_a_1], [action]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q2 = -q2[0][0]
+            print(action, q2)
+            return q2
+        
+        res1 = minimize_scalar(q_function_helper1, bounds=(-5, 10), method="bounded")
+        res2 = minimize_scalar(q_function_helper2, bounds=(-5, 10), method="bounded")
+        actions = [res1.x, res2.x]
+        return {'action': actions}
+
+    def bvp_non_empathetic(self):
+        """
+        Uses BVP value network
+        Get appropriate action based on predicted intent of the other agent and self intent
+        :return: appropriate action for both agents
+        """
+        # implement reactive planning based on point estimates of future trajectories
+
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+
+        action_set = self.action_set
+
+        "this is where non_empathetic is different: using true param of self to observe portion of belief table"
+        if self.sim.frame == 0:
+            p_beta = self.sim.initial_belief
+        else:
+            p_beta, ne_betas = self.sim.agents[0].predicted_intent_all[-1]
+
+        "true_param_id -> get row/col of p_beta -> get predicted beta"
+        true_beta_1, true_beta_2 = self.true_params
+        b_id_1 = self.beta_set.index(true_beta_1)
+        b_id_2 = self.beta_set.index(true_beta_2)
+        p_b_1 = np.transpose(p_beta)[b_id_2]  # get col p_beta
+        p_b_2 = p_beta[b_id_1]
+        beta_1 = self.beta_set[np.argmax(p_b_1)]
+        beta_2 = self.beta_set[np.argmax(p_b_2)]
+
+        "Get p_action based on only the last action observed"
+        actions = []
+        p_a_2 = []
+        for i in range(self.sim.n_agents):
+            last_a_other = self.sim.agents[0].last_actions[-1][i-1]  # other agent's last action
+            if i == 0:
+                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_1, beta_2, last_a_other)
+            elif i == 1:
+                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, beta_1, true_beta_2, last_a_other)
+            p_a_2.append(p_action_i)
+            actions.append(action_set[np.argmax(p_action_i)])
+
+        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+
+        return {'action': actions}
+
+    def bvp_empathetic(self):
+        """
+        Choose action from Nash Equilibrium, according to the inference model
+        :return: actions for both agents
+        """
+        # implement reactive planning based on inference of future trajectories
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        p2_state_nn = ([p2_state[0]], [p2_state[2]], [p1_state[1]], [p1_state[3]])
+
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+
+        "this is where empathetic is different: using predicted param of self with entire belief table"
+        if self.sim.frame == 0:
+            p_beta = self.sim.initial_belief
+            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
+            beta_h = self.beta_set[beta_pair_id[0]]
+            beta_m = self.beta_set[beta_pair_id[1]]
+        else:
+            p_beta, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
+        true_beta_h, true_beta_m = self.true_params
+
+        "Get p_action based on only the last action observed"
+        actions = []
+        p_a_2 = []  # for comparison
+        for i in range(self.sim.n_agents):
+            last_a_other = self.sim.agents[0].last_actions[-1][i-1]  # other agent's last action
+            if i == 0:
+                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, beta_m, last_a_other)
+            elif i == 1:
+                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, beta_h, true_beta_m, last_a_other)
+            p_a_2.append(p_action_i)
+            actions.append(action_set[np.argmax(p_action_i)])
+
+        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
+        # actions = [action1, action2]
+        return {'action': actions}
+
+    def bvp_e_optimize(self):
+        """
+        BVP empathetic
+        Uses scipy optimizer to find best action
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        dt = self.dt
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+
+        "this is where empathetic is different: using predicted param of self with entire belief table"
+        if self.sim.frame == 0:  # get prob beta pair from initially generated one
+            p_beta = self.sim.initial_belief
+            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
+            est_beta_1 = self.beta_set[beta_pair_id[0]]
+            est_beta_2 = self.beta_set[beta_pair_id[1]]
+            est_theta_1 = est_beta_1[0]
+            est_theta_2 = est_beta_2[0]
+        else:
+            p_beta, [est_beta_1, est_beta_2] = self.sim.agents[0].predicted_intent_all[-1]
+            est_theta_1 = est_beta_1[0]
+            est_theta_2 = est_beta_2[0]
+        true_beta_1, true_beta_2 = self.true_params
+
+        time = np.array([[self.time]])
+        last_a_1 = self.sim.agents[0].last_actions[-1][0]
+        last_a_2 = self.sim.agents[0].last_actions[-1][1]
+        "getting new states (if needed by NN)"
+        # new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
+        # new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
+        # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+        # new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+
+        x1_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
+
+        def q_function_helper1(action):  # for agent 1
+            """Helper function for optimization (agent 1)"""
+            # new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action, dt)
+            # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s_last[0]], [new_p2_s_last[2]]])
+            "Hamiltonian from costate network"
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[action], [last_a_2]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            "Q value network"
+            q1, q2 = get_Q_value(x1_nn, time, np.array([[action], [last_a_2]]),
+                                 (true_beta_1[0], est_beta_2[0]))
+            q1 = -q1[0][0]
+            print(action, q1)
+            return q1
+
+        def q_function_helper2(action):  # for agent 2
+            """Helper function for optimization (agent 2)"""
+            # new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action, dt)
+            # new_x1_nn = np.array([[new_p1_s_last[1]], [new_p1_s_last[3]], [new_p2_s[0]], [new_p2_s[2]]])
+            "Q value network"
+            q1, q2 = get_Q_value(x1_nn, time, np.array([[last_a_1], [action]]),
+                                 (true_beta_1[0], est_beta_2[0]))
+            "Hamiltonian from costate network"
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[last_a_1], [action]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q2 = -q2[0][0]
+            print(action, q2)
+            return q2
+
+        "scipy minimizer: globally minimizing -Q (maximizing Q)"
+        res1 = minimize_scalar(q_function_helper1)  # , bounds=(-5, 10), method="bounded")
+        res2 = minimize_scalar(q_function_helper2)  # , bounds=(-5, 10), method="bounded")
+        res = [res1.x, res2.x]
+        actions = []
+        for a in res:
+            if a > 10:
+                actions.append(10)
+            elif a < -5:
+                actions.append(-5)
+            else:
+                actions.append(a)
+
+        assert len(actions) == 2
+
+        return {'action': actions}
+
+    def bvp_ne_optimize(self):
+        """
+        BVP non-empathetic
+        Uses scipy optimizer to find best action
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        self.frame = self.sim.frame
+        self.time = self.sim.time
+        dt = self.dt
+        p1_state = self.sim.agents[0].state[self.sim.frame]
+        p2_state = self.sim.agents[1].state[self.sim.frame]
+        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
+        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
+        lambda_list = self.lambda_list
+        theta_list = self.theta_list
+        action_set = self.action_set
+
+        "this is where non_empathetic is different: using true param of self to observe portion of belief table"
+        if self.sim.frame == 0:
+            p_beta = self.sim.initial_belief
+        else:
+            p_beta, ne_betas = self.sim.agents[0].predicted_intent_all[-1]
+
+        "true_param_id -> get row/col of p_beta -> get predicted beta"
+        true_beta_1, true_beta_2 = self.true_params
+        b_id_1 = self.beta_set.index(true_beta_1)
+        b_id_2 = self.beta_set.index(true_beta_2)
+        p_b_1 = np.transpose(p_beta)[b_id_2]  # get col p_beta
+        p_b_2 = p_beta[b_id_1]
+        est_beta_1 = self.beta_set[np.argmax(p_b_1)]
+        est_beta_2 = self.beta_set[np.argmax(p_b_2)]
+        est_theta_1 = est_beta_1[0]
+        est_theta_2 = est_beta_2[0]
+
+        time = np.array([[self.time]])
+        last_a_1 = self.sim.agents[0].last_actions[-1][0]
+        last_a_2 = self.sim.agents[0].last_actions[-1][1]
+
+        "getting new states (if needed by NN)"
+        # new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
+        # new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
+        # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+        # new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+
+        x1_nn = np.array([[p1_state[1]], [p1_state[3]], [p2_state[0]], [p2_state[2]]])
+
+        def q_function_helper1(action):  # for agent 1
+            # new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action, dt)
+            # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s_last[0]], [new_p2_s_last[2]]])
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[action], [last_a_2]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q1, q2 = get_Q_value(x1_nn, time, np.array([[action], [last_a_2]]),
+                                 (true_beta_1[0], est_beta_2[0]))
+            q1 = -q1[0][0]
+            print(action, q1)
+            return q1
+
+        def q_function_helper2(action):  # for agent 2
+            # new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action, dt)
+            # new_x1_nn = np.array([[new_p1_s_last[1]], [new_p1_s_last[3]], [new_p2_s[0]], [new_p2_s[2]]])
+            q1, q2 = get_Q_value(x1_nn, time, np.array([[last_a_1], [action]]),
+                                 (true_beta_1[0], est_beta_2[0]))
+            # q1, q2 = get_Hamilton(x1_nn, time, np.array([[last_a_1], [action]]),
+            #                      (true_beta_h[0], true_beta_m[0]))
+            q2 = -q2[0][0]
+            print(action, q2)
+            return q2
+
+        "scipy minimizer: globally minimizing -Q (maximizing Q)"
+        res1 = minimize_scalar(q_function_helper1)  # , bounds=(-5, 10), method="bounded")
+        res2 = minimize_scalar(q_function_helper2)  # , bounds=(-5, 10), method="bounded")
+        res = [res1.x, res2.x]
+        actions = []
+        for a in res:
+            if a > 10:
+                actions.append(10)
+            elif a < -5:
+                actions.append(-5)
+            else:
+                actions.append(a)
+
+        assert len(actions) == 2
+
+        return {'action': actions}
 
     def complete_information(self, *args):
         # generalize for n agents
@@ -153,68 +675,7 @@ class DecisionModel:
         # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
         return {'action': actions}
 
-    def bvp_baseline(self):
-        """
-        Choose action according to given intent, using the BVP value approximated model
-        :return:
-        """
-        "sorting states to obtain action from pre-trained model"
-        # y direction only for M, x direction only for HV
-        self.frame = self.sim.frame
-        self.time = self.sim.time
-        p1_state = self.sim.agents[0].state[self.sim.frame]
-        p2_state = self.sim.agents[1].state[self.sim.frame]
-        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
-        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
-
-        lambda_list = self.lambda_list
-        theta_list = self.theta_list
-        action_set = self.action_set
-
-        "Baseline: get self true betas from initial setting"
-        true_beta_h, true_beta_m = self.true_params
-
-        "METHOD 1: Get the whole p_action table using true param of self and other"
-        # p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
-        # # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
-        #
-        # actions = []
-        # p_a_1 = []
-        # for i, p_a in enumerate([p_action1, p_action2]):
-        #     ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-        #     ui_i = action_set.index(ui)
-        #     if i == 0:
-        #         p_a_t = np.transpose(p_a)
-        #         p_a_self = p_a_t[ui_i]
-        #     elif i == 1:
-        #         p_a_self = p_a[ui_i]
-        #     else:
-        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
-        #     "noisy: randomly pick action, otherwise extract from highest mass"
-        #     p_a_self /= np.sum(p_a_self)
-        #     p_a_1.append(p_a_self)
-        #     if self.noisy:
-        #         p_a_self = np.array(p_a_self).tolist()
-        #         "drawing action from action set using the distribution"
-        #         action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-        #         actions.append(action[0])
-        #     else:
-        #         action_id = np.argmax(p_a_self)
-        #         # action_id = np.unravel_index(p_a.argmax(), p_a.shape)
-        #         actions.append(action_set[action_id])
-
-        "METHOD 2: Get p_action based on only the last action observed"
-        actions = []
-
-        for i in range(self.sim.n_agents):
-            last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-            p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, true_beta_m, last_a_other)
-            actions.append(action_set[np.argmax(p_action_i)])
-
-        # print("action taken for baseline:", actions, "current state (y is reversed):", p1_state, p2_state)
-        return {'action': actions}
-
-    def non_empathetic(self):
+    def nfsp_non_empathetic(self):
         """
         Get appropriate action based on predicted intent of the other agent and self intent
         :return: appropriate action for both agents
@@ -309,7 +770,7 @@ class DecisionModel:
         # actions = [action1, action2]
         return {'action': actions}
 
-    def empathetic(self):
+    def nfsp_empathetic(self):
         """
         Choose action from Nash Equilibrium, according to the inference model
         :return: actions for both agents
@@ -382,102 +843,6 @@ class DecisionModel:
         self.sim.action_distri_2.append(p_action2)
         # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
 
-        return {'action': actions}
-
-    def bvp_non_empathetic(self):
-        """
-        Uses BVP value network
-        Get appropriate action based on predicted intent of the other agent and self intent
-        :return: appropriate action for both agents
-        """
-        # implement reactive planning based on point estimates of future trajectories
-
-        self.frame = self.sim.frame
-        self.time = self.sim.time
-        "sorting states to obtain action from pre-trained model"
-        # y direction only for M, x direction only for HV
-        p1_state = self.sim.agents[0].state[self.sim.frame]
-        p2_state = self.sim.agents[1].state[self.sim.frame]
-        # p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
-        # p2_state_nn = (p2_state[0], p2_state[2], p1_state[1], p1_state[3])
-
-        action_set = self.action_set
-
-        "this is where non_empathetic is different: using true param of self to observe portion of belief table"
-        if self.sim.frame == 0:
-            p_beta = self.sim.initial_belief
-        else:
-            p_beta, ne_betas = self.sim.agents[0].predicted_intent_all[-1]
-
-        "true_param_id -> get row/col of p_beta -> get predicted beta"
-        true_beta_1, true_beta_2 = self.true_params
-        b_id_1 = self.beta_set.index(true_beta_1)
-        b_id_2 = self.beta_set.index(true_beta_2)
-        p_b_1 = np.transpose(p_beta)[b_id_2]  # get col p_beta
-        p_b_2 = p_beta[b_id_1]
-        beta_1 = self.beta_set[np.argmax(p_b_1)]
-        beta_2 = self.beta_set[np.argmax(p_b_2)]
-
-        "Get p_action based on only the last action observed"
-        actions = []
-        p_a_2 = []
-        for i in range(self.sim.n_agents):
-            last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-            if i == 0:
-                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_1, beta_2, last_a_other)
-            elif i == 1:
-                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, beta_1, true_beta_2, last_a_other)
-            p_a_2.append(p_action_i)
-            actions.append(action_set[np.argmax(p_action_i)])
-
-        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
-
-        return {'action': actions}
-
-    def bvp_empathetic(self):
-        """
-        Choose action from Nash Equilibrium, according to the inference model
-        :return: actions for both agents
-        """
-        # implement reactive planning based on inference of future trajectories
-        self.frame = self.sim.frame
-        self.time = self.sim.time
-
-        "sorting states to obtain action from pre-trained model"
-        # y direction only for M, x direction only for HV
-        p1_state = self.sim.agents[0].state[self.sim.frame]
-        p2_state = self.sim.agents[1].state[self.sim.frame]
-        p1_state_nn = (p1_state[1], p1_state[3], p2_state[0], p2_state[2])  # s_ego, v_ego, s_other, v_other
-        p2_state_nn = ([p2_state[0]], [p2_state[2]], [p1_state[1]], [p1_state[3]])
-
-        lambda_list = self.lambda_list
-        theta_list = self.theta_list
-        action_set = self.action_set
-
-        "this is where empathetic is different: using predicted param of self with entire belief table"
-        if self.sim.frame == 0:
-            p_beta = self.sim.initial_belief
-            beta_pair_id = np.unravel_index(p_beta.argmax(), p_beta.shape)
-            beta_h = self.beta_set[beta_pair_id[0]]
-            beta_m = self.beta_set[beta_pair_id[1]]
-        else:
-            p_beta, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
-        true_beta_h, true_beta_m = self.true_params
-
-        "Get p_action based on only the last action observed"
-        actions = []
-        p_a_2 = []  # for comparison
-        for i in range(self.sim.n_agents):
-            last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-            if i == 0:
-                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, beta_m, last_a_other)
-            elif i == 1:
-                p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, beta_h, true_beta_m, last_a_other)
-            p_a_2.append(p_action_i)
-            actions.append(action_set[np.argmax(p_action_i)])
-
-        # print("action taken:", actions, "current state (y is reversed):", p1_state, p2_state)
-        # actions = [action1, action2]
         return {'action': actions}
 
     # create long term loss as a pytorch object
@@ -615,10 +980,14 @@ class DecisionModel:
             new_p2_s = dynamics.bvp_dynamics_1d(p2_state, last_action, dt)  # only one new state for p2
             for i, p_a_h in enumerate(_p_action):
                 new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action_set[i], dt)
-                if (theta_1, theta_2) == (1, 5):  # Flip A_AN to NA_A
-                    new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
-                    q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[last_action], [action_set[i]]]),
-                                         (theta_2, theta_1))  # NA_A
+                # if (theta_1, theta_2) == (1, 5):  # Flip A_AN to NA_A
+                #     new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+                #     q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[last_action], [action_set[i]]]),
+                #                          (theta_2, theta_1))  # NA_A
+                if (theta_1, theta_2) == (1, 5):
+                    new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                    q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [last_action]]),
+                                         (theta_1, theta_2))
                 else:  # for A_A, NA_NA, NA_A
                     new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
                     q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [last_action]]),
@@ -629,10 +998,10 @@ class DecisionModel:
             new_p1_s = dynamics.bvp_dynamics_1d(p1_state, last_action, dt)  # only one new state for p2
             for i, p_a_h in enumerate(_p_action):
                 new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action_set[i], dt)
-                if (theta_1, theta_2) == (1, 5):  # Flip A_AN to NA_A
-                    new_p2_state_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
-                    q2, q1 = get_Q_value(new_p2_state_nn, time, np.array([[action_set[i]], [last_action]]),
-                                         (theta_2, theta_1))  # NA_A
+                if (theta_1, theta_2) == (1, 5):
+                    new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+                    q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[action_set[i]], [last_action]]),
+                                         (theta_1, theta_2))
                 else:  # for A_A, NA_NA, NA_A
                     new_p1_state_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
                     q1, q2 = get_Q_value(new_p1_state_nn, time, np.array([[last_action], [action_set[i]]]),

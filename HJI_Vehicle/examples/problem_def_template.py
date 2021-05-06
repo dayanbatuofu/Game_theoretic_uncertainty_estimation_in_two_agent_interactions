@@ -73,7 +73,7 @@ class config_prototype:
         self.BFGS_opts = {}
 
     def build_layers(self, N_states, time_dependent, N_layers, N_neurons):
-        layers = [2*N_states] + N_layers * [N_neurons] + [2]
+        layers = [2*N_states] + N_layers * [N_neurons] + [2]  # value network: 2, costate network: 12
 
         if time_dependent:
             layers[0] += 1

@@ -14,6 +14,7 @@ class DataUtil:
         # list of all variables of interest. Not all studies requires all of them.
         key = ['state',  # actual states
                'action',  # actual actions (converted from trajectory)
+               'last_actions',  # last actions for decision/inference purposes
                'par',  # parameters of the agent's objective
                'planned_action_sets',  # planned future actions
                'planned_trajectory_set',  # future state trajectories based on the planned actions

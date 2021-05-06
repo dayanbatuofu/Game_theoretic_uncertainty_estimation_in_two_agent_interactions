@@ -379,7 +379,8 @@ class VisUtils:
             self.true_intent_2.append(self.true_params[1][0])
             self.true_noise_2.append(self.true_params[1][1])
             p_beta_d, [beta_h, beta_m] = self.sim.agents[0].predicted_intent_all[-1]
-            if self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_empathetic':
+            if self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_empathetic' \
+                    or self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_e_optimize':
                 self.intent_1.append(beta_h[0])
                 self.intent_2.append(beta_m[0])
                 self.lambda_1.append(beta_h[1])
@@ -431,7 +432,8 @@ class VisUtils:
                 # p_beta_true_par_m /= sum_lamb_m[self.true_id[1][1]]
                 # self.true_intent_prob_h.append(p_beta_true_par_h)
                 # self.true_intent_prob_m.append(p_beta_true_par_m)
-            elif self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_non_empathetic':
+            elif self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_non_empathetic' \
+                    or self.sim.decision_type[0] == self.sim.decision_type[1] == 'bvp_ne_optimize':
                 # TODO: record p_lambda
                 true_beta_1, true_beta_2 = self.true_params
                 b_id_1 = self.beta_set.index(true_beta_1)
@@ -470,7 +472,7 @@ class VisUtils:
                 self.theta_distri_2[0].append(p_theta_2[0])
                 self.theta_distri_2[1].append(p_theta_2[1])
 
-            elif self.sim.decision_type[0] == 'bvp_empathetic':
+            elif self.sim.decision_type[0] == 'bvp_empathetic' or self.sim.decision_type[0] == 'bvp_e_optimize':
                 self.intent_1.append(beta_h[0])
                 self.intent_2.append(beta_m[0])
                 self.lambda_1.append(beta_h[1])
@@ -515,7 +517,7 @@ class VisUtils:
                     self.lambda_distri_1[i].append(sum_lamb_h[i])
                     self.lambda_distri_2[i].append(sum_lamb_m[i])
 
-            elif self.sim.decision_type[0] == 'bvp_non_empathetic':
+            elif self.sim.decision_type[0] == 'bvp_non_empathetic' or self.sim.decision_type[0] == 'bvp_ne_optimize':
                 # TODO: record p_lambda
                 true_beta_1, true_beta_2 = self.true_params
                 b_id_1 = self.beta_set.index(true_beta_1)
@@ -555,7 +557,7 @@ class VisUtils:
                 self.theta_distri_2[1].append(p_theta_2[1])
 
             else:
-                print("WARNING! DECISION MODEL CHOICE NOT SUPPORTED!")
+                print("WARNING! DECISION MODEL CHOICE NOT SUPPORTED! (SIM_DRAW.CALC_INTENT)")
 
         else:  # single agent inference
             joint_infer_m = self.sim.agents[1].predicted_intent_self

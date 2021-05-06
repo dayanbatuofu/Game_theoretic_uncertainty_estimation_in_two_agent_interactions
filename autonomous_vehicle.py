@@ -46,6 +46,7 @@ class AutonomousVehicle:
         self.policy_choice = []
         self.min_speed = self.env.MIN_SPEED
         self.max_speed = self.env.MAX_SPEED
+        self.last_actions = []
 
     def update(self, sim):
         other = sim.agents[:self.id]+sim.agents[self.id+1:]  # get all other agents
@@ -71,7 +72,7 @@ class AutonomousVehicle:
             action = action[self.id]
             plan = {"action": action}
         DataUtil.update(self, plan)
-        print("chosen action", action)
+        print("chosen action (AutoVehicle)", action)
         self.dynamics(action)
 
     def dynamics(self, action):  # Dynamic of cubic polynomial on velocity
@@ -152,6 +153,7 @@ class AutonomousVehicle:
             self.state.append(f_environment_sc(self.state[-1], action, self.sim.dt))
         elif self.env.name == 'bvp_intersection':
             self.state.append(dynamics.bvp_dynamics_1d(self.state[self.sim.frame], action, self.sim.dt))
+            # self.state.append(dynamics.bvp_dynamics_1d_avg(self.state[self.sim.frame], self.action[-1], action, self.sim.dt))
         else:  # for nfsp intersection, or other intersection case
             # self.state.append(f(self.state[-1], action, self.sim.dt))
             self.state.append(dynamics.dynamics_1d(self.state[-1], action, self.sim.dt, self.min_speed, self.max_speed))

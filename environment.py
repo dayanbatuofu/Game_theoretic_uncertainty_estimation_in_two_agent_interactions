@@ -7,16 +7,18 @@ import savi_simulation as sim
 from models.rainbow.arguments import get_args
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
-from HJI_Vehicle.NN_output import get_Q_value
+# from HJI_Vehicle.NN_output import get_Q_value
+from HJI_Vehicle.NN_output_costate import get_Hamilton as get_Q_value  # costate network
 import dynamics
 import torch as t
 import random
 from scipy.special import logsumexp
+from scipy.optimize import minimize_scalar, minimize
 
 
 class Environment:
     # add: intent, noise, intent belief, noise belief
-    def __init__(self, env_name, sim_par, sim_dt, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief):
+    def __init__(self, env_name, agent_inference, sim_par, initial_states, sim_dt, agent_intent, agent_noise, agent_intent_belief, agent_noise_belief):
 
         self.name = env_name
         self.sim = sim
@@ -26,6 +28,8 @@ class Environment:
         self.agent_noise = []
         self.agent_intent_belief = []
         self.agent_noise_belief = []
+        self.initial_states = initial_states
+        self.agent_inference = agent_inference[0]
 
         for i in range(len(agent_intent)):
             'check agent theta'
@@ -184,17 +188,21 @@ class Environment:
             # vy_H = np.random.uniform(18, 25)
             # sx_M = np.random.uniform(15, 20)
             # vx_M = np.random.uniform(18, 25)
-            sy_H = 20  # P1
-            vy_H = 18
-            sx_M = 15  # P2
-            vx_M = 18
+            # sy_H = 15  # P1
+            # vy_H = 18
+            # sx_M = 16  # P2
+            # vx_M = 18
+            sy_H = self.initial_states[0][0]  # P1
+            vy_H = self.initial_states[0][1]
+            sx_M = self.initial_states[1][0]  # P2
+            vx_M = self.initial_states[1][1]
 
             assert 20 >= sy_H >= 15
             assert 20 >= sx_M >= 15
             self.car_par = [{"sprite": "grey_car_sized.png",
                              "initial_state": [[0, sy_H, 0, vy_H]],  # pos_x, pos_y, vel_x, vel_y
                              "desired_state": [0, 0.4],  # pos_x, pos_y
-                             "initial_action": [0.],  # accel
+                             "initial_action": [],  # accel
                              "par": [self.agent_intent[0], self.agent_noise[0]],  # DON'T CHANGE; par is defined in main
                              "belief": [self.agent_intent_belief[0], self.agent_noise_belief[0]],
                              # belief of other's params (beta: (theta, lambda))
@@ -202,29 +210,51 @@ class Environment:
                             {"sprite": "white_car_sized.png",
                              "initial_state": [[sx_M, 0, vx_M, 0]],
                              "desired_state": [-0.4, 0],
-                             "initial_action": [0.],
+                             "initial_action": [],
                              "par": [self.agent_intent[1], self.agent_noise[1]],  # aggressiveness: check main
                              "belief": [self.agent_intent_belief[1], self.agent_noise_belief[1]],
                              # belief of other's params (beta: (theta, lambda))
                              "orientation": -90.},
                             ]
 
-            # "choose action base on decision type and intent"
-            # action_set = self.sim_par["action_set"]
-            # "METHOD 1: Get the whole p_action table using true param of self and belief of other's param"
-            # p1_state = self.car_par[0]["initial_state"][0]
-            # p2_state = self.car_par[1]["initial_state"][0]
-            # true_beta_h = self.car_par[0]["par"]
-            # true_beta_m = self.car_par[1]["par"]
-            # belief_beta_h = self.car_par[1]["belief"]
-            # belief_beta_m = self.car_par[0]["belief"]
-            # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, belief_beta_m)
-            # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, belief_beta_h, true_beta_m)
-            #
-            # actions = []
-            # for i, p_a in enumerate([p_action1, p_action2]):
-            #     action_id = np.unravel_index(p_a.argmax(), p_a.shape)
-            #     self.car_par[i]["initial_action"] = [action_set[action_id[i]]]
+            "choose action base on decision type and intent"
+            action_set = self.sim_par["action_set"]
+            "METHOD 1: Get the whole p_action table using true param of self and belief of other's param"
+            p1_state = self.car_par[0]["initial_state"][0]
+            p2_state = self.car_par[1]["initial_state"][0]
+            true_beta_h = self.car_par[0]["par"]
+            true_beta_m = self.car_par[1]["par"]
+            belief_beta_h = self.car_par[1]["belief"]
+            belief_beta_m = self.car_par[0]["belief"]
+
+            # TODO: solution to initial actions?
+            if self.agent_inference == 'bvp':
+                # p_action1, p_action2_n = self.bvp_action_prob(p1_state, p2_state, true_beta_h, belief_beta_m)
+                # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, belief_beta_h, true_beta_m)
+                # actions = []
+                # for i, p_a in enumerate([p_action1, p_action2]):
+                #     action_id = np.unravel_index(p_a.argmax(), p_a.shape)
+                #     self.car_par[i]["initial_action"] = [action_set[action_id[i]]]
+                action_1 = 0  # placeholders!
+                action_2 = 0
+                self.car_par[0]["initial_action"] = [action_1]
+                self.car_par[1]["initial_action"] = [action_2]
+            # "METHOD 2: use optimizer to obtain the action (minimize q1+q2)"
+            elif self.agent_inference == 'bvp_continuous':
+                # action_1, action_2_not = self.bvp_optimize_action(p1_state, p2_state, true_beta_h, belief_beta_m)  # optimize according to p1's params
+                # action_1_not, action_2 = self.bvp_optimize_action(p1_state, p2_state, belief_beta_h, true_beta_m)
+                action_1 = 0  # placeholders!
+                action_2 = 0
+                self.car_par[0]["initial_action"] = [action_1]
+                self.car_par[1]["initial_action"] = [action_2]
+            else:  # none inference, etc
+                action_1 = 0  # placeholders!
+                action_2 = 0
+                self.car_par[0]["initial_action"] = [action_1]
+                self.car_par[1]["initial_action"] = [action_2]
+                # print("WARNING!!!INFERENCE MODEL NOT SUPPORTED!")
+                # assert len(self.car_par[0]["initial_action"]) != 0
+
 
         elif self.name == 'merger':
             # TODO: modify initial state to match with trained model
@@ -388,6 +418,83 @@ class Environment:
         assert round(np.sum(_p_action_2)) == 1
 
         return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
+
+    def bvp_optimize_action(self, p1_state, p2_state, beta_1, beta_2):
+        """
+        Uses scipy optimizer to find best action for baseline test
+        :return:
+        """
+        "sorting states to obtain action from pre-trained model"
+        # y direction only for M, x direction only for HV
+        theta_1, lambda_1 = beta_1
+        theta_2, lambda_2 = beta_2
+        action_set = self.sim_par["action_set"]
+
+        _lambda = [lambda_1, lambda_2]
+
+        "Need state for agent H: xH, vH, xM, vM"
+        # p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
+        # p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
+
+        time = np.array([[0]])  # since it's only t=0 when running environment
+        dt = self.dt
+        # new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
+        # new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
+        # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+        # new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
+
+        # def q_function_helper1(action):  # for agent 1
+        #     new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action, dt)
+        #     # if (theta_1, theta_2) == (1, 5):
+        #     #     new_x2_nn = np.array([[new_p2_s_last[0]], [new_p2_s_last[2]], [new_p1_s[1]], [new_p1_s[3]]])
+        #     #     q2, q1 = get_Q_value(new_x2_nn, time, np.array([[last_a_2], [action]]),
+        #     #                          (true_beta_m[0], true_beta_h[0]), dt)
+        #     # else:
+        #     new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s_last[0]], [new_p2_s_last[2]]])
+        #     q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action], [last_a_2]]),
+        #                         (true_beta_h[0], true_beta_m[0]), dt)
+        #     q1 = -q1[0][0]
+        #     print(action, q1)
+        #     return q1
+        #
+        # def q_function_helper2(action):  # for agent 2
+        #     new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action, dt)
+        #     # if (theta_1, theta_2) == (1, 5):
+        #     #     new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s_last[1]], [new_p1_s_last[3]]])
+        #     #     q2, q1 = get_Q_value(new_x2_nn, time, np.array([[last_a_2], [action]]),
+        #     #                          (true_beta_m[0], true_beta_h[0]), dt)
+        #     # else:
+        #     new_x1_nn = np.array([[new_p1_s_last[1]], [new_p1_s_last[3]], [new_p2_s[0]], [new_p2_s[2]]])
+        #     q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action], [last_a_2]]),
+        #                         (true_beta_h[0], true_beta_m[0]), dt)
+        #     q2 = -q2[0][0]
+        #     print(action, q2)
+        #     return q2
+        def q_function_helper_joint(actions):  # for optimizing both q
+            action_1, action_2 = actions
+            new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action_1, dt)
+            new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action_2, dt)
+            # if (theta_1, theta_2) == (1, 5):
+            #     new_x2_nn = np.array([[new_p2_s_last[0]], [new_p2_s_last[2]], [new_p1_s[1]], [new_p1_s[3]]])
+            #     q2, q1 = get_Q_value(new_x2_nn, time, np.array([[last_a_2], [action]]),
+            #                          (true_beta_m[0], true_beta_h[0]), dt)
+            # else:
+            new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
+            q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action_1], [action_2]]),
+                                (theta_1, theta_2), dt)
+            q1 = -q1[0][0]
+            q2 = -q2[0][0]
+
+            return q1 + q2
+        initial_guess = [0, -4]
+        res = minimize(q_function_helper_joint, initial_guess, bounds=[(-5, 10), (-5, 10)])
+        # res2 = minimize_scalar(q_function_helper2, bounds=(-5, 10), method="bounded")
+        if res.success:
+            actions = res.x
+        else:
+            raise ValueError(res.message)
+        return actions
+
 
 
 
