@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser()
 simulation parameters
 """
 parser.add_argument('--sim_duration', type=int, default=100)  # time span for simulation
-parser.add_argument('--sim_dt', type=int, default=0.05)  # time step in simulation: choices: [0.01, 0.25, 1]
+parser.add_argument('--sim_dt', type=int, default=0.05)  # time step in simulation
 parser.add_argument('--sim_lr', type=float, default=0.1)  # learning rate
 parser.add_argument('--sim_nepochs', type=int, default=100)  # number of training epochs
 parser.add_argument('--save', type=str, default='./experiment')  # save dir
@@ -34,17 +34,18 @@ environment parameters
 """
 parser.add_argument('--env_name', type=str, choices=['trained_intersection', 'bvp_intersection'],
                     default='bvp_intersection')
-# Starting position and velocity is set within the environment
 
 """
 agent model parameters
 """
 
 # choose inference model: use bvp for our experiment, and only for 1st player (i.e. ['bvp', 'none'])
+# To do baseline test, choose ['none', 'none']
 parser.add_argument('--agent_inference', type=str, choices=['none', 'bvp'],
                     default=['bvp', 'none'])
 
 # choose decision model: use the same model for the two agent, bvp_non_empathetic or bvp_empathetic
+# For baseline test, choose ['bvp_baseline', 'bvp_baseline'] or ['bvp_optimize', 'bvp_optimize']
 parser.add_argument('--agent_decision', type=str,
                     choices=['constant_speed', 'bvp_baseline', 'bvp_optimize',
                              'bvp_non_empathetic', 'bvp_empathetic'],
@@ -55,7 +56,7 @@ agent parameters (for the proposed s = <x0,p0(β),β†,∆t,l>), for 2 agent ca
 """
 
 parser.add_argument('--agent_dt', type=int, default=1)  # time step in planning (NOT IN USE)
-parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT TRUE PARAM [P1, P2]
+parser.add_argument('--agent_intent', type=str, choices=['NA', 'A'], default=['A', 'A'])  # TRUE PARAMs [theta1, theta2]
 parser.add_argument('--agent_noise', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
 parser.add_argument('--agent_intent_belief', type=str, choices=['NA', 'A'], default=['A', 'A'])  # AGENT BELIEF
 parser.add_argument('--agent_noise_belief', type=str, choices=['N', 'NN'], default=['NN', 'NN'])
@@ -71,10 +72,10 @@ if __name__ == "__main__":
     policy_table_2 = np.empty((6, 6))
     startpos1 = np.empty((6, 6))  # for checking if starting condition is correct
     startpos2 = np.empty((6, 6))
-
+    # if you want to quickly iterate through the initial conditions, comment out the last few lines in simulation.run()
     for i in range(len(loss_table)):  # iterate through rows (agent 1's init states)
         for j in range((len(loss_table[0]))):  # iterate through cols (agent 2's)
-            "To run a single initial state, simple change this"
+            "To run a single initial state, simply change the initial position in the range of [15, 20]"
             x1 = 15 + i
             x2 = 15 + j
             startpos1[i][j] = x1

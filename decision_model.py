@@ -98,40 +98,10 @@ class DecisionModel:
         "Baseline: get self true betas from initial setting"
         true_beta_h, true_beta_m = self.true_params
 
-        "METHOD 1: Get the whole p_action table using true param of self and other"
-        # p_action1, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
-        # # p_action1_n, p_action2 = self.bvp_action_prob(p1_state, p2_state, true_beta_h, true_beta_m)
-        #
-        # actions = []
-        # p_a_1 = []
-        # for i, p_a in enumerate([p_action1, p_action2]):
-        #     ui = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
-        #     ui_i = action_set.index(ui)
-        #     if i == 0:
-        #         p_a_t = np.transpose(p_a)
-        #         p_a_self = p_a_t[ui_i]
-        #     elif i == 1:
-        #         p_a_self = p_a[ui_i]
-        #     else:
-        #         print("WARNING! AGENT EXCEEDS 2 IS NOT SUPPORTED")
-        #     "noisy: randomly pick action, otherwise extract from highest mass"
-        #     p_a_self /= np.sum(p_a_self)
-        #     p_a_1.append(p_a_self)
-        #     if self.noisy:
-        #         p_a_self = np.array(p_a_self).tolist()
-        #         "drawing action from action set using the distribution"
-        #         action = random.choices(action_set, weights=p_a_self, k=1)  # p_a needs 1D array
-        #         actions.append(action[0])
-        #     else:
-        #         action_id = np.argmax(p_a_self)
-        #         # action_id = np.unravel_index(p_a.argmax(), p_a.shape)
-        #         actions.append(action_set[action_id])
-
         "METHOD 2: Get p_action based on only the last action observed"
         actions = []
-
         for i in range(self.sim.n_agents):
-            last_a_other = self.sim.agents[i - 1].action[self.frame - 1]  # other agent's last action
+            last_a_other = self.sim.agents[0].last_actions[-1][i-1]  # other agent's last action
             p_action_i = self.bvp_action_prob_2(i, p1_state, p2_state, true_beta_h, true_beta_m, last_a_other)
             actions.append(action_set[np.argmax(p_action_i)])
 

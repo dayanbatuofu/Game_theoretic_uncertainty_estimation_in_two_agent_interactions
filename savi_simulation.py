@@ -248,12 +248,12 @@ class Simulation:
             print("Policy correctness for P2:", policy_count_2)
             return loss_2 + loss_1, [policy_count_1[1], policy_count_2[1]]
 
-        "drawing results"
-        # self.vis.draw_dist_n_action()
-        # if self.drawing_intent:
-        #     self.vis.draw_intent()
-        # if self.env.name == 'bvp_intersection':
-        #     self.vis.plot_loss()
+        "drawing results: if you just want to scan through all initial states, comment out the below"
+        self.vis.draw_dist_n_action()
+        if self.drawing_intent:
+            self.vis.draw_intent()
+        if self.env.name == 'bvp_intersection':
+            self.vis.plot_loss()
 
         return loss_2 + loss_1
 
