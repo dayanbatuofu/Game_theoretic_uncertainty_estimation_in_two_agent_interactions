@@ -47,7 +47,7 @@ parser.add_argument('--agent_inference', type=str, choices=['none', 'bvp'],
 # choose decision model: use the same model for the two agent, bvp_non_empathetic or bvp_empathetic
 # For baseline test, choose ['bvp_baseline', 'bvp_baseline'] or ['bvp_optimize', 'bvp_optimize']
 parser.add_argument('--agent_decision', type=str,
-                    choices=['constant_speed', 'bvp_baseline', 'bvp_optimize',
+                    choices=['constant_speed', 'bvp_baseline',
                              'bvp_non_empathetic', 'bvp_empathetic'],
                     default=['bvp_empathetic', 'bvp_empathetic'])
 

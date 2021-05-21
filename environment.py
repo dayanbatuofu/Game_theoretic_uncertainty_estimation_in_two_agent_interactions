@@ -8,13 +8,12 @@ from models.rainbow.arguments import get_args
 import models.rainbow.arguments
 from models.rainbow.set_nfsp_models import get_models
 # from HJI_Vehicle.NN_output import get_Q_value
-from HJI_Vehicle.NN_output_costate import get_Hamilton as get_Q_value  # costate network
 import dynamics
 import torch as t
 import random
 from scipy.special import logsumexp
 from scipy.optimize import minimize_scalar, minimize
-
+from HJI_Vehicle.NN_output import get_Q_value
 
 class Environment:
     # add: intent, noise, intent belief, noise belief
@@ -419,81 +418,7 @@ class Environment:
 
         return [_p_action_1, _p_action_2]  # [exp_Q_h, exp_Q_m]
 
-    def bvp_optimize_action(self, p1_state, p2_state, beta_1, beta_2):
-        """
-        Uses scipy optimizer to find best action for baseline test
-        :return:
-        """
-        "sorting states to obtain action from pre-trained model"
-        # y direction only for M, x direction only for HV
-        theta_1, lambda_1 = beta_1
-        theta_2, lambda_2 = beta_2
-        action_set = self.sim_par["action_set"]
 
-        _lambda = [lambda_1, lambda_2]
-
-        "Need state for agent H: xH, vH, xM, vM"
-        # p1_state_nn = np.array([[state_h[1]], [state_h[3]], [state_m[0]], [state_m[2]]])
-        # p2_state_nn = np.array([[state_m[0]], [state_m[2]], [state_h[1]], [state_h[3]]])
-
-        time = np.array([[0]])  # since it's only t=0 when running environment
-        dt = self.dt
-        # new_p1_s_last = dynamics.bvp_dynamics_1d(p1_state, last_a_1, dt)  # resulting state from action observed
-        # new_p2_s_last = dynamics.bvp_dynamics_1d(p2_state, last_a_2, dt)
-        # new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
-        # new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s[1]], [new_p1_s[3]]])
-
-        # def q_function_helper1(action):  # for agent 1
-        #     new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action, dt)
-        #     # if (theta_1, theta_2) == (1, 5):
-        #     #     new_x2_nn = np.array([[new_p2_s_last[0]], [new_p2_s_last[2]], [new_p1_s[1]], [new_p1_s[3]]])
-        #     #     q2, q1 = get_Q_value(new_x2_nn, time, np.array([[last_a_2], [action]]),
-        #     #                          (true_beta_m[0], true_beta_h[0]), dt)
-        #     # else:
-        #     new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s_last[0]], [new_p2_s_last[2]]])
-        #     q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action], [last_a_2]]),
-        #                         (true_beta_h[0], true_beta_m[0]), dt)
-        #     q1 = -q1[0][0]
-        #     print(action, q1)
-        #     return q1
-        #
-        # def q_function_helper2(action):  # for agent 2
-        #     new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action, dt)
-        #     # if (theta_1, theta_2) == (1, 5):
-        #     #     new_x2_nn = np.array([[new_p2_s[0]], [new_p2_s[2]], [new_p1_s_last[1]], [new_p1_s_last[3]]])
-        #     #     q2, q1 = get_Q_value(new_x2_nn, time, np.array([[last_a_2], [action]]),
-        #     #                          (true_beta_m[0], true_beta_h[0]), dt)
-        #     # else:
-        #     new_x1_nn = np.array([[new_p1_s_last[1]], [new_p1_s_last[3]], [new_p2_s[0]], [new_p2_s[2]]])
-        #     q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action], [last_a_2]]),
-        #                         (true_beta_h[0], true_beta_m[0]), dt)
-        #     q2 = -q2[0][0]
-        #     print(action, q2)
-        #     return q2
-        def q_function_helper_joint(actions):  # for optimizing both q
-            action_1, action_2 = actions
-            new_p1_s = dynamics.bvp_dynamics_1d(p1_state, action_1, dt)
-            new_p2_s = dynamics.bvp_dynamics_1d(p2_state, action_2, dt)
-            # if (theta_1, theta_2) == (1, 5):
-            #     new_x2_nn = np.array([[new_p2_s_last[0]], [new_p2_s_last[2]], [new_p1_s[1]], [new_p1_s[3]]])
-            #     q2, q1 = get_Q_value(new_x2_nn, time, np.array([[last_a_2], [action]]),
-            #                          (true_beta_m[0], true_beta_h[0]), dt)
-            # else:
-            new_x1_nn = np.array([[new_p1_s[1]], [new_p1_s[3]], [new_p2_s[0]], [new_p2_s[2]]])
-            q1, q2 = get_Q_value(new_x1_nn, time, np.array([[action_1], [action_2]]),
-                                (theta_1, theta_2), dt)
-            q1 = -q1[0][0]
-            q2 = -q2[0][0]
-
-            return q1 + q2
-        initial_guess = [0, -4]
-        res = minimize(q_function_helper_joint, initial_guess, bounds=[(-5, 10), (-5, 10)])
-        # res2 = minimize_scalar(q_function_helper2, bounds=(-5, 10), method="bounded")
-        if res.success:
-            actions = res.x
-        else:
-            raise ValueError(res.message)
-        return actions
 
 
 
